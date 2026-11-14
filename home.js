@@ -53,6 +53,7 @@ const homeState = {
   accountLoading: false,
   accountLoadedFor: null,
   accountError: "",
+  accountNavigating: false,
 
   observer: null,
   requestId: 0,
@@ -981,6 +982,18 @@ function addHomeStyles() {
         animation: none !important;
       }
     }
+
+    .zune-wave-transition{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;background:var(--background);color:var(--primary);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .18s ease,visibility .18s ease}
+    .zune-wave-transition.active{opacity:1;visibility:visible;pointer-events:auto}
+    .zune-wave-wordmark{display:flex;align-items:center;gap:5px;font-size:clamp(48px,14vw,76px);font-weight:950;letter-spacing:-3px;color:var(--primary)}
+    .zune-wave-wordmark span{display:inline-block;animation:zuneLetterWave .62s cubic-bezier(.2,.75,.25,1) both;animation-delay:calc(var(--letter-index)*.09s)}
+    .zune-wave-caption{font-size:10px;font-weight:900;letter-spacing:3px;color:var(--text-muted)}
+    @keyframes zuneLetterWave{0%{transform:translateY(28px) rotate(8deg);opacity:0}45%{transform:translateY(-13px) rotate(-5deg);opacity:1}72%{transform:translateY(5px) rotate(2deg)}100%{transform:translateY(0) rotate(0);opacity:1}}
+    .z-account-hero{cursor:pointer}
+    .z-account-shortcut,.z-account-menu-row,.z-account-seller{transition:transform .18s ease,border-color .18s ease}
+    .z-account-shortcut:active,.z-account-menu-row:active{transform:scale(.985)}
+    @media(prefers-reduced-motion:reduce){.zune-wave-wordmark span{animation-duration:.01ms;animation-delay:0ms}}
+
   `;
 
   document.head.appendChild(style);
@@ -2186,7 +2199,7 @@ function renderAccountPage() {
 
   return `<section class="z-home z-account-page"><main class="z-home-content">
     <div class="z-account-heading"><div><span class="z-account-eyebrow">${label("NAFASI YAKO","YOUR SPACE")}</span><h1 class="z-page-title">${label("Akaunti yangu","My account")}</h1></div><span class="z-account-heading-mark">ⓏⓊⓃⒺ</span></div>
-    <section class="z-account-hero">${homeState.accountProfile?.avatar_display_url ? `<img class="z-account-avatar" src="${safe(homeState.accountProfile.avatar_display_url)}" alt="Profile photo">` : `<div class="z-account-avatar">${safe(initials || "Z")}</div>`}<div class="z-account-identity"><span class="z-account-eyebrow">${label("KARIBU TENA","WELCOME BACK")}</span><h2>${safe(name)}</h2><p>${safe(email)}</p>${role === "buyer" && homeState.accountProfile?.is_verified ? `<span class="z-account-verified"><svg viewBox="-30 -30 60 60" role="img" aria-label="Verified Account"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Verified Account</span></span>` : ""}</div><span class="z-account-role ${isSeller ? "vendor" : ""}">${isSeller ? label("MUUZAJI","SELLER") : label("MTEJA","CUSTOMER")}</span></section>
+    <section class="z-account-hero" data-account-profile role="button" tabindex="0" aria-label="${label("Fungua taarifa binafsi","Open personal information")}">${homeState.accountProfile?.avatar_display_url ? `<img class="z-account-avatar" src="${safe(homeState.accountProfile.avatar_display_url)}" alt="Profile photo">` : `<div class="z-account-avatar">${safe(initials || "Z")}</div>`}<div class="z-account-identity"><span class="z-account-eyebrow">${label("KARIBU TENA","WELCOME BACK")}</span><h2>${safe(name)}</h2><p>${safe(email)}</p>${role === "buyer" && homeState.accountProfile?.is_verified ? `<span class="z-account-verified"><svg viewBox="-30 -30 60 60" role="img" aria-label="Verified Account"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Verified Account</span></span>` : ""}</div><span class="z-account-role ${isSeller ? "vendor" : ""}">${isSeller ? label("MUUZAJI","SELLER") : label("MTEJA","CUSTOMER")}</span></section>
     ${homeState.accountLoading ? `<p class="z-account-message">${label("Inapakia taarifa za akaunti...","Loading account details...")}</p>` : ""}
     ${homeState.accountError ? `<p class="z-account-message" role="alert">${safe(homeState.accountError)}</p>` : ""}
     <section class="z-account-section"><div class="z-account-section-heading"><div><span class="z-account-eyebrow">${label("SHUGHULI ZA MANUNUZI","SHOPPING ACTIVITY")}</span><h2>${label("Manunuzi yangu","My shopping")}</h2></div></div><div class="z-account-shortcuts">
@@ -2236,6 +2249,22 @@ async function loadAccountDetails() {
   }
 }
 
+
+function navigateWithZuneWave(destination) {
+  if (homeState.accountNavigating) return;
+  homeState.accountNavigating = true;
+  const overlay = document.createElement("div");
+  overlay.className = "zune-wave-transition active";
+  overlay.setAttribute("role","status");
+  overlay.setAttribute("aria-label",language()==="sw"?"Inafungua ukurasa":"Opening page");
+  overlay.innerHTML = '<div class="zune-wave-wordmark" aria-hidden="true"><span style="--letter-index:0">Ⓩ</span><span style="--letter-index:1">Ⓤ</span><span style="--letter-index:2">Ⓝ</span><span style="--letter-index:3">Ⓔ</span></div><div class="zune-wave-caption">ZUNE MARKETPLACE</div>';
+  document.body.appendChild(overlay);
+  window.setTimeout(() => {
+    try { destination(); }
+    finally { overlay.remove(); homeState.accountNavigating = false; }
+  }, window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 180 : 850);
+}
+
 function bindAccountEvents() {
   document.querySelectorAll("[data-zune-theme]").forEach(button => {
     button.addEventListener("click", () => {
@@ -2249,11 +2278,13 @@ function bindAccountEvents() {
       });
     });
   });
-  document.querySelector("[data-open-seller-dashboard]")?.addEventListener("click",()=>window.location.assign("./seller-dashboard.html"));
-  document.querySelectorAll("[data-open-settings]").forEach(button=>button.addEventListener("click",()=>window.location.assign("./settings.html?section="+encodeURIComponent(button.dataset.openSettings||"personal"))));
-  document.querySelector("[data-account-orders]")?.addEventListener("click",()=>alert(language()==="sw" ? "Sehemu ya oda itaunganishwa baada ya kujengwa." : "Orders will be connected when that section is built."));
-  document.querySelector("[data-account-saved]")?.addEventListener("click",()=>renderMarketplacePage("saved"));
-  document.querySelector("[data-account-cart]")?.addEventListener("click",()=>renderMarketplacePage("cart"));
+  document.querySelector("[data-open-seller-dashboard]")?.addEventListener("click",()=>navigateWithZuneWave(()=>window.location.assign("./seller-dashboard.html")));
+  document.querySelector("[data-account-profile]")?.addEventListener("click",()=>navigateWithZuneWave(()=>window.location.assign("./settings.html?section=personal")));
+  document.querySelector("[data-account-profile]")?.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();navigateWithZuneWave(()=>window.location.assign("./settings.html?section=personal"));}});
+  document.querySelectorAll("[data-open-settings]").forEach(button=>button.addEventListener("click",()=>navigateWithZuneWave(()=>window.location.assign("./settings.html?section="+encodeURIComponent(button.dataset.openSettings||"personal")))));
+  document.querySelector("[data-account-orders]")?.addEventListener("click",()=>navigateWithZuneWave(()=>{const app=homeState.app;app.innerHTML=`<section class="z-home z-account-page"><main class="z-home-content"><button type="button" class="z-primary-button" id="z-orders-back">← ${language()==="sw"?"Rudi Akaunti":"Back to Account"}</button><h1 class="z-page-title">${language()==="sw"?"Oda zangu":"My Orders"}</h1><section class="z-account-section"><p>${language()==="sw"?"Oda zako zitaonekana hapa baada ya kufanya manunuzi.":"Your orders will appear here after you make a purchase."}</p></section></main></section>`;document.getElementById("z-orders-back")?.addEventListener("click",()=>renderMarketplacePage("me"));}));
+  document.querySelector("[data-account-saved]")?.addEventListener("click",()=>navigateWithZuneWave(()=>renderMarketplacePage("saved")));
+  document.querySelector("[data-account-cart]")?.addEventListener("click",()=>navigateWithZuneWave(()=>renderMarketplacePage("cart")));
   document.getElementById("z-logout-button")?.addEventListener("click",async()=>{
     if (typeof homeState.onLogout === "function") { await homeState.onLogout(); return; }
     const {error} = await supabase.auth.signOut(); if (error) alert(error.message);
