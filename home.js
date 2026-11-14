@@ -37,8 +37,8 @@ const homeState = {
 
   activeTab: "home",
 
-  saved: readStorage("zune_saved_products", []),
-  cart: readStorage("zune_cart", []),
+  saved: [],
+  cart: [],
   cartProducts: [],
   cartProductsKey: "",
   cartProductsLoading: false,
@@ -205,6 +205,17 @@ function tx(key) {
   return homeText[language()][key] || key;
 }
 
+function userStorageKey(baseKey) {
+  const userId = homeState.user?.id;
+  return userId ? `${baseKey}:${userId}` : null;
+}
+
+function readUserStorage(baseKey, fallback) {
+  const key = userStorageKey(baseKey);
+  if (!key) return fallback;
+  return readStorage(key, fallback);
+}
+
 function safe(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({
     "&": "&amp;",
@@ -236,11 +247,9 @@ function getCartCount() {
 }
 
 function saveCart() {
-  localStorage.setItem(
-    "zune_cart",
-    JSON.stringify(homeState.cart)
-  );
-
+  const key = userStorageKey("zune_cart");
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(homeState.cart));
   updateCartBadges();
 }
 
@@ -1280,10 +1289,8 @@ function toggleSaved(productId) {
     homeState.saved.push(id);
   }
 
-  localStorage.setItem(
-    "zune_saved_products",
-    JSON.stringify(homeState.saved)
-  );
+  const savedKey = userStorageKey("zune_saved_products");
+  if (savedKey) localStorage.setItem(savedKey, JSON.stringify(homeState.saved));
 
   updateProductArea();
 }
@@ -2466,6 +2473,13 @@ export async function renderMarketplaceHome({
   homeState.app = app;
   homeState.user = user || null;
   homeState.onLogout = onLogout || null;
+  // Cart na Wishlist ni za akaunti iliyoingia pekee; usisome legacy global keys.
+  homeState.saved = readUserStorage("zune_saved_products", []);
+  homeState.cart = readUserStorage("zune_cart", []);
+  homeState.cartProducts = [];
+  homeState.cartProductsKey = "";
+  homeState.cartProductsLoading = false;
+  homeState.cartProductsError = false;
 
   applyZuneTheme(localStorage.getItem("zune_theme") || "emerald");
   addHomeStyles();
