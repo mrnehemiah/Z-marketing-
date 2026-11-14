@@ -895,3 +895,1003 @@ async function loadProducts(reset = false) {
     }
   }
 }
+
+/* PRODUCT CARD */
+
+function productCard(product) {
+  const saved = homeState.saved.includes(product.id);
+
+  const image =
+    product.image_url ||
+    (Array.isArray(product.image_urls) ? product.image_urls[0] : "");
+
+  const category = product.category || "";
+
+  return `
+    <article class="z-product-card">
+      ${
+        image
+          ? `<img
+              class="z-product-image"
+              src="${safe(image)}"
+              alt="${safe(product.title)}"
+              loading="lazy"
+            >`
+          : `<div class="z-product-placeholder">🛍️</div>`
+      }
+
+      <button
+        class="z-save-product"
+        data-save-product="${safe(product.id)}"
+        aria-label="Save product"
+      >
+        ${saved ? "♥" : "♡"}
+      </button>
+
+      <div class="z-product-info">
+        <h3 class="z-product-name">
+          ${safe(product.title)}
+        </h3>
+
+        <p class="z-product-price">
+          ${money(product.price)}
+        </p>
+
+        <p class="z-product-category">
+          ${safe(category)}
+        </p>
+
+        <button
+          class="z-add-cart"
+          data-add-cart="${safe(product.id)}"
+        >
+          ${zIcon("cart")}
+          ${safe(tx("addCart"))}
+        </button>
+      </div>
+    </article>
+  `;
+}
+
+/* PRODUCT AREA */
+
+function updateProductArea() {
+  const grid = document.getElementById("zProductGrid");
+
+  if (!grid) return;
+
+  if (homeState.products.length === 0 && !homeState.loading) {
+    grid.innerHTML = `
+      <div class="z-empty-state" style="grid-column:1/-1">
+        <span class="z-empty-icon">🛍️</span>
+        ${
+          homeState.search || homeState.selectedCategory
+            ? safe(tx("emptySearch"))
+            : safe(tx("empty"))
+        }
+      </div>
+    `;
+  } else {
+    grid.innerHTML = homeState.products
+      .map(productCard)
+      .join("");
+  }
+
+  grid.querySelectorAll("[data-save-product]").forEach(button => {
+    button.onclick = () => {
+      toggleSaved(button.dataset.saveProduct);
+    };
+  });
+
+  grid.querySelectorAll("[data-add-cart]").forEach(button => {
+    button.onclick = () => {
+      addToCart(button.dataset.addCart);
+    };
+  });
+}
+
+function updateLoadStatus() {
+  const status = document.getElementById("zLoadStatus");
+
+  if (!status) return;
+
+  if (homeState.loading) {
+    status.textContent = tx("loading");
+  } else if (!homeState.hasMore && homeState.products.length > 0) {
+    status.textContent = tx("end");
+  } else {
+    status.textContent = "";
+  }
+}
+
+function showLoadError() {
+  const status = document.getElementById("zLoadStatus");
+
+  if (!status) return;
+
+  status.innerHTML = `
+    ${safe(tx("loadError"))}
+    <button id="zRetryProducts" class="z-continue-shopping">
+      ${safe(tx("retry"))}
+    </button>
+  `;
+
+  document.getElementById("zRetryProducts").onclick = () => {
+    loadProducts();
+  };
+}
+
+/* SAVE PRODUCTS */
+
+function toggleSaved(productId) {
+  if (homeState.saved.includes(productId)) {
+    homeState.saved = homeState.saved.filter(id => id !== productId);
+  } else {
+    homeState.saved.push(productId);
+  }
+
+  localStorage.setItem(
+    "zune_saved_products",
+    JSON.stringify(homeState.saved)
+  );
+
+  if (homeState.activeTab === "saved") {
+    renderSavedPage();
+  } else {
+    updateProductArea();
+  }
+}
+
+/* CART FUNCTIONS */
+
+function addToCart(productId) {
+  const product = homeState.products.find(
+    item => String(item.id) === String(productId)
+  );
+
+  if (!product) return;
+
+  const existing = homeState.cart.find(
+    item => String(item.id) === String(productId)
+  );
+
+  if (existing) {
+    existing.quantity = (Number(existing.quantity) || 0) + 1;
+  } else {
+    homeState.cart.push({
+      id: product.id,
+      quantity: 1
+    });
+  }
+
+  saveCart();
+
+  const button = document.querySelector(
+    `[data-add-cart="${CSS.escape(String(productId))}"]`
+  );
+
+  if (button) {
+    const original = button.innerHTML;
+    button.textContent = tx("added");
+
+    setTimeout(() => {
+      if (button.isConnected) {
+        button.innerHTML = original;
+      }
+    }, 1000);
+  }
+}
+
+function changeCartQuantity(productId, change) {
+  const item = homeState.cart.find(
+    entry => String(entry.id) === String(productId)
+  );
+
+  if (!item) return;
+
+  item.quantity = (Number(item.quantity) || 0) + change;
+
+  if (item.quantity <= 0) {
+    homeState.cart = homeState.cart.filter(
+      entry => String(entry.id) !== String(productId)
+    );
+  }
+
+  saveCart();
+  renderCartPage();
+}
+
+function removeCartItem(productId) {
+  homeState.cart = homeState.cart.filter(
+    item => String(item.id) !== String(productId)
+  );
+
+  saveCart();
+  renderCartPage();
+}
+
+/* CATEGORIES */
+
+function renderCategories() {
+  const container = document.getElementById("zCategoryList");
+
+  if (!container) return;
+
+  const allButton = `
+    <button
+      class="z-category ${!homeState.selectedCategory ? "active" : ""}"
+      data-category=""
+    >
+      ${safe(tx("all"))}
+    </button>
+  `;
+
+  const buttons = homeState.categories.map(category => `
+    <button
+      class="z-category ${
+        homeState.selectedCategory === category.id ? "active" : ""
+      }"
+      data-category="${safe(category.id)}"
+    >
+      ${safe(category.name)}
+    </button>
+  `).join("");
+
+  container.innerHTML = allButton + buttons;
+
+  container.querySelectorAll("[data-category]").forEach(button => {
+    button.onclick = () => {
+      homeState.selectedCategory = button.dataset.category;
+
+      renderCategories();
+      loadProducts(true);
+    };
+  });
+}
+
+/* HOME CONTENT */
+
+function renderHomePage() {
+  homeState.activeTab = "home";
+
+  const metadata = homeState.user?.user_metadata || {};
+  const name = metadata.first_name || "";
+
+  homeState.app.innerHTML = `
+    <div class="z-home">
+      <header class="z-home-header">
+        <div class="z-home-top">
+          <div class="z-home-brand">
+            ${homeLogo()}
+          </div>
+
+          <div class="z-home-actions">
+            <button class="z-icon-button" id="zSavedShortcut"
+              aria-label="${safe(tx("saved"))}">
+              ${zIcon("saved")}
+            </button>
+
+            <button class="z-icon-button" id="zAccountShortcut"
+              aria-label="${safe(tx("me"))}">
+              ${zIcon("account")}
+            </button>
+          </div>
+        </div>
+
+        <div class="z-search-box">
+          ${zIcon("search")}
+          <input
+            id="zProductSearch"
+            type="search"
+            placeholder="${safe(tx("search"))}"
+          >
+        </div>
+      </header>
+
+      <main class="z-home-content">
+        <section class="z-home-welcome">
+          <div class="z-welcome-tag">✦ ZUNE MARKETPLACE</div>
+
+          <h2>
+            ${safe(name ? `Habari, ${name}!` : tx("welcome"))}
+          </h2>
+
+          <p>${safe(tx("homeTitle"))}</p>
+        </section>
+
+        <div class="z-section-heading">
+          <h2>${safe(tx("categories"))}</h2>
+        </div>
+
+        <div class="z-category-list" id="zCategoryList">
+          <button class="z-category active">
+            ${safe(tx("all"))}
+          </button>
+        </div>
+
+        <div class="z-section-heading">
+          <h2>${safe(tx("latest"))}</h2>
+        </div>
+
+        <div class="z-product-grid" id="zProductGrid"></div>
+
+        <div class="z-load-status" id="zLoadStatus"></div>
+
+        <div id="zScrollSentinel" style="height:2px"></div>
+      </main>
+
+      ${renderBottomNavigation()}
+    </div>
+  `;
+
+  document.getElementById("zSavedShortcut").onclick = renderSavedPage;
+  document.getElementById("zAccountShortcut").onclick = renderAccountPage;
+
+  const search = document.getElementById("zProductSearch");
+
+  let searchTimer;
+
+  search.oninput = () => {
+    clearTimeout(searchTimer);
+
+    searchTimer = setTimeout(() => {
+      homeState.search = search.value.trim();
+      loadProducts(true);
+    }, 400);
+  };
+
+  renderCategories();
+  updateProductArea();
+  observeInfiniteScroll();
+  loadProducts(true);
+  bindNavigation();
+}
+
+/* BOTTOM NAVIGATION */
+
+function renderBottomNavigation() {
+  const items = [
+    ["home", "home", tx("home")],
+    ["explore", "explore", tx("explore")],
+    ["cart", "cart", tx("cart")],
+    ["saved", "saved", tx("saved")],
+    ["me", "account", tx("me")]
+  ];
+
+  return `
+    <nav class="z-bottom-nav" aria-label="Marketplace navigation">
+      ${items.map(([id, icon, label]) => `
+        <button
+          class="z-nav-item ${
+            homeState.activeTab === id ? "active" : ""
+          }"
+          data-nav="${id}"
+          aria-current="${homeState.activeTab === id ? "page" : "false"}"
+        >
+          <span class="z-nav-icon">
+            ${zIcon(icon)}
+
+            ${
+              id === "cart"
+                ? `<span class="z-cart-badge" data-cart-count ${
+                    getCartCount() === 0 ? "hidden" : ""
+                  }>${getCartCount() > 99 ? "99+" : getCartCount()}</span>`
+                : ""
+            }
+          </span>
+
+          <span>${safe(label)}</span>
+        </button>
+      `).join("")}
+    </nav>
+  `;
+}
+
+/* NAVIGATION EVENTS */
+
+function bindNavigation() {
+  document.querySelectorAll("[data-nav]").forEach(button => {
+    button.onclick = () => {
+      const page = button.dataset.nav;
+
+      if (page === "home") renderHomePage();
+      if (page === "explore") renderExplorePage();
+      if (page === "cart") renderCartPage();
+      if (page === "saved") renderSavedPage();
+      if (page === "me") renderAccountPage();
+    };
+  });
+}
+
+/* INFINITE SCROLL */
+
+function observeInfiniteScroll() {
+  if (homeState.observer) {
+    homeState.observer.disconnect();
+    homeState.observer = null;
+  }
+
+  const sentinel = document.getElementById("zScrollSentinel");
+
+  if (!sentinel || !("IntersectionObserver" in window)) return;
+
+  homeState.observer = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) {
+      loadProducts();
+    }
+  }, {
+    rootMargin: "400px"
+  });
+
+  homeState.observer.observe(sentinel);
+}
+
+/* EXPLORE PAGE */
+
+function renderExplorePage() {
+  homeState.activeTab = "explore";
+
+  homeState.app.innerHTML = `
+    <div class="z-home">
+      <header class="z-home-header">
+        <div class="z-home-top">
+          <div class="z-home-brand">${homeLogo()}</div>
+        </div>
+
+        <div class="z-search-box">
+          ${zIcon("search")}
+          <input
+            id="zExploreSearch"
+            type="search"
+            placeholder="${safe(tx("search"))}"
+            value="${safe(homeState.search)}"
+          >
+        </div>
+      </header>
+
+      <main class="z-home-content">
+        <h2 class="z-page-title">${safe(tx("exploreTitle"))}</h2>
+
+        <div class="z-section-heading">
+          <h2>${safe(tx("categories"))}</h2>
+        </div>
+
+        <div class="z-category-list" id="zCategoryList"></div>
+
+        <div class="z-product-grid" id="zProductGrid"></div>
+
+        <div class="z-load-status" id="zLoadStatus"></div>
+
+        <div id="zScrollSentinel" style="height:2px"></div>
+      </main>
+
+      ${renderBottomNavigation()}
+    </div>
+  `;
+
+  const search = document.getElementById("zExploreSearch");
+
+  let searchTimer;
+
+  search.oninput = () => {
+    clearTimeout(searchTimer);
+
+    searchTimer = setTimeout(() => {
+      homeState.search = search.value.trim();
+      loadProducts(true);
+    }, 400);
+  };
+
+  renderCategories();
+  updateProductArea();
+  observeInfiniteScroll();
+  loadProducts(true);
+  bindNavigation();
+}
+
+/* CART PAGE */
+
+function renderCartPage() {
+  homeState.activeTab = "cart";
+
+  const cartProducts = homeState.cart.map(item => {
+    const product = homeState.products.find(
+      entry => String(entry.id) === String(item.id)
+    );
+
+    return product ? {
+      ...product,
+      quantity: Number(item.quantity) || 1
+    } : null;
+  }).filter(Boolean);
+
+  const total = cartProducts.reduce(
+    (sum, product) => sum + Number(product.price || 0) * product.quantity,
+    0
+  );
+
+  homeState.app.innerHTML = `
+    <div class="z-home">
+      <header class="z-home-header">
+        <div class="z-home-brand">${homeLogo()}</div>
+      </header>
+
+      <main class="z-home-content">
+        <h2 class="z-page-title">${safe(tx("cartTitle"))}</h2>
+
+        ${
+          cartProducts.length
+            ? `
+              <div class="z-cart-list">
+                ${cartProducts.map(product => {
+                  const image = product.image_url ||
+                    (Array.isArray(product.image_urls)
+                      ? product.image_urls[0]
+                      : "");
+
+                  return `
+                    <article class="z-cart-item">
+                      ${
+                        image
+                          ? `<img src="${safe(image)}" alt="${safe(product.title)}" loading="lazy">`
+                          : `<div class="z-cart-item-placeholder">🛍️</div>`
+                      }
+
+                      <div class="z-cart-item-info">
+                        <h3>${safe(product.title)}</h3>
+
+                        <p>${money(product.price)}</p>
+
+                        <div class="z-quantity-controls">
+                          <button data-quantity-minus="${safe(product.id)}"
+                            aria-label="Decrease quantity">
+                            ${zIcon("minus")}
+                          </button>
+
+                          <strong>${product.quantity}</strong>
+
+                          <button data-quantity-plus="${safe(product.id)}"
+                            aria-label="Increase quantity">
+                            ${zIcon("plus")}
+                          </button>
+                        </div>
+                      </div>
+
+                      <button
+                        class="z-cart-remove"
+                        data-remove-cart="${safe(product.id)}"
+                        aria-label="${safe(tx("remove"))}"
+                      >
+                        ${zIcon("trash")}
+                      </button>
+                    </article>
+                  `;
+                }).join("")}
+              </div>
+
+              <div class="z-cart-summary">
+                <div class="z-cart-total">
+                  <span>${safe(tx("total"))}</span>
+                  <span>${money(total)}</span>
+                </div>
+
+                <button class="z-continue-shopping" id="zContinueShopping">
+                  ${safe(tx("continueShopping"))}
+                  →
+                </button>
+              </div>
+            `
+            : `
+              <div class="z-empty-state">
+                <span class="z-empty-icon">${zIcon("cart")}</span>
+                ${safe(tx("cartEmpty"))}
+                <button class="z-continue-shopping" id="zContinueShopping">
+                  ${safe(tx("continueShopping"))}
+                </button>
+              </div>
+            `
+        }
+      </main>
+
+      ${renderBottomNavigation()}
+    </div>
+  `;
+
+  document.querySelectorAll("[data-quantity-minus]").forEach(button => {
+    button.onclick = () => {
+      changeCartQuantity(button.dataset.quantityMinus, -1);
+    };
+  });
+
+  document.querySelectorAll("[data-quantity-plus]").forEach(button => {
+    button.onclick = () => {
+      changeCartQuantity(button.dataset.quantityPlus, 1);
+    };
+  });
+
+  document.querySelectorAll("[data-remove-cart]").forEach(button => {
+    button.onclick = () => {
+      removeCartItem(button.dataset.removeCart);
+    };
+  });
+
+  document.getElementById("zContinueShopping").onclick = renderExplorePage;
+
+  bindNavigation();
+}
+// ==========================================
+// ZUNE MARKETPLACE 2.0
+// HOME.JS — SEHEMU YA 3/3
+// ==========================================
+
+function renderCartPage() {
+  const cartItems = homeState.cart || [];
+
+  const items = cartItems
+    .map((item) => {
+      const product = homeState.products.find(
+        (p) => String(p.id) === String(item.productId)
+      );
+
+      return product ? { ...item, product } : null;
+    })
+    .filter(Boolean);
+
+  const total = items.reduce(
+    (sum, item) => sum + Number(item.product.price || 0) * item.quantity,
+    0
+  );
+
+  return `
+    <section class="z-page">
+      <div class="z-page-heading">
+        <div>
+          <span class="z-eyebrow">${tx("yourCart")}</span>
+          <h1>${tx("cart")}</h1>
+        </div>
+        <span class="z-cart-count">${getCartCount()}</span>
+      </div>
+
+      ${
+        items.length
+          ? `
+            <div class="z-cart-layout">
+              <div class="z-cart-items">
+                ${items
+                  .map(
+                    ({ product, quantity }) => `
+                      <article class="z-cart-item">
+                        <img
+                          src="${safe(product.image_url || "")}"
+                          alt="${safe(product.title)}"
+                          onerror="this.style.display='none'"
+                        >
+
+                        <div class="z-cart-item-info">
+                          <h3>${safe(product.title)}</h3>
+                          <strong>${money(product.price)}</strong>
+
+                          <div class="z-quantity-control">
+                            <button
+                              type="button"
+                              data-cart-minus="${safe(product.id)}"
+                              aria-label="Decrease quantity"
+                            >−</button>
+
+                            <span>${quantity}</span>
+
+                            <button
+                              type="button"
+                              data-cart-plus="${safe(product.id)}"
+                              aria-label="Increase quantity"
+                            >+</button>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          class="z-remove-cart"
+                          data-cart-remove="${safe(product.id)}"
+                          aria-label="Remove item"
+                        >×</button>
+                      </article>
+                    `
+                  )
+                  .join("")}
+              </div>
+
+              <aside class="z-cart-summary">
+                <h2>${tx("orderSummary")}</h2>
+
+                <div class="z-summary-row">
+                  <span>${tx("subtotal")}</span>
+                  <strong>${money(total)}</strong>
+                </div>
+
+                <div class="z-summary-row z-summary-total">
+                  <span>${tx("total")}</span>
+                  <strong>${money(total)}</strong>
+                </div>
+
+                <button
+                  type="button"
+                  class="z-primary-button z-checkout-button"
+                  id="z-checkout-button"
+                >
+                  ${tx("checkout")}
+                </button>
+
+                <p class="z-checkout-note">
+                  ${tx("checkoutNote")}
+                </p>
+              </aside>
+            </div>
+          `
+          : `
+            <div class="z-empty-state">
+              <div class="z-empty-icon">🛒</div>
+              <h2>${tx("emptyCart")}</h2>
+              <p>${tx("emptyCartText")}</p>
+              <button
+                type="button"
+                class="z-primary-button"
+                data-go-home
+              >
+                ${tx("continueShopping")}
+              </button>
+            </div>
+          `
+      }
+    </section>
+  `;
+}
+
+function bindCartPage() {
+  document.querySelectorAll("[data-cart-minus]").forEach((button) => {
+    button.addEventListener("click", () => {
+      changeCartQuantity(button.dataset.cartMinus, -1);
+      renderMarketplacePage("cart");
+    });
+  });
+
+  document.querySelectorAll("[data-cart-plus]").forEach((button) => {
+    button.addEventListener("click", () => {
+      changeCartQuantity(button.dataset.cartPlus, 1);
+      renderMarketplacePage("cart");
+    });
+  });
+
+  document.querySelectorAll("[data-cart-remove]").forEach((button) => {
+    button.addEventListener("click", () => {
+      removeCartItem(button.dataset.cartRemove);
+      renderMarketplacePage("cart");
+    });
+  });
+
+  document.querySelector("[data-go-home]")?.addEventListener("click", () => {
+    renderMarketplacePage("home");
+  });
+
+  document
+    .getElementById("z-checkout-button")
+    ?.addEventListener("click", () => {
+      alert(tx("checkoutComingSoon"));
+    });
+}
+
+function renderSavedPage() {
+  const savedIds = homeState.saved || [];
+
+  const products = homeState.products.filter((product) =>
+    savedIds.includes(String(product.id))
+  );
+
+  return `
+    <section class="z-page">
+      <div class="z-page-heading">
+        <div>
+          <span class="z-eyebrow">${tx("yourCollection")}</span>
+          <h1>${tx("saved")}</h1>
+        </div>
+        <span class="z-cart-count">${products.length}</span>
+      </div>
+
+      ${
+        products.length
+          ? `
+            <div class="z-product-grid">
+              ${products.map(productCard).join("")}
+            </div>
+          `
+          : `
+            <div class="z-empty-state">
+              <div class="z-empty-icon">♡</div>
+              <h2>${tx("noSaved")}</h2>
+              <p>${tx("noSavedText")}</p>
+              <button
+                type="button"
+                class="z-primary-button"
+                data-go-home
+              >
+                ${tx("exploreProducts")}
+              </button>
+            </div>
+          `
+      }
+    </section>
+  `;
+}
+
+function bindSavedPage() {
+  updateProductArea();
+
+  document.querySelector("[data-go-home]")?.addEventListener("click", () => {
+    renderMarketplacePage("home");
+  });
+}
+
+function renderAccountPage() {
+  const user = homeState.user;
+
+  const email = user?.email || "";
+  const displayName =
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    email.split("@")[0] ||
+    "ZUNE Customer";
+
+  return `
+    <section class="z-page">
+      <div class="z-page-heading">
+        <div>
+          <span class="z-eyebrow">${tx("yourProfile")}</span>
+          <h1>${tx("account")}</h1>
+        </div>
+      </div>
+
+      <div class="z-account-card">
+        <div class="z-account-avatar">
+          ${safe(displayName.charAt(0).toUpperCase())}
+        </div>
+
+        <div class="z-account-info">
+          <h2>${safe(displayName)}</h2>
+          <p>${safe(email)}</p>
+        </div>
+      </div>
+
+      <div class="z-account-menu">
+        <button type="button" class="z-account-menu-item" data-account-saved>
+          <span>♡</span>
+          <span>${tx("saved")}</span>
+          <span>›</span>
+        </button>
+
+        <button type="button" class="z-account-menu-item" data-account-cart>
+          <span>🛒</span>
+          <span>${tx("cart")}</span>
+          <span>›</span>
+        </button>
+      </div>
+
+      <button
+        type="button"
+        class="z-logout-button"
+        id="z-logout-button"
+      >
+        ${tx("logout")}
+      </button>
+    </section>
+  `;
+}
+
+function bindAccountPage() {
+  document
+    .querySelector("[data-account-saved]")
+    ?.addEventListener("click", () => {
+      renderMarketplacePage("saved");
+    });
+
+  document
+    .querySelector("[data-account-cart]")
+    ?.addEventListener("click", () => {
+      renderMarketplacePage("cart");
+    });
+
+  document
+    .getElementById("z-logout-button")
+    ?.addEventListener("click", async () => {
+      if (typeof homeState.onLogout === "function") {
+        await homeState.onLogout();
+      } else {
+        const { error } = await supabase.auth.signOut();
+
+        if (error) {
+          alert(error.message);
+        }
+      }
+    });
+}
+
+function renderMarketplacePage(page) {
+  homeState.activeTab = page;
+
+  const app = homeState.app;
+
+  if (!app) return;
+
+  let content = "";
+
+  if (page === "home") {
+    content = renderHomePage();
+  } else if (page === "explore") {
+    content = renderExplorePage();
+  } else if (page === "cart") {
+    content = renderCartPage();
+  } else if (page === "saved") {
+    content = renderSavedPage();
+  } else if (page === "me") {
+    content = renderAccountPage();
+  } else {
+    content = renderHomePage();
+  }
+
+  app.innerHTML = `
+    <div class="z-marketplace">
+      ${content}
+      ${renderBottomNavigation()}
+    </div>
+  `;
+
+  bindNavigation();
+
+  if (page === "home") {
+    observeInfiniteScroll();
+  }
+
+  if (page === "explore" || page === "saved") {
+    updateProductArea();
+  }
+
+  if (page === "cart") {
+    bindCartPage();
+  }
+
+  if (page === "saved") {
+    bindSavedPage();
+  }
+
+  if (page === "me") {
+    bindAccountPage();
+  }
+
+  updateCartBadges();
+}
+
+export async function renderMarketplaceHome({
+  app,
+  user,
+  onLogout
+}) {
+  if (!app) {
+    console.error("ZUNE: Marketplace app container haijapatikana.");
+    return;
+  }
+
+  homeState.app = app;
+  homeState.user = user || null;
+  homeState.onLogout = onLogout || null;
+
+  addHomeStyles();
+
+  try {
+    await Promise.all([
+      loadCategories(),
+      loadProducts(true)
+    ]);
+  } catch (error) {
+    console.error("ZUNE Marketplace initialization error:", error);
+  }
+
+  renderMarketplacePage("home");
+}
