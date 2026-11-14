@@ -71,7 +71,7 @@ function renderVerification(){
   statusMarkup='<span class="zsd-pill blue">'+tr("Haijathibitishwa","Not verified")+'</span>';
  }
  const reason=req?.rejection_reason?'<p class="zsd-muted">'+esc(req.rejection_reason)+'</p>':"";
- const showForm=!storeVerified&&requestStatus!=="pending";
+ const showForm=!storeVerified&&(requestStatus!=="pending"||!req?.document_path);
  return `<section class="zsd-card"><div class="zsd-section-kicker">${tr("UTHIBITISHO WA DUKA","STORE VERIFICATION")}</div><div class="zsd-verification-head"><div class="zsd-verification-title"><h2>Verified Store</h2>${statusMarkup}</div></div><p class="zsd-muted">${tr("Omba beji ya Verified Store. Beji ya blue itaonekana baada ya Admin Mkuu kukagua na kuidhinisha taarifa za duka lako. Hii ni tofauti na Verified Account ya Customer.","Apply for the Verified Store badge. The blue badge appears after Admin Mkuu reviews and approves your store details. This is separate from the Customer Verified Account badge.")}</p>${reason}${showForm?`<form id="zsd-verification-form" class="zsd-form" style="margin-top:15px"><label>${tr("Jina kamili la mmiliki","Owner full name")}<input name="full_name" maxlength="140" required value="${esc(state.profile?.full_name||"")}"></label><label>${tr("Jina la duka","Store name")}<input name="business_name" maxlength="140" required value="${esc(state.store?.store_name||"")}"></label><div class="zsd-full"><label>${tr("Picha ya nyaraka za uthibitisho wa duka","Store verification document")}<input name="identity_document" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label><p class="zsd-muted">${tr("JPG, PNG, WEBP au PDF. Ukubwa usizidi MB 10. Admin Mkuu pekee ataweza kuona nyaraka.","JPG, PNG, WEBP or PDF. Maximum 10 MB. Only Admin Mkuu can view documents.")}</p><div id="zsd-verify-message" class="zsd-alert" role="status"></div><button class="zsd-btn primary" type="submit" style="width:100%">${tr("Omba Verified Store","Apply for Verified Store")}</button></div></form>`:""}<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--zsd-line)"><strong style="font-size:12px;display:block;margin-bottom:5px">${tr("Verified Account ya Customer","Customer Verified Account")}</strong><span class="zsd-muted">${tr("Uthibitisho wa Customer unaombwa kwenye ukurasa wa Account, si hapa.","Customer verification is requested from the Account page, not here.")}</span></div></section>`;
 }
 function renderProducts(){
@@ -229,6 +229,11 @@ async function submitVerification(event){
   const documentPath=window.__zuneSellerUser.id+"/seller/"+Date.now()+"-"+Math.random().toString(36).slice(2)+"."+extension;
   const upload=await supabase.storage.from("zune-verification-documents").upload(documentPath,file,{contentType:file.type,upsert:false});
   if(upload.error)throw upload.error;
+  if(state.badgeRequest?.status==="pending"&&!state.badgeRequest.document_path){
+   const {data,error}=await supabase.rpc("zune_attach_verification_document",{p_request_id:state.badgeRequest.id,p_document_path:documentPath});
+   if(error)throw error;
+   state.badgeRequest=data;renderPanel();return;
+  }
   const {data,error}=await supabase.from("verified_badge_requests").insert({user_id:window.__zuneSellerUser.id,full_name:fullName,business_name:business,document_path:documentPath,verification_type:"seller",status:"pending"}).select("id,status,rejection_reason,document_path,created_at").single();
   if(error)throw error;
   state.badgeRequest=data;renderPanel();
