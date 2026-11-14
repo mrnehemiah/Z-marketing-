@@ -70,14 +70,12 @@ function renderProductList(items){
  return `<div class="zsd-products">${items.map(p=>`<article class="zsd-product"><strong>${esc(p.title)}</strong><p class="zsd-muted">${money(p.price)} · ${tr("Stock","Stock")}: ${Number(p.stock_quantity)||0}</p></article>`).join("")}</div>`;
 }
 function renderVerification(){
- const req=state.badgeRequest, verified=!!state.profile?.is_verified;
+ const req=state.badgeRequest,verified=!!state.profile?.is_verified;
  let status="";
- if(verified) status=`<span class="zsd-pill" style="background:rgba(230,145,35,.14);color:#c87510">${tr("✓ Verified Account","✓ Verified Account")}</span>`;
- else if(req?.status==="pending") status=`<span class="zsd-pill">${tr("Inasubiri Admin Mkuu","Pending Admin Mkuu review")}</span>`;
- else if(req?.status==="rejected") status=`<span class="zsd-pill" style="background:rgba(190,50,50,.12);color:#bd3d3d">${tr("Limekataliwa","Rejected")}</span>`;
- return `<section class="zsd-card"><div class="zsd-row"><h2>${tr("Profile Badge — Simple Verification","Profile Badge — Simple Verification")}</h2>${status}</div><p class="zsd-muted">${tr("Omba beji ya Verified Account. Admin Mkuu atakagua maombi yako; beji itaonekana baada ya kuidhinishwa. Hii ni tofauti na Verified Store.","Request the Verified Account badge. Admin Mkuu reviews your request; the badge appears only after approval. This is separate from Verified Store.")}</p>
- ${req?.status==="pending"||verified?"":`<form id="zsd-verification-form" class="zsd-form"><label>${tr("Jina kamili","Full name")}<input name="full_name" required maxlength="140" value="${esc(state.profile?.full_name||"")}"></label><label>${tr("Jina la duka (hiari)","Store name (optional)")}<input name="business_name" maxlength="140" value="${esc(state.store?.store_name||"")}"></label><p class="zsd-muted zsd-full">${tr("Hii ni hatua rahisi ya kuanzisha ombi. Usitume namba ya kitambulisho au nyaraka hapa mpaka ZUNE itoe njia salama ya kuzipokea.","This is a simple request. Do not submit ID numbers or documents here until ZUNE provides a secure evidence-upload flow.")}</p><div class="zsd-full"><button class="zsd-btn primary" type="submit" id="zsd-verify-submit">${tr("Omba Verified Account","Request Verified Account")}</button></div><p class="zsd-muted zsd-full" id="zsd-verify-message" aria-live="polite">${req?.status==="rejected"?esc(req.rejection_reason||""):""}</p></form>`}
- </section>`;
+ if(verified)status='<span class="zsd-pill" style="background:rgba(230,145,35,.14);color:#c87510">✓ Verified Account</span>';
+ else if(req?.status==="pending")status='<span class="zsd-pill">Inasubiri Admin Mkuu / Pending</span>';
+ else if(req?.status==="rejected")status='<span class="zsd-pill" style="background:rgba(190,50,50,.12);color:#bd3d3d">Limekataliwa / Rejected</span>';
+ return `<section class="zsd-card"><div class="zsd-row"><h2>Profile Badge — Simple Verification</h2>${status}</div><p class="zsd-muted">${tr("Omba beji ya Verified Account. Admin Mkuu atakagua ombi lako; beji ya machungwa itaonekana baada ya kuidhinishwa. Verified Store ni beji tofauti ya duka.","Request the Verified Account badge. Admin Mkuu reviews your request; the orange badge appears only after approval. Verified Store is a separate store badge.")}</p><a class="zsd-btn primary" href="./verification.html">${verified?tr("Angalia verification","View verification"):tr("Omba / Angalia verification","Request / View verification")} →</a></section>`;
 }
 function renderProducts(){
  return `<section class="zsd-card"><div class="zsd-row"><h2>${tr("Usimamizi wa bidhaa","Product management")}</h2><span class="zsd-pill blue">${state.products.length}</span></div><p class="zsd-muted">${tr("Bidhaa zilizopo kwenye akaunti yako ya muuzaji.","Products currently linked to your seller account.")}</p>${state.products.length?renderProductList(state.products):`<div class="zsd-empty">${tr("Hakuna bidhaa bado.","No products yet.")}</div>`}
