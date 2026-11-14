@@ -1,4 +1,4 @@
-/* ZUNE Marketplace — Cart page styles. Uses global theme variables. */
+
 .z-cart-content{max-width:1040px;padding-top:22px;padding-bottom:120px}
 .z-cart-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:5px 0 22px}
 .z-cart-heading .z-page-title{margin:4px 0 5px}
