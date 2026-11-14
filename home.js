@@ -1554,6 +1554,12 @@ function bindNavigation() {
     button.addEventListener("click", () => {
       const page = button.dataset.nav;
 
+      // Account is a dedicated standalone page.
+      if (page === "me") {
+        window.location.assign("./account.html");
+        return;
+      }
+
       renderMarketplacePage(page);
     });
   });
