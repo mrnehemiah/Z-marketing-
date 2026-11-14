@@ -27,14 +27,16 @@ function render(){
  navRow("💬","Msaada na Huduma kwa Wateja","Wasiliana na timu ya ZUNE","./settings.html?section=contact")+
  navRow("ⓘ","Kuhusu ZUNE","Taarifa rasmi za ZUNE Marketplace","./about-zune.html")+
  '</div></section>'+
- '<section class="profile-section" id="security-history"><p class="profile-eyebrow">USALAMA WA AKAUNTI</p><h2>Historia ya Usalama</h2><div id="security-list" class="profile-timeline"><div class="profile-empty">Inapakia historia ya usalama...</div></div></section>'+\n '<section class="profile-section" id="activity"><p class="profile-eyebrow">HISTORIA YA SHUGHULI</p><h2>Shughuli zako za hivi karibuni</h2><div id="activity-list" class="profile-timeline"><div class="profile-empty">Inapakia historia...</div></div></section>';
+ '<section class="profile-section" id="security-history"><p class="profile-eyebrow">USALAMA WA AKAUNTI</p><h2>Historia ya Usalama</h2><div id="security-list" class="profile-timeline"><div class="profile-empty">Inapakia historia ya usalama...</div></div></section>'+
+ '<section class="profile-section" id="activity"><p class="profile-eyebrow">HISTORIA YA SHUGHULI</p><h2>Shughuli zako za hivi karibuni</h2><div id="activity-list" class="profile-timeline"><div class="profile-empty">Inapakia historia...</div></div></section>';
  if(window.QRCode&&profile.zune_id)new QRCode($("#profile-qr"),{text:publicUrl(),width:118,height:118,colorDark:"#111111",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});
  $("#share-profile").onclick=shareProfile;
  $("#download-qr").onclick=downloadQr;
  $("#personal-form").onsubmit=savePersonal;
  $("#profile-photo").onchange=uploadAvatar;
  $("#add-address").onclick=()=>showAddressForm();
- loadActivity();\n loadSecurityHistory();
+ loadActivity();
+ loadSecurityHistory();
 }
 function addressMarkup(){
  if(!addresses.length)return '<div class="profile-empty">Bado hujahifadhi anwani. Ongeza anwani ya kupokea oda.</div>';
