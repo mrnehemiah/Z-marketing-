@@ -237,7 +237,9 @@ async function loadData(user){
   supabase.from("products").select("id,title,price,stock_quantity,created_at,moderation_status").eq("vendor_id",user.id).order("created_at",{ascending:false}).limit(50),
   supabase.from("order_items").select("order_id,product_id,product_name,price,quantity,created_at").eq("seller_id",user.id).limit(100),
   supabase.from("stores").select("id,store_name,verification_status").eq("owner_id",user.id).maybeSingle(),
-  supabase.from("verified_badge_requests").select("id,status,rejection_reason,created_at").eq("user_id",user.id).eq("verification_type","seller").order("created_at",{ascending:false}).limit(1).maybeSingle()
+  supabase.from("verified_badge_requests").select("id,status,rejection_reason,created_at").eq("user_id",user.id).eq("verification_type","seller").order("created_at",{ascending:false}).limit(1).maybeSingle(),
+  supabase.from("wallets").select("user_id,balance,updated_at").eq("user_id",user.id).maybeSingle(),
+  supabase.from("wallet_ledger").select("id,amount,entry_type,reason,created_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(100)
  ]);
  state.profile=profile.data||null;state.products=products.data||[];state.orderItems=items.data||[];state.store=store.data||null;state.badgeRequest=badge.data||null;state.wallet=wallet.data||null;state.ledger=ledger.data||[];
  const orderIds=[...new Set((items.data||[]).map(x=>x.order_id).filter(Boolean))];
