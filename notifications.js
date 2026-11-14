@@ -245,13 +245,24 @@ async function loadNotifications() {
   renderNotifications();
 }
 
+function notificationPreferenceEnabled(notification) {
+  const prefs = JSON.parse(localStorage.getItem("zune_notification_preferences") || "{}");
+  const type = String(notification.type || "").toLowerCase();
+  const group = ["order","payment","refund","wallet","commission"].includes(type)
+    ? "orders"
+    : type === "message" ? "messages"
+    : ["promotion","promotions"].includes(type) ? "promotions"
+    : "account";
+  return prefs[group] !== false;
+}
+
 /* =========================================
    UNREAD COUNTER
 ========================================= */
 
 function updateUnreadCount() {
   const total = notifications.filter(
-    (notification) => !notification.is_read
+    (notification) => !notification.is_read && notificationPreferenceEnabled(notification)
   ).length;
 
   unreadCount.textContent = total > 99 ? "99+" : total;
@@ -270,6 +281,7 @@ function renderNotifications() {
   updateUnreadCount();
 
   const filtered = notifications.filter((notification) => {
+    if (!notificationPreferenceEnabled(notification)) return false;
     if (currentFilter === "unread") {
       return !notification.is_read;
     }
