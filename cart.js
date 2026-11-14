@@ -1,6 +1,10 @@
 import { supabase } from "./supabase.js";
 
 const CART_KEY   = "zune_cart";
+
+function cartStorageKey(userId) {
+  return userId ? `${CART_KEY}:${userId}` : null;
+}
 const LANG_KEY   = "zune_language";
 const THEME_KEY  = "zune_theme";
 const MAX_QTY    = 99;
@@ -86,9 +90,11 @@ function normalizeItem(item) {
   return { productId: item.productId, quantity };
 }
 
-export function readCart() {
+export function readCart(userId) {
+  const key = cartStorageKey(userId);
+  if (!key) return [];
   try {
-    const raw = localStorage.getItem(CART_KEY);
+    const raw = localStorage.getItem(key);
     const parsed = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) return [];
     return parsed.map(normalizeItem).filter(item => item && item.quantity > 0);
@@ -98,12 +104,13 @@ export function readCart() {
   }
 }
 
-export function writeCart(cart) {
+export function writeCart(cart, userId) {
   const normalized = (Array.isArray(cart) ? cart : [])
     .map(normalizeItem)
     .filter(item => item && item.quantity > 0);
+  const key = cartStorageKey(userId);
   try {
-    localStorage.setItem(CART_KEY, JSON.stringify(normalized));
+    if (key) localStorage.setItem(key, JSON.stringify(normalized));
   } catch (error) {
     console.warn("ZUNE cart storage write failed:", error);
   }
@@ -111,7 +118,7 @@ export function writeCart(cart) {
   return normalized;
 }
 
-export function syncCartCountBadges(cart = readCart()) {
+export function syncCartCountBadges(cart = []) {
   const count = (cart || []).reduce((sum, item) => sum + Math.max(0, Number(item.quantity) || 0), 0);
   document.querySelectorAll("[data-cart-count]").forEach(badge => {
     badge.textContent = count > 99 ? "99+" : String(count);
@@ -120,7 +127,7 @@ export function syncCartCountBadges(cart = readCart()) {
 }
 
 /* ---------- Data ---------- */
-export async function loadCartProducts(cart = readCart()) {
+export async function loadCartProducts(cart = []) {
   const ids = [...new Set((cart || []).map(i => String(i.productId)).filter(Boolean))];
   if (!ids.length) return [];
 
@@ -281,12 +288,20 @@ export async function mountStandaloneCart(root) {
   const prev = mountedRoots.get(root);
   if (prev) prev();
 
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!user?.id) {
+    root.innerHTML = '<p role="status">Tafadhali ingia kwenye akaunti yako kuona kikapu.</p>';
+    return;
+  }
+  const userId = user.id;
+
   const language = localStorage.getItem(LANG_KEY) === "en" ? "en" : "sw";
   const theme = localStorage.getItem(THEME_KEY) || "emerald";
   document.documentElement.dataset.theme = theme;
   document.documentElement.lang = language;
 
-  let cart = readCart();
+  let cart = readCart(userId);
   const productsById = new Map();
   let renderToken = 0;
 
@@ -349,7 +364,7 @@ export async function mountStandaloneCart(root) {
   /* --- Refresh (full render) --- */
   const refresh = async () => {
     const token = ++renderToken;
-    cart = readCart();
+    cart = readCart(userId);
 
     if (!cart.length) {
       productsById.clear();
@@ -386,7 +401,7 @@ export async function mountStandaloneCart(root) {
       if (next === item.quantity) return;
 
       item.quantity = next;
-      cart = writeCart(cart);
+      cart = writeCart(cart, userId);
 
       if (allProductsLoaded()) {
         const product = productsById.get(String(id));
@@ -401,7 +416,7 @@ export async function mountStandaloneCart(root) {
     },
 
     onRemove: id => {
-      cart = writeCart(cart.filter(r => String(r.productId) !== String(id)));
+      cart = writeCart(cart.filter(r => String(r.productId) !== String(id)), userId);
 
       if (!cart.length) {
         productsById.clear();
