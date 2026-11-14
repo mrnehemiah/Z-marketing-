@@ -81,16 +81,20 @@ function findHomeActions() {
 
   if (!actions || !currentUser) return;
 
+  // MutationObserver also sees changes made inside the bell itself.
+  // Do not re-render when the bell is already mounted, or the observer
+  // would trigger itself continuously and freeze the entire marketplace.
+  if (bellMount && bellMount.isConnected && actions.contains(bellMount)) {
+    return;
+  }
+
   if (!bellMount || !bellMount.isConnected) {
     bellMount = document.createElement("div");
     bellMount.className = "zune-bell-mount";
     bellMount.id = "zune-notification-bell";
   }
 
-  if (!actions.contains(bellMount)) {
-    actions.appendChild(bellMount);
-  }
-
+  actions.appendChild(bellMount);
   renderBell();
 }
 
