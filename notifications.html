@@ -1,0 +1,140 @@
+
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#087A55">
+
+  <meta
+    name="description"
+    content="ZUNE Marketplace Notifications Center"
+  >
+
+  <title>Notifications | ZUNE Marketplace</title>
+
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./notifications.css">
+
+  <script type="module" src="./notifications.js"></script>
+</head>
+
+<body>
+
+  <main class="z-notifications-page" id="notifications-app">
+
+    <header class="z-notifications-header">
+
+      <a
+        href="./index.html"
+        class="z-notifications-back"
+        aria-label="Back to ZUNE"
+      >
+        <span aria-hidden="true">←</span>
+      </a>
+
+      <div class="z-notifications-heading">
+        <h1>Notifications</h1>
+        <p>Arifa na taarifa za akaunti yako</p>
+      </div>
+
+      <button
+        type="button"
+        class="z-notification-settings"
+        id="notification-settings-button"
+        aria-label="Notification settings"
+      >
+        ⚙
+      </button>
+
+    </header>
+
+    <section class="z-notification-summary">
+
+      <div>
+        <span class="z-notification-summary-label">
+          Arifa mpya
+        </span>
+
+        <strong id="notification-unread-count">0</strong>
+      </div>
+
+      <div class="z-notification-summary-icon">
+        ♧
+      </div>
+
+    </section>
+
+    <section class="z-notification-toolbar">
+
+      <div class="z-notification-tabs">
+
+        <button
+          type="button"
+          class="z-notification-tab active"
+          data-filter="all"
+        >
+          Zote
+        </button>
+
+        <button
+          type="button"
+          class="z-notification-tab"
+          data-filter="unread"
+        >
+          Hazijasomwa
+        </button>
+
+        <button
+          type="button"
+          class="z-notification-tab"
+          data-filter="read"
+        >
+          Zilizosomwa
+        </button>
+
+      </div>
+
+      <button
+        type="button"
+        class="z-mark-all-read"
+        id="mark-all-notifications-read"
+      >
+        Soma zote
+      </button>
+
+    </section>
+
+    <section
+      class="z-notifications-list"
+      id="notifications-list"
+      aria-live="polite"
+      aria-busy="true"
+    >
+
+      <div class="z-notifications-loading">
+
+        <div class="z-notification-spinner"></div>
+
+        <p>Inapakia taarifa zako...</p>
+
+      </div>
+
+    </section>
+
+    <div
+      class="z-notifications-message"
+      id="notifications-message"
+      role="status"
+      hidden
+    ></div>
+
+    <footer class="z-notifications-footer">
+      <p>ⓏⓊⓃⒺ Marketplace</p>
+      <span>Stay informed. Shop smarter.</span>
+    </footer>
+
+  </main>
+
+</body>
+</html>
