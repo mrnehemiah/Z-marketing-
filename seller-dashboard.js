@@ -17,7 +17,7 @@ const sections = [
   ["assistant","✧","ZUNE AI","ZUNE AI"]
 ];
 
-const state = { section:"overview", language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, loading:false, busy:false, error:"" };
+const state = { section:"overview", language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, loading:false, busy:false, error:"" };
 const tr = (sw,en) => state.language==="sw"?sw:en;
 const esc = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = value => new Intl.NumberFormat("sw-TZ",{style:"currency",currency:"TZS",maximumFractionDigits:0}).format(Number(value)||0);
@@ -82,7 +82,7 @@ function renderVerification(){
 function renderProducts(){
  return `<section class="zsd-card"><div class="zsd-row"><h2>${tr("Usimamizi wa bidhaa","Product management")}</h2><span class="zsd-pill blue">${state.products.length}</span></div><p class="zsd-muted">${tr("Bidhaa zilizopo kwenye akaunti yako ya muuzaji.","Products currently linked to your seller account.")}</p>${state.products.length?renderProductList(state.products):`<div class="zsd-empty">${tr("Hakuna bidhaa bado.","No products yet.")}</div>`}
  <div class="zsd-alert">${tr("Uwekaji wa bidhaa mpya utafunguliwa baada ya ukaguzi wa usalama wa maudhui (picha, jina na maelezo) kuunganishwa. Kwa sasa hatuweki bidhaa hewani bila moderation gate.","New product publishing will be enabled after the content safety moderation gate (images, title and description) is connected. We will not publish unmoderated listings.")}</div></section>
- <section class="zsd-card"><h2>${tr("Picha nyingi za bidhaa","Multiple product photos")}</h2><p class="zsd-muted">${tr("Mfumo unaunga mkono picha zaidi ya 10, kuchagua Gallery/Storage ya simu, preview, kupanga mpangilio na kuchagua picha kuu. Picha zitapunguzwa ukubwa kabla ya kupakiwa kwenye Supabase Storage.","The uploader will support more than 10 photos, phone Gallery/Storage selection, preview, reordering and a main image. Images will be compressed before upload to Supabase Storage.")}</p><input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled aria-label="Product images"><p class="zsd-muted">${tr("Kipengele cha kupakia kitasogezwa baada ya moderation backend kuwekwa ili bidhaa zisichapishwe kabla ya ukaguzi.","Image upload will be activated after the moderation backend is ready, preventing listings from going live before review.")}</p></section>`;
+ <section class="zsd-card"><h2>${tr("Picha nyingi za bidhaa","Multiple product photos")}</h2><p class="zsd-muted">${tr("Chagua picha nyingi kutoka Gallery/Storage ya simu au tumia kamera. Hakuna kikomo cha picha 10. Picha zitapunguzwa ukubwa na unaweza kupanga au kuchagua picha kuu.","Select multiple photos from your phone Gallery/Storage or use the camera. There is no 10-photo limit. Photos are compressed and can be reordered or set as the main image.")}</p><div class="zsd-row" style="justify-content:flex-start;flex-wrap:wrap"><label class="zsd-btn" for="zsd-gallery-input">＋ ${tr("Chagua Gallery / Storage","Choose Gallery / Storage")}</label><input id="zsd-gallery-input" type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none"><label class="zsd-btn" for="zsd-camera-input">◎ ${tr("Piga picha","Take photo")}</label><input id="zsd-camera-input" type="file" accept="image/*" capture="environment" style="display:none"></div><div id="zsd-photo-grid" class="zsd-photo-grid" style="margin-top:13px"></div><p class="zsd-muted" id="zsd-photo-count">${tr("Bado hujachagua picha.","No photos selected yet.")}</p><div class="zsd-alert">${tr("Picha zinaweza kuchaguliwa na kupangwa sasa. Upakiaji wa mwisho kwenye Storage na uchapishaji wa bidhaa utawezeshwa baada ya moderation ya picha na maelezo kuunganishwa; hatuweki bidhaa hewani bila ukaguzi wa usalama.","You can select and arrange photos now. Final Storage upload and product publishing will be enabled after image and text moderation is connected; listings will not go live without safety checks.")}</div></section>`;
 }
 function renderOrders(){
  return `<section class="zsd-card"><h2>${tr("Oda za wateja","Customer orders")}</h2><p class="zsd-muted">${tr("Oda zinazoonyesha bidhaa zilizouzwa na duka lako.","Orders containing items sold by your store.")}</p>
@@ -99,6 +99,44 @@ function renderStore(){
  const s=state.store;
  return `<section class="zsd-card"><h2>${tr("Taarifa za duka","Store information")}</h2>${s?`<p><strong>${esc(s.store_name)}</strong></p><p class="zsd-muted">${tr("Hali ya uthibitisho wa duka","Store verification")}: ${esc(s.verification_status||"pending")}</p>`:`<div class="zsd-empty">${tr("Taarifa za duka hazijapatikana bado.","Store details are not available yet.")}</div>`}<div class="zsd-alert">${tr("Uhariri wa jina, nembo, cover, saa za kazi na sera utafunguliwa baada ya sehemu hizo za duka kuongezwa kwenye database.","Editing store name, logo, cover, business hours and policies will be enabled after those store fields are added to the database.")}</div></section>`;
 }
+
+async function compressSellerPhoto(file){
+ const source=URL.createObjectURL(file);
+ try{
+  const image=new Image();
+  await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject;image.src=source;});
+  const scale=Math.min(1,1600/Math.max(image.naturalWidth,image.naturalHeight));
+  const canvas=document.createElement("canvas");
+  canvas.width=Math.max(1,Math.round(image.naturalWidth*scale));canvas.height=Math.max(1,Math.round(image.naturalHeight*scale));
+  const context=canvas.getContext("2d");context.drawImage(image,0,0,canvas.width,canvas.height);
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/webp",0.82));
+  if(!blob)return {file,preview:source,size:file.size};
+  URL.revokeObjectURL(source);
+  const compressed=new File([blob],file.name.replace(/\\.[^.]+$/,"")+".webp",{type:"image/webp",lastModified:Date.now()});
+  return {file:compressed,preview:URL.createObjectURL(blob),size:blob.size};
+ }catch(error){return {file,preview:source,size:file.size};}
+}
+async function addSellerPhotos(files){
+ const count=document.getElementById("zsd-photo-count");
+ if(count)count.textContent=tr("Inapunguza ukubwa wa picha...","Compressing photos...");
+ const converted=await Promise.all(Array.from(files).filter(file=>file.type.startsWith("image/")).map(compressSellerPhoto));
+ state.photos.push(...converted);
+ renderPhotoSelection();
+}
+function renderPhotoSelection(){
+ const grid=document.getElementById("zsd-photo-grid"),count=document.getElementById("zsd-photo-count");
+ if(!grid||!count)return;
+ grid.innerHTML=state.photos.map((photo,index)=>{
+  const label=index===0?tr("Picha kuu","Main photo"):tr("Picha","Photo");
+  return '<div style="position:relative;width:94px"><img class="zsd-photo" src="'+photo.preview+'" alt="Product photo '+(index+1)+'" style="width:94px;height:94px;object-fit:cover;border-color:'+(index===0?'var(--primary,#087a55)':'var(--zsd-line)')+'"><small style="display:block;font-size:10px;color:var(--zsd-muted)">'+label+' · '+(photo.size/1024).toFixed(0)+' KB</small><div style="display:flex;gap:3px;margin-top:4px"><button class="zsd-btn" type="button" data-photo-main="'+index+'">★</button><button class="zsd-btn" type="button" data-photo-up="'+index+'">←</button><button class="zsd-btn" type="button" data-photo-down="'+index+'">→</button><button class="zsd-btn" type="button" data-photo-remove="'+index+'">×</button></div></div>';
+ }).join("");
+ count.textContent=tr("Picha zilizochaguliwa: ","Selected photos: ")+state.photos.length;
+ grid.querySelectorAll("[data-photo-main]").forEach(button=>button.addEventListener("click",()=>{const [item]=state.photos.splice(Number(button.dataset.photoMain),1);state.photos.unshift(item);renderPhotoSelection();}));
+ grid.querySelectorAll("[data-photo-up]").forEach(button=>button.addEventListener("click",()=>{const i=Number(button.dataset.photoUp);if(i>0){[state.photos[i-1],state.photos[i]]=[state.photos[i],state.photos[i-1]];renderPhotoSelection();}}));
+ grid.querySelectorAll("[data-photo-down]").forEach(button=>button.addEventListener("click",()=>{const i=Number(button.dataset.photoDown);if(i<state.photos.length-1){[state.photos[i+1],state.photos[i]]=[state.photos[i],state.photos[i+1]];renderPhotoSelection();}}));
+ grid.querySelectorAll("[data-photo-remove]").forEach(button=>button.addEventListener("click",()=>{const i=Number(button.dataset.photoRemove);URL.revokeObjectURL(state.photos[i].preview);state.photos.splice(i,1);renderPhotoSelection();}));
+}
+
 function renderPlaceholder(){
  const names=sections.find(s=>s[0]===state.section);
  return `<section class="zsd-card"><h2>${tr(names[2],names[3])}</h2><p class="zsd-muted">${tr("Sehemu hii imeongezwa kwenye muundo wa dashboard. Itaunganishwa na jedwali na ruhusa sahihi za Supabase kabla ya kuanza kutumia data halisi.","This section is included in the dashboard structure. It will be connected to the correct Supabase tables and permissions before handling live data.")}</p><div class="zsd-empty">${tr("Inaandaliwa — hakuna data ya majaribio iliyowekwa.","In preparation — no sample data has been inserted.")}</div></section>`;
@@ -108,6 +146,9 @@ function renderPanel(){
  panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"?renderProducts():state.section==="orders"?renderOrders():state.section==="finance"?renderFinance():state.section==="store"?renderStore():renderPlaceholder();
  panel.querySelectorAll("[data-zsd-section]").forEach(b=>b.addEventListener("click",()=>{state.section=b.dataset.zsdSection;renderPanel();bindActiveNav();}));
  panel.querySelector("#zsd-verification-form")?.addEventListener("submit",submitVerification);
+ panel.querySelector("#zsd-gallery-input")?.addEventListener("change",event=>{if(event.target.files?.length)addSellerPhotos(event.target.files);event.target.value="";});
+ panel.querySelector("#zsd-camera-input")?.addEventListener("change",event=>{if(event.target.files?.length)addSellerPhotos(event.target.files);event.target.value="";});
+ if(state.section==="products")renderPhotoSelection();
 }
 function bindActiveNav(){
  document.querySelectorAll("[data-zsd-section]").forEach(b=>b.classList.toggle("active",b.dataset.zsdSection===state.section));
