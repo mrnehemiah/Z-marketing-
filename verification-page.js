@@ -54,7 +54,7 @@ function render(user,profile,request){
     button.disabled=true;button.textContent=tr("Inatuma...","Submitting...");
     try{
       const {error}=await supabase.from("verified_badge_requests").insert({
-        user_id:user.id,full_name,business_name:business_name||null,status:"pending"
+        user_id:user.id,full_name,business_name:business_name||null,verification_type:"customer",status:"pending"
       });
       if(error)throw error;
       await start();
