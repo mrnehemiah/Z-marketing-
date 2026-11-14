@@ -580,7 +580,7 @@ function addHomeStyles() {
       cursor: pointer;
       box-shadow: 0 2px 8px rgb(0 0 0 / 9%);
     }
-    .z-save-product.is-saved { color: #E45B70; }
+    .z-save-product.is-saved { color: var(--danger); }
     .z-product-info {
       padding: 11px 11px 12px;
       display: flex;
@@ -629,7 +629,7 @@ function addHomeStyles() {
       color: var(--text-muted);
       font-size: 10px;
     }
-    .z-product-rating-star { color: #E7A52D; font-size: 12px; }
+    .z-product-rating-star { color: var(--secondary); font-size: 12px; }
     .z-product-store {
       display: flex;
       align-items: center;
