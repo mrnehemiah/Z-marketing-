@@ -1,0 +1,40 @@
+/* ZUNE Marketplace — Cart page styles. Uses global theme variables. */
+.z-cart-content{max-width:1040px;padding-top:22px;padding-bottom:120px}
+.z-cart-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:5px 0 22px}
+.z-cart-heading .z-page-title{margin:4px 0 5px}
+.z-cart-heading p{color:var(--text-muted);font-size:12px}
+.z-cart-eyebrow{display:block;color:var(--text-muted);font-size:9px;font-weight:900;letter-spacing:1.5px}
+.z-cart-heading-icon{width:52px;height:52px;flex:0 0 52px;display:grid;place-items:center;border-radius:17px;background:var(--surface);border:1px solid var(--border);font-size:24px}
+.z-cart-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+.z-cart-items{display:grid;gap:11px;min-width:0}
+.z-cart-item{display:flex;align-items:center;gap:12px;min-width:0;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:17px;box-shadow:var(--shadow)}
+.z-cart-product-image,.z-cart-item-placeholder{width:88px;height:88px;flex:0 0 88px;object-fit:cover;border-radius:12px;background:var(--background)}
+.z-cart-item-placeholder{display:grid;place-items:center;font-size:30px}
+.z-cart-item-info{flex:1;min-width:0}
+.z-cart-item-info h3{margin:0 0 7px;color:var(--text);font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+.z-cart-unit-price{display:block;color:var(--primary);font-size:13px;font-weight:900}
+.z-quantity-controls{display:flex;align-items:center;gap:10px;margin-top:10px}
+.z-quantity-controls button{width:31px;height:31px;display:grid;place-items:center;border:1px solid var(--border);border-radius:9px;background:var(--background);color:var(--text);font-size:18px}
+.z-quantity-controls span{min-width:14px;text-align:center;color:var(--text);font-size:12px;font-weight:800}
+.z-cart-item-end{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;align-self:stretch;gap:8px}
+.z-cart-line-total{color:var(--text);font-size:12px;white-space:nowrap}
+.z-cart-remove{border:0;background:transparent;color:#D65D52;padding:6px 0;font-size:11px;font-weight:800;white-space:nowrap}
+.z-cart-item-unavailable{border-style:dashed}
+.z-cart-item-unavailable .z-cart-item-info p{color:var(--text-muted);font-size:10px}
+.z-cart-summary{position:relative;padding:18px;border:1px solid var(--border);border-radius:18px;background:var(--surface);box-shadow:var(--shadow)}
+.z-cart-summary h2{margin:0 0 17px;font-size:16px}
+.z-cart-summary-row,.z-cart-summary-total{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--text-muted);font-size:12px}
+.z-cart-summary-total{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);color:var(--text);font-size:14px;font-weight:900}
+.z-cart-summary-total strong{color:var(--primary);font-size:18px}
+.z-cart-checkout{margin-top:18px;min-height:48px}
+.z-cart-checkout-note{margin:10px 0 0;color:var(--text-muted);font-size:10px;line-height:1.5;text-align:center}
+.z-continue-shopping{width:100%;min-height:44px;margin-top:12px;border:1px solid var(--primary);border-radius:11px;background:transparent;color:var(--primary);font-size:12px;font-weight:800}
+.z-cart-empty{max-width:490px;margin:32px auto 20px;padding:30px 22px;text-align:center;border:1px solid var(--border);border-radius:22px;background:var(--surface);box-shadow:var(--shadow)}
+.z-cart-empty-art{width:94px;height:94px;margin:0 auto 18px;display:grid;place-items:center;border-radius:28px;background:var(--background);font-size:42px}
+.z-cart-empty h2{margin:0 0 9px;color:var(--text);font-size:19px}
+.z-cart-empty p{margin:0 auto 19px;max-width:340px;color:var(--text-muted);font-size:12px;line-height:1.65}
+.z-cart-empty .z-primary-button{max-width:260px;margin:auto;min-height:46px}
+.z-cart-status{margin:0 0 12px;color:var(--text-muted);font-size:12px}
+.z-cart-status.error{color:#D65D52}
+@media(min-width:760px){.z-cart-layout{grid-template-columns:minmax(0,1fr) 310px}.z-cart-summary{position:sticky;top:20px}.z-cart-content{padding-top:30px}.z-cart-product-image,.z-cart-item-placeholder{width:100px;height:100px;flex-basis:100px}}
+@media(max-width:380px){.z-cart-item{gap:8px;padding:9px}.z-cart-product-image,.z-cart-item-placeholder{width:68px;height:68px;flex-basis:68px}.z-cart-item-info h3{font-size:11px}.z-cart-line-total{font-size:10px}.z-cart-remove{font-size:10px}}
