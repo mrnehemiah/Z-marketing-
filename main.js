@@ -31,7 +31,6 @@ const translations = {
     signup: "Jisajili",
     email: "Barua pepe",
     phone: "Namba ya simu",
-    identity: "Barua pepe",
     password: "Nenosiri",
     forgot: "Umesahau nenosiri?",
     first: "Jina la kwanza",
@@ -45,7 +44,7 @@ const translations = {
     step: "Hatua",
     of: "kati ya 5",
     verify: "Thibitisha akaunti yako",
-    verifyText: "Tumetuma kiungo cha uthibitishaji kwenye barua pepe yako. Fungua ujumbe huo ili kuthibitisha akaunti yako.",
+    verifyText: "Tumetuma kiungo cha uthibitishaji kwenye barua pepe yako. Fungua ujumbe huo kuthibitisha akaunti yako.",
     required: "Tafadhali jaza sehemu zote.",
     invalidPhone: "Namba ya simu si sahihi.",
     invalidEmail: "Barua pepe si sahihi.",
@@ -53,16 +52,17 @@ const translations = {
     mismatch: "Nenosiri hazifanani.",
     loginError: "Imeshindikana kuingia. Hakikisha taarifa zako ni sahihi.",
     signupError: "Usajili haujakamilika.",
-    resetSent: "Maelekezo ya kubadilisha nenosiri yametumwa kwenye barua pepe yako.",
-    resetAsk: "Ingiza barua pepe yako ili kurejesha nenosiri.",
+    resetSent: "Maelekezo ya kubadilisha nenosiri yametumwa kwenye email yako.",
+    resetAsk: "Weka barua pepe yako kwanza.",
     logout: "Toka",
     account: "Akaunti yako",
     signedIn: "Umeingia kwenye akaunti yako.",
-    marketplaceSoon: "Sehemu ya Marketplace itaunganishwa katika hatua inayofuata.",
+    marketplaceSoon: "Marketplace itaunganishwa katika hatua inayofuata.",
     haveAccount: "Tayari una akaunti?",
     noAccount: "Huna akaunti?",
     show: "Onyesha",
-    hide: "Ficha"
+    hide: "Ficha",
+    changeLanguage: "Badilisha lugha"
   },
 
   en: {
@@ -74,7 +74,6 @@ const translations = {
     signup: "Sign Up",
     email: "Email Address",
     phone: "Phone Number",
-    identity: "Email Address",
     password: "Password",
     forgot: "Forgot password?",
     first: "First Name",
@@ -97,15 +96,16 @@ const translations = {
     loginError: "Unable to log in. Check your details.",
     signupError: "Sign up could not be completed.",
     resetSent: "Password recovery instructions have been sent to your email.",
-    resetAsk: "Enter your email address to reset your password.",
+    resetAsk: "Enter your email address first.",
     logout: "Log Out",
     account: "Your Account",
     signedIn: "You are signed in.",
-    marketplaceSoon: "The Marketplace section will be connected in the next stage.",
+    marketplaceSoon: "Marketplace will be connected in the next stage.",
     haveAccount: "Already have an account?",
     noAccount: "Don't have an account?",
     show: "Show",
-    hide: "Hide"
+    hide: "Hide",
+    changeLanguage: "Change language"
   }
 };
 
@@ -123,13 +123,13 @@ function logo() {
 }
 
 function escapeHTML(value) {
-  return String(value).replace(/[&<>"']/g, c => ({
+  return String(value).replace(/[&<>"']/g, char => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",
     "'": "&#039;"
-  })[c]);
+  })[char]);
 }
 
 function waveTo(callback) {
@@ -144,27 +144,30 @@ function waveTo(callback) {
   void element.offsetWidth;
   element.classList.add("wave");
 
-  const reduced = window.matchMedia(
+  const reducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)"
   ).matches;
 
-  setTimeout(callback, reduced ? 50 : 850);
+  setTimeout(callback, reducedMotion ? 50 : 850);
 }
 
 function showError(message) {
   const element = document.getElementById("formError");
-  if (element) element.textContent = message;
+
+  if (element) {
+    element.textContent = message;
+  }
 }
 
 function setBusy(value) {
   state.busy = value;
 
-  const buttons = app.querySelectorAll("button");
-
-  buttons.forEach(button => {
+  app.querySelectorAll("button").forEach(button => {
     button.disabled = value;
   });
 }
+
+/* LANGUAGE SELECTION */
 
 function renderLanguage() {
   app.innerHTML = `
@@ -187,8 +190,13 @@ function renderLanguage() {
     </section>
   `;
 
-  document.getElementById("swBtn").onclick = () => chooseLanguage("sw");
-  document.getElementById("enBtn").onclick = () => chooseLanguage("en");
+  document.getElementById("swBtn").onclick = () => {
+    chooseLanguage("sw");
+  };
+
+  document.getElementById("enBtn").onclick = () => {
+    chooseLanguage("en");
+  };
 }
 
 function chooseLanguage(language) {
@@ -197,12 +205,17 @@ function chooseLanguage(language) {
   waveTo(renderWelcome);
 }
 
+/* WELCOME */
+
 function renderWelcome() {
   app.innerHTML = `
     <section class="page">
       <div class="panel">
         <div class="brand-area">
-          <div class="welcome-logo">${logo()}</div>
+          <div class="welcome-logo">
+            ${logo()}
+          </div>
+
           <h1 class="page-title">${t("welcome")}</h1>
           <p class="welcome-description">${t("subtitle")}</p>
         </div>
@@ -218,22 +231,27 @@ function renderWelcome() {
         </div>
 
         <p class="form-footer">
-          <button id="languageBtn">
-            ${state.language === "sw" ? "Badilisha lugha" : "Change language"}
-          </button>
+          <button id="languageBtn">${t("changeLanguage")}</button>
         </p>
       </div>
     </section>
   `;
 
-  document.getElementById("loginBtn").onclick = () => waveTo(renderLogin);
+  document.getElementById("loginBtn").onclick = () => {
+    waveTo(renderLogin);
+  };
+
   document.getElementById("signupBtn").onclick = () => {
     state.signupStep = 1;
     waveTo(renderSignup);
   };
 
-  document.getElementById("languageBtn").onclick = () => waveTo(renderLanguage);
+  document.getElementById("languageBtn").onclick = () => {
+    waveTo(renderLanguage);
+  };
 }
+
+/* LOGIN */
 
 function renderLogin(error = "") {
   app.innerHTML = `
@@ -246,17 +264,33 @@ function renderLogin(error = "") {
 
         <form id="loginForm">
           <div class="form-group">
-            <label>${t("identity")}</label>
-            <input class="form-control" id="loginEmail"
-              type="email" autocomplete="username" required>
+            <label>${t("email")}</label>
+            <input
+              class="form-control"
+              id="loginEmail"
+              type="email"
+              autocomplete="username"
+              required
+            >
           </div>
 
           <div class="form-group">
             <label>${t("password")}</label>
+
             <div class="password-row">
-              <input class="form-control" id="loginPassword"
-                type="password" autocomplete="current-password" required>
-              <button class="password-toggle" type="button" id="showLoginPassword">
+              <input
+                class="form-control"
+                id="loginPassword"
+                type="password"
+                autocomplete="current-password"
+                required
+              >
+
+              <button
+                class="password-toggle"
+                type="button"
+                id="showLoginPassword"
+              >
                 ${t("show")}
               </button>
             </div>
@@ -266,7 +300,9 @@ function renderLogin(error = "") {
             ${t("forgot")}
           </button>
 
-          <p class="form-error" id="formError">${escapeHTML(error)}</p>
+          <p class="form-error" id="formError">
+            ${escapeHTML(error)}
+          </p>
 
           <button class="btn btn-primary full-button" type="submit">
             ${t("login")}
@@ -290,11 +326,15 @@ function renderLogin(error = "") {
     const button = document.getElementById("showLoginPassword");
 
     input.type = input.type === "password" ? "text" : "password";
-    button.textContent = input.type === "password" ? t("show") : t("hide");
+
+    button.textContent =
+      input.type === "password" ? t("show") : t("hide");
   };
 
   document.getElementById("loginForm").onsubmit = async event => {
     event.preventDefault();
+
+    if (state.busy) return;
 
     const email = document.getElementById("loginEmail").value.trim();
     const password = document.getElementById("loginPassword").value;
@@ -305,13 +345,15 @@ function renderLogin(error = "") {
       await loginCustomer(email, password);
       renderAccount();
     } catch (error) {
-      showError(error.message || t("loginError"));
+      showError(t("loginError"));
     } finally {
       setBusy(false);
     }
   };
 
   document.getElementById("forgotBtn").onclick = async () => {
+    if (state.busy) return;
+
     const email = document.getElementById("loginEmail").value.trim();
 
     if (!email) {
@@ -325,7 +367,7 @@ function renderLogin(error = "") {
       await recoverPassword(email);
       alert(t("resetSent"));
     } catch (error) {
-      showError(error.message);
+      showError(error.message || t("loginError"));
     } finally {
       setBusy(false);
     }
@@ -336,8 +378,12 @@ function renderLogin(error = "") {
     waveTo(renderSignup);
   };
 
-  document.getElementById("welcomeLink").onclick = () => waveTo(renderWelcome);
+  document.getElementById("welcomeLink").onclick = () => {
+    waveTo(renderWelcome);
+  };
 }
+
+/* SIGN UP - FIVE STEPS */
 
 function renderSignup(error = "") {
   const step = state.signupStep;
@@ -347,20 +393,32 @@ function renderSignup(error = "") {
     content = `
       <div class="form-group">
         <label>${t("first")}</label>
-        <input class="form-control" id="firstName"
-          value="${escapeHTML(state.firstName)}" required>
+        <input
+          class="form-control"
+          id="firstName"
+          value="${escapeHTML(state.firstName)}"
+          required
+        >
       </div>
 
       <div class="form-group">
         <label>${t("middle")}</label>
-        <input class="form-control" id="middleName"
-          value="${escapeHTML(state.middleName)}" required>
+        <input
+          class="form-control"
+          id="middleName"
+          value="${escapeHTML(state.middleName)}"
+          required
+        >
       </div>
 
       <div class="form-group">
         <label>${t("last")}</label>
-        <input class="form-control" id="lastName"
-          value="${escapeHTML(state.lastName)}" required>
+        <input
+          class="form-control"
+          id="lastName"
+          value="${escapeHTML(state.lastName)}"
+          required
+        >
       </div>
     `;
   }
@@ -369,8 +427,13 @@ function renderSignup(error = "") {
     content = `
       <div class="form-group">
         <label>${t("phone")}</label>
-        <input class="form-control" id="phone" type="tel"
-          value="${escapeHTML(state.phone)}" required>
+        <input
+          class="form-control"
+          id="phone"
+          type="tel"
+          value="${escapeHTML(state.phone)}"
+          required
+        >
       </div>
     `;
   }
@@ -379,8 +442,13 @@ function renderSignup(error = "") {
     content = `
       <div class="form-group">
         <label>${t("email")}</label>
-        <input class="form-control" id="email" type="email"
-          value="${escapeHTML(state.email)}" required>
+        <input
+          class="form-control"
+          id="email"
+          type="email"
+          value="${escapeHTML(state.email)}"
+          required
+        >
       </div>
     `;
   }
@@ -389,14 +457,24 @@ function renderSignup(error = "") {
     content = `
       <div class="form-group">
         <label>${t("createPassword")}</label>
-        <input class="form-control" id="newPassword"
-          type="password" autocomplete="new-password" required>
+        <input
+          class="form-control"
+          id="newPassword"
+          type="password"
+          autocomplete="new-password"
+          required
+        >
       </div>
 
       <div class="form-group">
         <label>${t("confirmPassword")}</label>
-        <input class="form-control" id="confirmPassword"
-          type="password" autocomplete="new-password" required>
+        <input
+          class="form-control"
+          id="confirmPassword"
+          type="password"
+          autocomplete="new-password"
+          required
+        >
       </div>
     `;
   }
@@ -405,7 +483,7 @@ function renderSignup(error = "") {
     content = `
       <h2 class="page-title">${t("verify")}</h2>
       <p class="page-description">${t("verifyText")}</p>
-      <p class="page-description">${escapeHTML(state.email)}</p>
+      <p>${escapeHTML(state.email)}</p>
     `;
   }
 
@@ -417,19 +495,30 @@ function renderSignup(error = "") {
           <h1 class="page-title">${t("signup")}</h1>
         </div>
 
-        <p class="step-label">${t("step")} ${step} ${t("of")}</p>
+        <p class="step-label">
+          ${t("step")} ${step} ${t("of")}
+        </p>
 
         <div class="progress-track">
-          <div class="progress-value" style="width:${step * 20}%"></div>
+          <div
+            class="progress-value"
+            style="width:${step * 20}%"
+          ></div>
         </div>
 
         <form id="signupForm">
           ${content}
 
-          <p class="form-error" id="formError">${escapeHTML(error)}</p>
+          <p class="form-error" id="formError">
+            ${escapeHTML(error)}
+          </p>
 
           <div class="form-actions">
-            <button type="button" class="btn btn-secondary" id="backBtn">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              id="backBtn"
+            >
               ${t("back")}
             </button>
 
@@ -450,6 +539,8 @@ function renderSignup(error = "") {
   document.getElementById("signupForm").onsubmit = handleSignup;
 
   document.getElementById("backBtn").onclick = () => {
+    if (state.busy) return;
+
     if (step === 1) {
       waveTo(renderWelcome);
       return;
@@ -460,22 +551,20 @@ function renderSignup(error = "") {
     waveTo(() => renderSignup());
   };
 
-  document.getElementById("loginLink").onclick = () => waveTo(renderLogin);
+  document.getElementById("loginLink").onclick = () => {
+    waveTo(renderLogin);
+  };
 }
 
 function saveSignupFields() {
-  const fields = [
-    "firstName",
-    "middleName",
-    "lastName",
-    "phone",
-    "email"
-  ];
+  ["firstName", "middleName", "lastName", "phone", "email"]
+    .forEach(id => {
+      const input = document.getElementById(id);
 
-  fields.forEach(id => {
-    const input = document.getElementById(id);
-    if (input) state[id] = input.value.trim();
-  });
+      if (input) {
+        state[id] = input.value.trim();
+      }
+    });
 }
 
 async function handleSignup(event) {
@@ -559,6 +648,8 @@ async function handleSignup(event) {
   waveTo(() => renderSignup());
 }
 
+/* EMAIL VERIFICATION */
+
 function renderVerificationSent() {
   app.innerHTML = `
     <section class="page">
@@ -577,8 +668,12 @@ function renderVerificationSent() {
     </section>
   `;
 
-  document.getElementById("goLogin").onclick = () => waveTo(renderLogin);
+  document.getElementById("goLogin").onclick = () => {
+    waveTo(renderLogin);
+  };
 }
+
+/* CUSTOMER ACCOUNT */
 
 function renderAccount() {
   app.innerHTML = `
@@ -599,11 +694,17 @@ function renderAccount() {
   `;
 
   document.getElementById("logoutBtn").onclick = async () => {
+    if (state.busy) return;
+
+    setBusy(true);
+
     try {
       await logoutCustomer();
       waveTo(renderWelcome);
     } catch (error) {
       alert(error.message);
+    } finally {
+      setBusy(false);
     }
   };
 }
