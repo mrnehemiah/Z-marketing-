@@ -495,75 +495,207 @@ function addHomeStyles() {
     .z-product-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 13px;
+      gap: 12px;
+      align-items: stretch;
     }
 
     .z-product-card {
       min-width: 0;
       overflow: hidden;
-      background: var(--surface, #ffffff);
-      border: 1px solid var(--border, #e4ebe7);
-      border-radius: 17px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
       position: relative;
-      box-shadow: 0 3px 12px rgb(0 0 0 / 3%);
+      box-shadow: 0 5px 18px color-mix(in srgb, var(--text) 7%, transparent);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .z-product-card:active { transform: scale(.985); }
+    .z-product-card:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
+    @media (hover:hover) {
+      .z-product-card:hover { transform: translateY(-3px); box-shadow: 0 10px 25px color-mix(in srgb, var(--text) 12%, transparent); }
     }
 
+    .z-product-media {
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 4 / 4.6;
+      background: var(--background);
+    }
     .z-product-image,
     .z-product-placeholder {
       width: 100%;
-      aspect-ratio: 1 / 1;
+      height: 100%;
       object-fit: cover;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--background, #f5f7f6);
+      background: var(--background);
     }
-
-    .z-product-placeholder {
-      font-size: 40px;
+    .z-product-placeholder { font-size: 40px; }
+    .z-product-flags {
+      position: absolute;
+      top: 9px;
+      left: 9px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      max-width: calc(100% - 54px);
     }
-
+    .z-product-flag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 23px;
+      padding: 4px 7px;
+      border-radius: 7px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 9px;
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: .2px;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+    }
+    .z-product-flag.discount { background: var(--danger); }
+    .z-product-flag.new { background: var(--primary); }
+    .z-product-flag.featured { background: var(--secondary); color: var(--text); }
+    .z-save-product {
+      position: absolute;
+      z-index: 2;
+      top: 9px;
+      right: 9px;
+      border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+      background: color-mix(in srgb, var(--surface) 92%, transparent);
+      color: var(--text);
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 19px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 9%);
+    }
+    .z-save-product.is-saved { color: #E45B70; }
     .z-product-info {
-      padding: 11px;
+      padding: 11px 11px 12px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
     }
-
     .z-product-name {
       font-size: 13px;
-      font-weight: 700;
-      line-height: 1.4;
-      margin: 0 0 8px;
+      font-weight: 750;
+      line-height: 1.38;
+      margin: 0 0 7px;
       min-height: 36px;
       overflow-wrap: anywhere;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      color: var(--text);
     }
-
+    .z-product-price-line {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 5px 7px;
+      margin-bottom: 6px;
+    }
     .z-product-price {
       font-size: 14px;
       font-weight: 900;
-      color: var(--primary, #087a55);
-      margin: 0 0 6px;
+      color: var(--primary);
+      margin: 0;
+      letter-spacing: -.2px;
+    }
+    .z-product-old-price {
+      color: var(--text-muted);
+      font-size: 10px;
+      text-decoration: line-through;
+    }
+    .z-product-rating {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 16px;
+      margin: 0 0 8px;
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+    .z-product-rating-star { color: #E7A52D; font-size: 12px; }
+    .z-product-store {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      min-width: 0;
+      margin-top: auto;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      color: var(--text);
+      font-size: 10px;
+      font-weight: 750;
+    }
+    .z-product-store-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .z-verified-store-mark {
+      flex: 0 0 auto;
+      display: inline-grid;
+      place-items: center;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--verified-store);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 900;
+    }
+    .z-product-location {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 5px;
+      color: var(--text-muted);
+      font-size: 9px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .z-product-stock {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 6px;
+      font-size: 9px;
+      font-weight: 750;
+      color: var(--danger);
+    }
+    @media (min-width: 700px) {
+      .z-product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+      .z-product-info { padding: 13px; }
+      .z-product-name { font-size: 14px; }
+      .z-product-price { font-size: 16px; }
+    }
+    @media (min-width: 1050px) {
+      .z-product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+    }
+    @media (min-width: 1380px) {
+      .z-product-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
     }
 
     .z-product-category {
       font-size: 11px;
-      color: var(--text-muted, #71817a);
+      color: var(--text-muted);
       margin: 0 0 10px;
-    }
-
-    .z-save-product {
-      position: absolute;
-      top: 9px;
-      right: 9px;
-      border: 1px solid var(--border, #e4ebe7);
-      background: var(--surface, #ffffff);
-      color: var(--text, #17231e);
-      border-radius: 50%;
-      width: 35px;
-      height: 35px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      cursor: pointer;
     }
 
     .z-add-cart,
@@ -581,6 +713,53 @@ function addHomeStyles() {
       align-items: center;
       justify-content: center;
       gap: 7px;
+    }
+
+    .z-product-detail-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 14px;
+      background: rgb(0 0 0 / 55%);
+      backdrop-filter: blur(4px);
+    }
+    .z-product-detail-sheet {
+      position: relative;
+      width: min(100%, 620px);
+      max-height: min(92vh, 900px);
+      overflow: auto;
+      border-radius: 22px 22px 16px 16px;
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 20px 70px rgb(0 0 0 / 25%);
+    }
+    .z-detail-close {
+      position: absolute;
+      z-index: 3;
+      top: 12px;
+      right: 12px;
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--surface) 90%, transparent);
+      color: var(--text);
+      font-size: 25px;
+    }
+    .z-detail-image-wrap { aspect-ratio: 1 / .82; overflow: hidden; background: var(--background); }
+    .z-detail-image-wrap .z-product-image { width: 100%; height: 100%; object-fit: contain; }
+    .z-detail-content { padding: 18px; }
+    .z-detail-content h2 { margin: 13px 0 8px; font-size: 20px; line-height: 1.3; }
+    .z-detail-price { color: var(--primary); font-size: 21px; font-weight: 900; margin: 0 0 12px; }
+    .z-detail-description { color: var(--text-muted); font-size: 13px; line-height: 1.65; white-space: pre-wrap; margin: 0 0 12px; }
+    .z-detail-category,.z-detail-stock { color: var(--text-muted); font-size: 12px; margin: 0 0 9px; }
+    .z-detail-add { margin-top: 14px; }
+    @media (min-width: 700px) {
+      .z-product-detail-overlay { align-items: center; }
+      .z-product-detail-sheet { border-radius: 22px; }
     }
 
     .z-empty-state {
@@ -895,6 +1074,21 @@ async function loadProducts(reset = false) {
 
     const products = data || [];
 
+    // Attach public store details where available; keep product feed usable if a store row is hidden.
+    const vendorIds = [...new Set(products.map(item => item.vendor_id).filter(Boolean))];
+    if (vendorIds.length) {
+      try {
+        const { data: stores } = await supabase
+          .from("stores")
+          .select("owner_id,store_name,verification_status,region,district,address")
+          .in("owner_id", vendorIds);
+        const storeByOwner = new Map((stores || []).map(store => [String(store.owner_id), store]));
+        products.forEach(item => { item.__zuneStore = storeByOwner.get(String(item.vendor_id)) || null; });
+      } catch (storeError) {
+        console.warn("ZUNE store details unavailable for product cards:", storeError);
+      }
+    }
+
     if (reset) {
       homeState.products = products;
     } else {
@@ -960,54 +1154,102 @@ function productImage(product) {
 
 function productCard(product) {
   const id = String(product.id);
-
-  const isSaved = homeState.saved
-    .map(String)
-    .includes(id);
+  const isSaved = homeState.saved.map(String).includes(id);
+  const store = product.__zuneStore || null;
+  const currentPrice = Number(product.price || 0);
+  const oldPrice = Number(product.compare_at_price || product.original_price || 0);
+  const rating = Number(product.average_rating || product.rating_average || product.rating || 0);
+  const reviews = Number(product.review_count || product.reviews_count || 0);
+  const stock = product.stock_quantity == null ? null : Number(product.stock_quantity);
+  const createdAt = product.created_at ? new Date(product.created_at).getTime() : 0;
+  const isNew = createdAt > 0 && Date.now() - createdAt < 7 * 24 * 60 * 60 * 1000;
+  const discount = oldPrice > currentPrice && currentPrice > 0
+    ? Math.round((1 - currentPrice / oldPrice) * 100) : 0;
+  const flags = [
+    discount ? `<span class="z-product-flag discount">-${discount}%</span>` : "",
+    product.is_featured || product.featured ? `<span class="z-product-flag featured">${language()==="sw"?"Featured":"Featured"}</span>` : "",
+    !discount && !product.is_featured && !product.featured && isNew ? `<span class="z-product-flag new">${language()==="sw"?"Mpya":"New"}</span>` : ""
+  ].filter(Boolean).join("");
+  const storeName = store?.store_name || product.store_name || product.seller_name || (language()==="sw"?"Muuzaji wa ZUNE":"ZUNE Seller");
+  const verified = store?.verification_status === "verified";
+  const location = [store?.district || product.district, store?.region || product.region, store?.address || product.location]
+    .filter(Boolean).slice(0,2).join(", ");
+  const ratingMarkup = rating > 0
+    ? `<div class="z-product-rating"><span class="z-product-rating-star">★</span><strong>${rating.toFixed(1)}</strong>${reviews > 0 ? `<span>(${reviews.toLocaleString()})</span>` : ""}</div>`
+    : "";
+  const stockMarkup = stock !== null && stock <= 0
+    ? `<div class="z-product-stock">${language()==="sw"?"Imeisha":"Out of stock"}</div>` : "";
 
   return `
-    <article class="z-product-card">
-
-      <button
-        type="button"
-        class="z-save-product"
-        data-save-product="${safe(id)}"
-        aria-label="${isSaved ? "Remove saved product" : "Save product"}"
-      >
-        ${isSaved ? "♥" : "♡"}
-      </button>
-
-      ${productImage(product)}
-
-      <div class="z-product-info">
-
-        <h3 class="z-product-name">
-          ${safe(product.title || tx("emptyName"))}
-        </h3>
-
-        <p class="z-product-price">
-          ${money(product.price)}
-        </p>
-
-        <p class="z-product-category">
-          ${safe(product.category || "")}
-        </p>
-
-        <button
-          type="button"
-          class="z-add-cart"
-          data-add-cart="${safe(id)}"
-        >
-          ${tx("addCart")}
+    <article class="z-product-card" data-open-product="${safe(id)}" tabindex="0" role="button" aria-label="${safe(product.title || tx("emptyName"))}">
+      <div class="z-product-media">
+        ${productImage(product)}
+        <div class="z-product-flags">${flags}</div>
+        <button type="button" class="z-save-product ${isSaved ? "is-saved" : ""}" data-save-product="${safe(id)}" aria-label="${isSaved ? "Remove saved product" : "Save product"}" aria-pressed="${isSaved}">
+          ${isSaved ? "♥" : "♡"}
         </button>
-
+      </div>
+      <div class="z-product-info">
+        <h3 class="z-product-name">${safe(product.title || tx("emptyName"))}</h3>
+        <div class="z-product-price-line">
+          <p class="z-product-price">${money(currentPrice)}</p>
+          ${oldPrice > currentPrice ? `<span class="z-product-old-price">${money(oldPrice)}</span>` : ""}
+        </div>
+        ${ratingMarkup}
+        <div class="z-product-store">
+          <span class="z-product-store-name">${safe(storeName)}</span>
+          ${verified ? '<span class="z-verified-store-mark" title="Verified Store" aria-label="Verified Store">✓</span>' : ""}
+        </div>
+        ${location ? `<div class="z-product-location">⌖ ${safe(location)}</div>` : ""}
+        ${stockMarkup}
       </div>
     </article>
   `;
 }
 
 // --------------------------------------------
-// 11. SAVE PRODUCT
+// 11. PRODUCT DETAILS QUICK VIEW
+// --------------------------------------------
+
+function openProductDetails(product) {
+  document.getElementById("z-product-detail-overlay")?.remove();
+  const store = product.__zuneStore || null;
+  const verified = store?.verification_status === "verified";
+  const storeName = store?.store_name || product.store_name || product.seller_name || (language()==="sw"?"Muuzaji wa ZUNE":"ZUNE Seller");
+  const location = [store?.district || product.district, store?.region || product.region, store?.address || product.location].filter(Boolean).slice(0,2).join(", ");
+  const stock = product.stock_quantity == null ? null : Number(product.stock_quantity);
+  const overlay = document.createElement("div");
+  overlay.id = "z-product-detail-overlay";
+  overlay.className = "z-product-detail-overlay";
+  overlay.innerHTML = `
+    <section class="z-product-detail-sheet" role="dialog" aria-modal="true" aria-label="${safe(product.title)}">
+      <button type="button" class="z-detail-close" aria-label="Close">×</button>
+      <div class="z-detail-image-wrap">${productImage(product)}</div>
+      <div class="z-detail-content">
+        <div class="z-product-store"><span class="z-product-store-name">${safe(storeName)}</span>${verified ? '<span class="z-verified-store-mark" aria-label="Verified Store">✓</span>' : ""}</div>
+        ${location ? `<div class="z-product-location">⌖ ${safe(location)}</div>` : ""}
+        <h2>${safe(product.title || tx("emptyName"))}</h2>
+        <p class="z-detail-price">${money(product.price)}</p>
+        ${product.description ? `<p class="z-detail-description">${safe(product.description)}</p>` : ""}
+        ${product.category ? `<p class="z-detail-category">${safe(product.category)}</p>` : ""}
+        ${stock !== null ? `<p class="z-detail-stock">${stock > 0 ? (language()==="sw" ? "Stock iliyopo: " : "Available stock: ") + stock : (language()==="sw" ? "Bidhaa imeisha stock" : "Out of stock")}</p>` : ""}
+        <button type="button" class="z-primary-button z-detail-add" ${stock !== null && stock <= 0 ? "disabled" : ""}>${tx("addCart")}</button>
+      </div>
+    </section>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
+  overlay.querySelector(".z-detail-close")?.addEventListener("click", close);
+  overlay.querySelector(".z-detail-add")?.addEventListener("click", () => {
+    addToCart(String(product.id));
+    close();
+  });
+  const onKey = event => { if (event.key === "Escape") { close(); document.removeEventListener("keydown", onKey); } };
+  document.addEventListener("keydown", onKey);
+}
+
+// --------------------------------------------
+// 12. SAVE PRODUCT
 // --------------------------------------------
 
 function toggleSaved(productId) {
@@ -1137,14 +1379,26 @@ function updateProductArea() {
   }
 
   area.querySelectorAll("[data-save-product]").forEach(button => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", event => {
+      event.stopPropagation();
       toggleSaved(button.dataset.saveProduct);
     });
   });
 
-  area.querySelectorAll("[data-add-cart]").forEach(button => {
-    button.addEventListener("click", () => {
-      addToCart(button.dataset.addCart);
+  area.querySelectorAll("[data-open-product]").forEach(card => {
+    const open = () => {
+      const product = homeState.products.find(item => String(item.id) === card.dataset.openProduct);
+      if (product) openProductDetails(product);
+    };
+    card.addEventListener("click", event => {
+      if (event.target.closest("[data-save-product]")) return;
+      open();
+    });
+    card.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        open();
+      }
     });
   });
 }
