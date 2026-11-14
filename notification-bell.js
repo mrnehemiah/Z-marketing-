@@ -138,12 +138,9 @@ async function loadUnreadCount() {
 
   const userId = currentUser.id;
 
-  const { count, error } = await supabase
+  const { data, error } = await supabase
     .from("notifications")
-    .select("id", {
-      count: "exact",
-      head: true
-    })
+    .select("type")
     .eq("user_id", userId)
     .eq("is_read", false);
 
@@ -154,7 +151,16 @@ async function loadUnreadCount() {
 
   if (currentUser?.id !== userId) return;
 
-  unreadCount = count || 0;
+  const prefs = JSON.parse(localStorage.getItem("zune_notification_preferences") || "{}");
+  unreadCount = (data || []).filter(item => {
+    const type = String(item.type || "").toLowerCase();
+    const group = ["order","payment","refund","wallet","commission"].includes(type)
+      ? "orders"
+      : type === "message" ? "messages"
+      : ["promotion","promotions"].includes(type) ? "promotions"
+      : "account";
+    return prefs[group] !== false;
+  }).length;
 
   renderBell();
 }
