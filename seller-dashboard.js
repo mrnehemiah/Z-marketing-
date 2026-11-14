@@ -10,6 +10,7 @@ const sections = [
   ["marketing","✦","Masoko","Marketing"],
   ["analytics","▥","Takwimu","Analytics"],
   ["store","▧","Duka","Store"],
+  ["verification","✓","Uthibitisho","Verification"],
   ["delivery","⇢","Usafirishaji","Delivery"],
   ["reviews","☆","Maoni","Reviews"],
   ["support","?","Msaada","Support"],
@@ -31,11 +32,10 @@ function shell(){
  const nav=sections.map(([id,icon,sw,en])=>`<button type="button" data-zsd-section="${id}" class="${state.section===id?"active":""}"><span class="zsd-nav-icon">${icon}</span>${tr(sw,en)}</button>`).join("");
  const name=state.profile?.full_name||window.__zuneSellerUser?.email||tr("Muuzaji","Seller");
  const initial=String(name).trim().charAt(0).toUpperCase()||"Z";
- const verified=state.profile?.is_verified===true?verifiedAccountMark():"";
  const storeVerified=["verified","approved"].includes(String(state.store?.verification_status||"").toLowerCase());
  return `<div class="zsd"><div class="zsd-wrap">
  <header class="zsd-top"><div class="zsd-brand">ⓏⓊⓃⒺ <span>SELLER CENTER</span></div><div class="zsd-top-actions"><button class="zsd-btn" id="zsd-language">${state.language==="sw"?"SW / EN":"EN / SW"}</button><button class="zsd-btn" id="zsd-back">← ${tr("Soko","Marketplace")}</button></div></header>
- <div class="zsd-head"><div><div class="zsd-section-kicker">${tr("KITUO CHA BIASHARA","BUSINESS CENTER")}</div><h1>${tr("Dashboard ya Muuzaji","Seller Dashboard")}</h1><p>${tr("Simamia duka, bidhaa na biashara yako sehemu moja.","Manage your store, products and business in one place.")}</p></div><div class="zsd-head-meta"><div class="zsd-user-chip"><span class="zsd-user-avatar">${esc(initial)}</span><span class="zsd-user-copy"><b>${esc(name)}</b><small>${verified|| (storeVerified?'<span class="zsd-store-mark"><i class="zsd-store-dot"></i> Verified Store</span>':tr("Akaunti ya Seller","Seller account"))}</small></span></div></div></div>
+ <div class="zsd-head"><div><div class="zsd-section-kicker">${tr("KITUO CHA BIASHARA","BUSINESS CENTER")}</div><h1>${tr("Dashboard ya Muuzaji","Seller Dashboard")}</h1><p>${tr("Simamia duka, bidhaa na biashara yako sehemu moja.","Manage your store, products and business in one place.")}</p></div><div class="zsd-head-meta"><div class="zsd-user-chip"><span class="zsd-user-avatar">${esc(initial)}</span><span class="zsd-user-copy"><b>${esc(name)}</b><small>${storeVerified?'<span class="zsd-store-mark"><i class="zsd-store-dot"></i> Verified Store</span>':tr("Akaunti ya Seller","Seller account")}</small></span></div></div></div>
  <div class="zsd-layout"><nav class="zsd-nav">${nav}</nav><main class="zsd-content"><nav class="zsd-mobile-nav">${nav}</nav><div id="zsd-panel"></div></main></div>
  </div></div>`;
 }
@@ -64,7 +64,7 @@ function renderVerification(){
  }else if(requestStatus==="pending"){
   statusMarkup='<span class="zsd-pill blue">'+tr("Inasubiri Admin Mkuu","Pending Admin review")+'</span>';
  }else if(requestStatus==="rejected"){
-  statusMarkup='<span class="zsd-pill" style="background:color-mix(in srgb,#bd3d3d 12%,transparent);color:#bd3d3d">'+tr("Ombi limekataliwa","Request rejected")+'</span>';
+  statusMarkup='<span class="zsd-pill" style="background:color-mix(in srgb,var(--danger) 12%,transparent);color:var(--danger)">'+tr("Ombi limekataliwa","Request rejected")+'</span>';
  }else if(["more_info_required","needs_information","more_information"].includes(requestStatus)){
   statusMarkup='<span class="zsd-pill orange">'+tr("Taarifa zaidi zinahitajika","More information required")+'</span>';
  }else{
@@ -205,7 +205,7 @@ function renderPlaceholder(){
 }
 function renderPanel(){
  const panel=document.getElementById("zsd-panel"); if(!panel)return;
- panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"?renderProducts():state.section==="orders"?renderOrders():state.section==="finance"?renderFinance():state.section==="store"?renderStore():renderPlaceholder();
+ panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"?renderProducts():state.section==="orders"?renderOrders():state.section==="finance"?renderFinance():state.section==="store"?renderStore():state.section==="verification"?renderVerification():renderPlaceholder();
  panel.querySelectorAll("[data-zsd-section]").forEach(b=>b.addEventListener("click",()=>{state.section=b.dataset.zsdSection;renderPanel();bindActiveNav();}));
  panel.querySelector("#zsd-verification-form")?.addEventListener("submit",submitVerification);
  panel.querySelector("#zsd-gallery-input")?.addEventListener("change",event=>{if(event.target.files?.length)addSellerPhotos(event.target.files);event.target.value="";});
