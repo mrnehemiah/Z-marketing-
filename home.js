@@ -5,6 +5,7 @@
 
 import { supabase } from "./supabase.js";
 import { renderSellerDashboard } from "./seller-dashboard.js";
+import { renderCartPage as renderCartView, bindCartEvents as bindCartViewEvents, loadCartProducts } from "./cart.js";
 
 // --------------------------------------------
 // 1. SETTINGS AND STATE
@@ -38,6 +39,10 @@ const homeState = {
 
   saved: readStorage("zune_saved_products", []),
   cart: readStorage("zune_cart", []),
+  cartProducts: [],
+  cartProductsKey: "",
+  cartProductsLoading: false,
+  cartProductsError: false,
 
   user: null,
   app: null,
@@ -49,7 +54,9 @@ const homeState = {
   accountError: "",
 
   observer: null,
-  requestId: 0
+  requestId: 0,
+  carouselIndex: 0,
+  carouselTimer: null
 };
 
 // --------------------------------------------
@@ -60,6 +67,7 @@ const homeText = {
   sw: {
     search: "Tafuta bidhaa...",
     categories: "Makundi ya bidhaa",
+    allCategories: "Makundi yote",
     all: "Zote",
     latest: "Bidhaa mpya",
 
@@ -121,6 +129,7 @@ const homeText = {
   en: {
     search: "Search products...",
     categories: "Product categories",
+    allCategories: "All categories",
     all: "All",
     latest: "Latest products",
 
@@ -387,6 +396,27 @@ function addHomeStyles() {
       margin: auto;
       padding: 19px 15px 25px;
     }
+
+
+    .z-home-carousel{position:relative;overflow:hidden;min-height:230px;margin:0 0 25px;border-radius:22px;isolation:isolate;background:var(--primary);color:#fff;touch-action:pan-y}
+    .z-slide-image{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover}
+    .z-home-carousel:after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(10,18,15,.9),rgba(10,18,15,.58) 60%,rgba(10,18,15,.12))}
+    .z-slide-copy{position:relative;z-index:1;min-height:230px;max-width:560px;padding:27px 23px 49px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
+    .z-slide-kicker{margin-bottom:10px;font-size:10px;font-weight:900;letter-spacing:1.4px;color:#fff}
+    .z-slide-copy h2{max-width:460px;margin:0 0 9px;font-size:clamp(22px,4vw,32px);line-height:1.12;font-weight:900;color:#fff}
+    .z-slide-copy p{max-width:430px;margin:0 0 16px;font-size:13px;line-height:1.55;color:#fff}
+    .z-slide-cta{min-height:39px;padding:0 17px;border:0;border-radius:11px;background:#fff;color:#17231e;font-size:12px;font-weight:900;cursor:pointer}
+    .z-slide-controls{position:absolute;z-index:2;left:18px;right:18px;bottom:12px;display:flex;align-items:center;justify-content:space-between}
+    .z-slide-dots{display:flex;align-items:center;gap:6px}
+    .z-slide-dot{width:7px;height:7px;padding:0;border:0;border-radius:20px;background:rgba(255,255,255,.55);cursor:pointer}
+    .z-slide-dot.active{width:22px;background:#fff}
+    .z-slide-arrows{display:flex;gap:7px}
+    .z-slide-arrow{width:29px;height:29px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.55);border-radius:50%;background:rgba(0,0,0,.18);color:#fff;font-size:17px;cursor:pointer}
+    .z-category-heading-actions{display:flex;align-items:center;gap:8px}
+    .z-all-categories{border:0;padding:7px 10px;border-radius:9px;background:var(--background);color:var(--primary);font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
+    .z-category-directory{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:0 0 17px}
+    .z-category-directory .z-category{text-align:left;min-height:44px}
+    @media(min-width:700px){.z-home-carousel,.z-slide-copy{min-height:285px}.z-slide-copy{padding:34px 34px 54px}.z-category-directory{grid-template-columns:repeat(4,minmax(0,1fr))}}
 
     .z-home-welcome {
       position: relative;
@@ -729,91 +759,6 @@ function addHomeStyles() {
     .z-seller-form input,.z-seller-form textarea { width:100%; min-height:44px; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border,#e4ebe7); border-radius:10px; background:var(--background,#f5f7f6); color:var(--text,#17231e); font:inherit; }
     .z-seller-form button:disabled { opacity:.6; cursor:wait; }
     .z-account-message { margin:10px 0; color:var(--text-muted,#71817a); font-size:13px; }
-
-    .z-cart-list {
-      display: grid;
-      gap: 12px;
-    }
-
-    .z-cart-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 11px;
-      background: var(--surface, #ffffff);
-      border: 1px solid var(--border, #e4ebe7);
-      border-radius: 15px;
-    }
-
-    .z-cart-item img,
-    .z-cart-item-placeholder {
-      width: 76px;
-      height: 76px;
-      flex-shrink: 0;
-      object-fit: cover;
-      border-radius: 11px;
-      background: var(--background, #f5f7f6);
-    }
-
-    .z-cart-item-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .z-cart-item-info h3 {
-      font-size: 13px;
-      margin: 0 0 6px;
-      overflow-wrap: anywhere;
-    }
-
-    .z-quantity-controls {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      margin-top: 9px;
-    }
-
-    .z-quantity-controls button {
-      width: 30px;
-      height: 30px;
-      border: 1px solid var(--border, #e4ebe7);
-      border-radius: 8px;
-      background: var(--background, #f5f7f6);
-      color: var(--text, #17231e);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-    }
-
-    .z-cart-remove {
-      border: none;
-      background: transparent;
-      color: #D65D52;
-      padding: 7px;
-      cursor: pointer;
-    }
-
-    .z-cart-total {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      font-weight: 900;
-      font-size: 17px;
-      margin-bottom: 15px;
-    }
-
-    .z-continue-shopping {
-      width: 100%;
-      border: 1px solid var(--primary, #087a55);
-      background: transparent;
-      color: var(--primary, #087a55);
-      border-radius: 11px;
-      padding: 12px;
-      margin-top: 13px;
-      font-weight: 800;
-      cursor: pointer;
-    }
 
     @media (min-width: 700px) {
       .z-product-grid {
@@ -1251,6 +1196,52 @@ function updateLoadStatus() {
 // HOME.JS — SEHEMU YA 3/4
 // ============================================
 
+
+const ZUNE_HOME_SLIDES = [
+ {k:"ZUNE MARKETPLACE",sw:"Karibu sokoni kwetu",en:"Welcome to our marketplace",sd:"Gundua bidhaa mbalimbali kutoka kwa wauzaji.",ed:"Discover products from different sellers.",sc:"Gundua bidhaa",ec:"Explore products",a:"explore",img:"https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1400&q=85"},
+ {k:"FURSA YA BIASHARA",sw:"Fungua duka lako ZUNE",en:"Open your store on ZUNE",sd:"Fikisha bidhaa zako kwa wateja wengi zaidi.",ed:"Bring your products to more customers.",sc:"Jiunge kama Seller",ec:"Become a Seller",a:"account",img:"https://images.unsplash.com/photo-1556740738-b6a63e27c4df?auto=format&fit=crop&w=1400&q=85"},
+ {k:"MAKUNDI MBALIMBALI",sw:"Kila unachohitaji sehemu moja",en:"Everything in one place",sd:"Tembelea makundi na upate unachotafuta.",ed:"Browse categories and find what you need.",sc:"Angalia makundi",ec:"Browse categories",a:"categories",img:"https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1400&q=85"},
+ {k:"UNUNUZI RAHISI",sw:"Pata bidhaa unazozipenda",en:"Find products you love",sd:"Tafuta na ugundue bidhaa sokoni.",ed:"Search and discover marketplace products.",sc:"Tafuta bidhaa",ec:"Find products",a:"search",img:"https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=1400&q=85"},
+ {k:"THAMANI BORA",sw:"Chagua kwa uhakika",en:"Shop with confidence",sd:"Linganisha bidhaa na uchague inayokufaa.",ed:"Compare products and choose what suits you.",sc:"Anza kuchunguza",ec:"Start exploring",a:"explore",img:"https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=1400&q=85"},
+ {k:"BIDHAA MPYA",sw:"Gundua bidhaa mpya",en:"Discover new arrivals",sd:"Angalia bidhaa mpya zinazoongezwa sokoni.",ed:"See the latest products added to ZUNE.",sc:"Tazama bidhaa",ec:"See products",a:"products",img:"https://images.unsplash.com/photo-1607082349566-187342175e2f?auto=format&fit=crop&w=1400&q=85"},
+ {k:"JENGA BIASHARA",sw:"Panua biashara yako mtandaoni",en:"Grow your business online",sd:"Anza safari yako ya kuuza na ZUNE.",ed:"Start your selling journey with ZUNE.",sc:"Fungua akaunti",ec:"Get started",a:"account",img:"https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?auto=format&fit=crop&w=1400&q=85"},
+ {k:"GUNDUA ZAIDI",sw:"Kuna mengi ya kugundua",en:"There is more to discover",sd:"Vinjari bidhaa kutoka makundi tofauti.",ed:"Explore products across different categories.",sc:"Gundua sasa",ec:"Discover now",a:"explore",img:"https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1400&q=85"},
+ {k:"ZUNE KWA WOTE",sw:"Nunua na uza kwa urahisi",en:"Buy and sell with ease",sd:"Soko linalowaunganisha wanunuzi na wauzaji.",ed:"A marketplace connecting buyers and sellers.",sc:"Tembelea soko",ec:"Visit marketplace",a:"products",img:"https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=1400&q=85"},
+ {k:"KARIBU ZUNE",sw:"Anza safari yako leo",en:"Start your journey today",sd:"Chunguza bidhaa na huduma mbalimbali.",ed:"Explore a wide range of products and services.",sc:"Endelea",ec:"Continue",a:"explore",img:"https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1400&q=85"}
+];
+function renderHomeCarousel(){
+ const slide=ZUNE_HOME_SLIDES[homeState.carouselIndex%ZUNE_HOME_SLIDES.length],sw=language()==="sw";
+ return `<section class="z-home-carousel" id="z-home-carousel" aria-label="ZUNE promotions">
+ <img class="z-slide-image" src="${safe(slide.img)}" alt="" loading="eager">
+ <div class="z-slide-copy"><span class="z-slide-kicker">${slide.k}</span><h2>${sw?slide.sw:slide.en}</h2><p>${sw?slide.sd:slide.ed}</p><button type="button" class="z-slide-cta" data-slide-action="${slide.a}">${sw?slide.sc:slide.ec} →</button></div>
+ <div class="z-slide-controls"><div class="z-slide-dots">${ZUNE_HOME_SLIDES.map((x,i)=>`<button type="button" class="z-slide-dot ${i===homeState.carouselIndex?"active":""}" data-slide-index="${i}" aria-label="Slide ${i+1}"></button>`).join("")}</div>
+ <div class="z-slide-arrows"><button type="button" class="z-slide-arrow" data-slide-prev aria-label="Previous slide">‹</button><button type="button" class="z-slide-arrow" data-slide-next aria-label="Next slide">›</button></div></div></section>`;
+}
+function moveHomeSlide(step){
+ homeState.carouselIndex=(homeState.carouselIndex+step+ZUNE_HOME_SLIDES.length)%ZUNE_HOME_SLIDES.length;
+ const old=document.getElementById("z-home-carousel");if(!old)return;
+ const holder=document.createElement("div");holder.innerHTML=renderHomeCarousel();old.replaceWith(holder.firstElementChild);bindCarouselEvents();
+}
+function bindCarouselEvents(){
+ const el=document.getElementById("z-home-carousel");if(!el)return;
+ el.querySelector("[data-slide-prev]")?.addEventListener("click",()=>moveHomeSlide(-1));
+ el.querySelector("[data-slide-next]")?.addEventListener("click",()=>moveHomeSlide(1));
+ el.querySelectorAll("[data-slide-index]").forEach(dot=>dot.addEventListener("click",()=>{
+  homeState.carouselIndex=Number(dot.dataset.slideIndex)||0;const old=document.getElementById("z-home-carousel");if(!old)return;
+  const holder=document.createElement("div");holder.innerHTML=renderHomeCarousel();old.replaceWith(holder.firstElementChild);bindCarouselEvents();
+ }));
+ el.querySelector("[data-slide-action]")?.addEventListener("click",()=>{
+  const a=el.querySelector("[data-slide-action]").dataset.slideAction;
+  if(a==="account")window.location.assign("./account.html");
+  else if(a==="categories")renderMarketplacePage("explore");
+  else if(a==="search")document.getElementById("z-home-search")?.focus();
+  else document.getElementById("z-product-area")?.scrollIntoView({behavior:"smooth",block:"start"});
+ });
+ let x=0;el.addEventListener("touchstart",e=>{x=e.changedTouches[0]?.clientX||0;},{passive:true});
+ el.addEventListener("touchend",e=>{const d=(e.changedTouches[0]?.clientX||0)-x;if(Math.abs(d)>45)moveHomeSlide(d<0?1:-1);},{passive:true});
+}
+function startCarouselAutoplay(){if(homeState.carouselTimer)clearInterval(homeState.carouselTimer);homeState.carouselTimer=setInterval(()=>moveHomeSlide(1),5000);}
+
 // --------------------------------------------
 // 17. RENDER CATEGORIES
 // --------------------------------------------
@@ -1344,20 +1335,13 @@ function renderHomePage() {
 
       <main class="z-home-content">
 
-        <section class="z-home-welcome">
-
-          <div class="z-welcome-tag">ⓏⓊⓃⒺ MARKETPLACE</div>
-
-          <h2>${tx("welcome")}</h2>
-
-          <p>${tx("homeTitle")}</p>
-
-        </section>
+        ${renderHomeCarousel()}
 
         <section>
 
           <div class="z-section-heading">
             <h2>${tx("categories")}</h2>
+            <button type="button" class="z-all-categories" data-open-categories>${tx("allCategories")} →</button>
           </div>
 
           <div id="z-category-area">
@@ -1464,6 +1448,9 @@ function bindSearchEvents() {
 function bindHomeEvents() {
   bindCategoryEvents();
   bindSearchEvents();
+  bindCarouselEvents();
+  startCarouselAutoplay();
+  document.querySelector("[data-open-categories]")?.addEventListener("click", () => renderMarketplacePage("explore"));
 
   document.querySelector("[data-open-saved]")
     ?.addEventListener("click", () => {
@@ -1636,6 +1623,11 @@ function renderExplorePage() {
         <h1 class="z-page-title">
           ${tx("exploreTitle")}
         </h1>
+        <section><div class="z-section-heading"><h2>${tx("categories")}</h2></div>
+          <div id="z-explore-category-area" class="z-category-directory">
+            ${(homeState.categories || []).map(category => `<button type="button" class="z-category ${String(homeState.selectedCategory)===String(category.id)?"active":""}" data-category="${safe(category.id)}">${safe(category.name)}</button>`).join("")}
+          </div>
+        </section>
 
         <div id="z-product-area">
 
@@ -1669,6 +1661,13 @@ function renderExplorePage() {
 // --------------------------------------------
 
 function bindExploreEvents() {
+  const categoryArea=document.getElementById("z-explore-category-area");
+  categoryArea?.querySelectorAll("[data-category]").forEach(button=>button.addEventListener("click",async()=>{
+    homeState.selectedCategory=button.dataset.category||"";
+    homeState.products=[];homeState.page=0;homeState.hasMore=true;
+    categoryArea.innerHTML=(homeState.categories||[]).map(category=>`<button type="button" class="z-category ${String(homeState.selectedCategory)===String(category.id)?"active":""}" data-category="${safe(category.id)}">${safe(category.name)}</button>`).join("");
+    bindExploreEvents();await loadProducts(true);
+  }));
   const input = document.getElementById("z-explore-search");
 
   if (input) {
@@ -1709,181 +1708,45 @@ function bindExploreEvents() {
 // --------------------------------------------
 
 function renderCartPage() {
-  const items = homeState.cart.map(item => {
-    const product = homeState.products.find(
-      p => String(p.id) === String(item.productId)
-    );
-
-    return product ? {
-      ...item,
-      product
-    } : null;
-
-  }).filter(Boolean);
-
-  const total = items.reduce((sum, item) => {
-    return sum +
-      Number(item.product.price || 0) *
-      Number(item.quantity || 1);
-  }, 0);
-
-  return `
-    <section class="z-home">
-
-      <main class="z-home-content">
-
-        <h1 class="z-page-title">
-          ${tx("cartTitle")}
-        </h1>
-
-        ${
-          items.length
-            ? `
-              <div class="z-cart-list">
-
-                ${items.map(item => `
-                  <article class="z-cart-item">
-
-                    ${productImage(item.product)}
-
-                    <div class="z-cart-item-info">
-
-                      <h3>
-                        ${safe(item.product.title)}
-                      </h3>
-
-                      <strong class="z-product-price">
-                        ${money(item.product.price)}
-                      </strong>
-
-                      <div class="z-quantity-controls">
-
-                        <button
-                          type="button"
-                          data-cart-minus="${safe(item.productId)}"
-                        >
-                          −
-                        </button>
-
-                        <span>${item.quantity}</span>
-
-                        <button
-                          type="button"
-                          data-cart-plus="${safe(item.productId)}"
-                        >
-                          +
-                        </button>
-
-                      </div>
-
-                    </div>
-
-                    <button
-                      type="button"
-                      class="z-cart-remove"
-                      data-cart-remove="${safe(item.productId)}"
-                    >
-                      ${tx("remove")}
-                    </button>
-
-                  </article>
-                `).join("")}
-
-              </div>
-
-              <div class="z-cart-summary" style="margin-top:20px">
-
-                <div class="z-cart-total">
-
-                  <span>${tx("total")}</span>
-
-                  <strong>${money(total)}</strong>
-
-                </div>
-
-                <button
-                  type="button"
-                  class="z-primary-button"
-                  id="z-checkout"
-                >
-                  ${tx("checkout")}
-                </button>
-
-                <p>${tx("checkoutNote")}</p>
-
-                <button
-                  type="button"
-                  class="z-continue-shopping"
-                  data-go-home
-                >
-                  ${tx("continueShopping")}
-                </button>
-
-              </div>
-            `
-            : `
-              <div class="z-empty-state">
-
-                <div class="z-empty-icon">🛒</div>
-
-                <h2>${tx("emptyCart")}</h2>
-
-                <p>${tx("emptyCartText")}</p>
-
-                <button
-                  type="button"
-                  class="z-primary-button"
-                  data-go-home
-                >
-                  ${tx("continueShopping")}
-                </button>
-
-              </div>
-            `
-        }
-
-      </main>
-
-    </section>
-  `;
+  return renderCartView({
+    cart: homeState.cart,
+    products: homeState.cartProducts,
+    language: language(),
+    loading: homeState.cartProductsLoading,
+    error: homeState.cartProductsError
+  });
 }
 
-// --------------------------------------------
-// 28. CART EVENTS
-// --------------------------------------------
-
 function bindCartEvents() {
-  document.querySelectorAll("[data-cart-minus]").forEach(button => {
-    button.addEventListener("click", () => {
-      changeCartQuantity(button.dataset.cartMinus, -1);
+  bindCartViewEvents(document, {
+    onQuantityChange: (productId, change) => {
+      changeCartQuantity(productId, change);
       renderMarketplacePage("cart");
-    });
-  });
-
-  document.querySelectorAll("[data-cart-plus]").forEach(button => {
-    button.addEventListener("click", () => {
-      changeCartQuantity(button.dataset.cartPlus, 1);
+    },
+    onRemove: productId => {
+      removeCartItem(productId);
       renderMarketplacePage("cart");
-    });
+    },
+    onContinueShopping: () => renderMarketplacePage("home"),
+    onCheckout: () => alert(tx("checkoutComingSoon"))
   });
 
-  document.querySelectorAll("[data-cart-remove]").forEach(button => {
-    button.addEventListener("click", () => {
-      removeCartItem(button.dataset.cartRemove);
-      renderMarketplacePage("cart");
-    });
-  });
+  const key = homeState.cart.map(item => String(item.productId)).sort().join("|");
+  if (key === homeState.cartProductsKey || homeState.cartProductsLoading) return;
 
-  document.querySelectorAll("[data-go-home]").forEach(button => {
-    button.addEventListener("click", () => {
-      renderMarketplacePage("home");
-    });
+  homeState.cartProductsLoading = true;
+  homeState.cartProductsError = false;
+  loadCartProducts(homeState.cart).then(products => {
+    homeState.cartProducts = products;
+    homeState.cartProductsKey = key;
+  }).catch(error => {
+    console.error("ZUNE cart products error:", error);
+    homeState.cartProductsError = true;
+    homeState.cartProductsKey = key;
+  }).finally(() => {
+    homeState.cartProductsLoading = false;
+    if (homeState.activeTab === "cart") renderMarketplacePage("cart");
   });
-
-  document.getElementById("z-checkout")
-    ?.addEventListener("click", () => {
-      alert(tx("checkoutComingSoon"));
-    });
 }
 
 // --------------------------------------------
@@ -2134,6 +1997,10 @@ function bindAccountEvents() {
 
 function renderMarketplacePage(page) {
   homeState.activeTab = page;
+  if (page !== "home" && homeState.carouselTimer) {
+    clearInterval(homeState.carouselTimer);
+    homeState.carouselTimer = null;
+  }
 
   if (homeState.observer) {
     homeState.observer.disconnect();
