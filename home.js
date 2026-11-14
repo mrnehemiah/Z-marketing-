@@ -2088,7 +2088,7 @@ function bindAccountEvents() {
       });
     });
   });
-  document.querySelector("[data-open-seller-dashboard]")?.addEventListener("click",()=>renderMarketplacePage("seller"));
+  document.querySelector("[data-open-seller-dashboard]")?.addEventListener("click",()=>window.location.assign("./seller-dashboard.html"));
   document.querySelector("[data-account-orders]")?.addEventListener("click",()=>alert(language()==="sw" ? "Sehemu ya oda itaunganishwa baada ya kujengwa." : "Orders will be connected when that section is built."));
   document.querySelector("[data-account-saved]")?.addEventListener("click",()=>renderMarketplacePage("saved"));
   document.querySelector("[data-account-cart]")?.addEventListener("click",()=>renderMarketplacePage("cart"));
