@@ -2035,7 +2035,7 @@ function renderAccountPage() {
   }
   return `<section class="z-home z-account-page"><main class="z-home-content">
     <div class="z-account-heading"><div><span class="z-account-eyebrow">${label("NAFASI YAKO","YOUR SPACE")}</span><h1 class="z-page-title">${label("Akaunti yangu","My account")}</h1></div><span class="z-account-heading-mark">ⓏⓊⓃⒺ</span></div>
-    <section class="z-account-hero"><div class="z-account-avatar">${safe(initials || "Z")}</div><div class="z-account-identity"><span class="z-account-eyebrow">${label("KARIBU TENA","WELCOME BACK")}</span><h2>${safe(name)}</h2><p>${safe(email)}</p></div><span class="z-account-role ${role === "vendor" ? "vendor" : ""}">${role === "vendor" ? label("MUUZAJI","SELLER") : label("MTEJA","CUSTOMER")}</span></section>
+    <section class="z-account-hero"><div class="z-account-avatar">${safe(initials || "Z")}</div><div class="z-account-identity"><span class="z-account-eyebrow">${label("KARIBU TENA","WELCOME BACK")}</span><h2>${safe(name)}</h2><p>${safe(email)}</p>${homeState.accountProfile?.is_verified ? `<span style="display:inline-flex;margin-top:7px;padding:5px 9px;border-radius:20px;background:rgba(230,135,35,.14);color:#c87510;font-size:11px;font-weight:800">✓ Verified Account</span>` : ""}</div><span class="z-account-role ${role === "vendor" ? "vendor" : ""}">${role === "vendor" ? label("MUUZAJI","SELLER") : label("MTEJA","CUSTOMER")}</span></section>
     ${homeState.accountLoading ? `<p class="z-account-message">${label("Inapakia taarifa za akaunti...","Loading account details...")}</p>` : ""}
     ${homeState.accountError ? `<p class="z-account-message" role="alert">${safe(homeState.accountError)}</p>` : ""}
     ${sellerContent}
