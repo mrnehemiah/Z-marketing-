@@ -1,8 +1,4 @@
 
-/* =========================================
-   ZUNE NOTIFICATION SETTINGS
-========================================= */
-
 const SETTINGS_KEY = "zune-notification-settings";
 
 const defaultSettings = {
