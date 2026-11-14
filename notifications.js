@@ -176,7 +176,7 @@ function getNotificationIcon(type) {
     seller_approved: "🎉",
     seller_rejected: "📋",
     product: "📦",
-    product_published: "🛍️",
+    product_published: "🛍️",\n    product_moderation: "📦",
     order: "🛒",
     payment: "💳",
     refund: "↩️",
