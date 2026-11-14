@@ -1,0 +1,17 @@
+.zv-page{min-height:100vh;padding:24px 16px;background:var(--background);color:var(--text)}
+.zv-wrap{width:min(620px,100%);margin:0 auto}
+.zv-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px;box-shadow:var(--shadow)}
+.zv-brand{font-weight:900;letter-spacing:2px;color:var(--primary);margin-bottom:20px}
+.zv-card h1{font-size:24px;margin:0 0 10px}
+.zv-muted{color:var(--text-muted);font-size:14px;line-height:1.65}
+.zv-form{display:grid;gap:14px;margin-top:20px}
+.zv-form label{display:grid;gap:7px;font-size:13px;font-weight:700}
+.zv-form input{width:100%;padding:13px;border:1px solid var(--border);border-radius:12px;background:var(--background);color:var(--text);font:inherit}
+.zv-btn{border:0;border-radius:12px;padding:13px 16px;background:var(--primary);color:white;font-weight:800;cursor:pointer}
+.zv-btn:disabled{opacity:.6}
+.zv-status{padding:13px;border-radius:12px;margin:14px 0;background:rgba(230,145,35,.12);color:#c87510;font-weight:700;font-size:13px}
+.zv-status.approved{background:rgba(230,145,35,.14);color:#c87510}
+.zv-status.rejected{background:rgba(190,50,50,.12);color:#bd3d3d}
+.zv-error{color:#c43d3d;font-size:13px}
+.zv-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.zv-link{color:var(--primary);font-weight:700;text-decoration:none}
