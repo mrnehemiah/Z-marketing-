@@ -5,6 +5,7 @@
 
 import { supabase } from "./supabase.js";
 import { renderSellerDashboard } from "./seller-dashboard.js";
+import { renderCartPage as renderCartView, bindCartEvents as bindCartViewEvents, loadCartProducts } from "./cart.js";
 
 // --------------------------------------------
 // 1. SETTINGS AND STATE
@@ -38,6 +39,10 @@ const homeState = {
 
   saved: readStorage("zune_saved_products", []),
   cart: readStorage("zune_cart", []),
+  cartProducts: [],
+  cartProductsKey: "",
+  cartProductsLoading: false,
+  cartProductsError: false,
 
   user: null,
   app: null,
@@ -754,91 +759,6 @@ function addHomeStyles() {
     .z-seller-form input,.z-seller-form textarea { width:100%; min-height:44px; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border,#e4ebe7); border-radius:10px; background:var(--background,#f5f7f6); color:var(--text,#17231e); font:inherit; }
     .z-seller-form button:disabled { opacity:.6; cursor:wait; }
     .z-account-message { margin:10px 0; color:var(--text-muted,#71817a); font-size:13px; }
-
-    .z-cart-list {
-      display: grid;
-      gap: 12px;
-    }
-
-    .z-cart-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 11px;
-      background: var(--surface, #ffffff);
-      border: 1px solid var(--border, #e4ebe7);
-      border-radius: 15px;
-    }
-
-    .z-cart-item img,
-    .z-cart-item-placeholder {
-      width: 76px;
-      height: 76px;
-      flex-shrink: 0;
-      object-fit: cover;
-      border-radius: 11px;
-      background: var(--background, #f5f7f6);
-    }
-
-    .z-cart-item-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .z-cart-item-info h3 {
-      font-size: 13px;
-      margin: 0 0 6px;
-      overflow-wrap: anywhere;
-    }
-
-    .z-quantity-controls {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      margin-top: 9px;
-    }
-
-    .z-quantity-controls button {
-      width: 30px;
-      height: 30px;
-      border: 1px solid var(--border, #e4ebe7);
-      border-radius: 8px;
-      background: var(--background, #f5f7f6);
-      color: var(--text, #17231e);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-    }
-
-    .z-cart-remove {
-      border: none;
-      background: transparent;
-      color: #D65D52;
-      padding: 7px;
-      cursor: pointer;
-    }
-
-    .z-cart-total {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      font-weight: 900;
-      font-size: 17px;
-      margin-bottom: 15px;
-    }
-
-    .z-continue-shopping {
-      width: 100%;
-      border: 1px solid var(--primary, #087a55);
-      background: transparent;
-      color: var(--primary, #087a55);
-      border-radius: 11px;
-      padding: 12px;
-      margin-top: 13px;
-      font-weight: 800;
-      cursor: pointer;
-    }
 
     @media (min-width: 700px) {
       .z-product-grid {
@@ -1788,181 +1708,45 @@ function bindExploreEvents() {
 // --------------------------------------------
 
 function renderCartPage() {
-  const items = homeState.cart.map(item => {
-    const product = homeState.products.find(
-      p => String(p.id) === String(item.productId)
-    );
-
-    return product ? {
-      ...item,
-      product
-    } : null;
-
-  }).filter(Boolean);
-
-  const total = items.reduce((sum, item) => {
-    return sum +
-      Number(item.product.price || 0) *
-      Number(item.quantity || 1);
-  }, 0);
-
-  return `
-    <section class="z-home">
-
-      <main class="z-home-content">
-
-        <h1 class="z-page-title">
-          ${tx("cartTitle")}
-        </h1>
-
-        ${
-          items.length
-            ? `
-              <div class="z-cart-list">
-
-                ${items.map(item => `
-                  <article class="z-cart-item">
-
-                    ${productImage(item.product)}
-
-                    <div class="z-cart-item-info">
-
-                      <h3>
-                        ${safe(item.product.title)}
-                      </h3>
-
-                      <strong class="z-product-price">
-                        ${money(item.product.price)}
-                      </strong>
-
-                      <div class="z-quantity-controls">
-
-                        <button
-                          type="button"
-                          data-cart-minus="${safe(item.productId)}"
-                        >
-                          −
-                        </button>
-
-                        <span>${item.quantity}</span>
-
-                        <button
-                          type="button"
-                          data-cart-plus="${safe(item.productId)}"
-                        >
-                          +
-                        </button>
-
-                      </div>
-
-                    </div>
-
-                    <button
-                      type="button"
-                      class="z-cart-remove"
-                      data-cart-remove="${safe(item.productId)}"
-                    >
-                      ${tx("remove")}
-                    </button>
-
-                  </article>
-                `).join("")}
-
-              </div>
-
-              <div class="z-cart-summary" style="margin-top:20px">
-
-                <div class="z-cart-total">
-
-                  <span>${tx("total")}</span>
-
-                  <strong>${money(total)}</strong>
-
-                </div>
-
-                <button
-                  type="button"
-                  class="z-primary-button"
-                  id="z-checkout"
-                >
-                  ${tx("checkout")}
-                </button>
-
-                <p>${tx("checkoutNote")}</p>
-
-                <button
-                  type="button"
-                  class="z-continue-shopping"
-                  data-go-home
-                >
-                  ${tx("continueShopping")}
-                </button>
-
-              </div>
-            `
-            : `
-              <div class="z-empty-state">
-
-                <div class="z-empty-icon">🛒</div>
-
-                <h2>${tx("emptyCart")}</h2>
-
-                <p>${tx("emptyCartText")}</p>
-
-                <button
-                  type="button"
-                  class="z-primary-button"
-                  data-go-home
-                >
-                  ${tx("continueShopping")}
-                </button>
-
-              </div>
-            `
-        }
-
-      </main>
-
-    </section>
-  `;
+  return renderCartView({
+    cart: homeState.cart,
+    products: homeState.cartProducts,
+    language: language(),
+    loading: homeState.cartProductsLoading,
+    error: homeState.cartProductsError
+  });
 }
 
-// --------------------------------------------
-// 28. CART EVENTS
-// --------------------------------------------
-
 function bindCartEvents() {
-  document.querySelectorAll("[data-cart-minus]").forEach(button => {
-    button.addEventListener("click", () => {
-      changeCartQuantity(button.dataset.cartMinus, -1);
+  bindCartViewEvents(document, {
+    onQuantityChange: (productId, change) => {
+      changeCartQuantity(productId, change);
       renderMarketplacePage("cart");
-    });
-  });
-
-  document.querySelectorAll("[data-cart-plus]").forEach(button => {
-    button.addEventListener("click", () => {
-      changeCartQuantity(button.dataset.cartPlus, 1);
+    },
+    onRemove: productId => {
+      removeCartItem(productId);
       renderMarketplacePage("cart");
-    });
+    },
+    onContinueShopping: () => renderMarketplacePage("home"),
+    onCheckout: () => alert(tx("checkoutComingSoon"))
   });
 
-  document.querySelectorAll("[data-cart-remove]").forEach(button => {
-    button.addEventListener("click", () => {
-      removeCartItem(button.dataset.cartRemove);
-      renderMarketplacePage("cart");
-    });
-  });
+  const key = homeState.cart.map(item => String(item.productId)).sort().join("|");
+  if (key === homeState.cartProductsKey || homeState.cartProductsLoading) return;
 
-  document.querySelectorAll("[data-go-home]").forEach(button => {
-    button.addEventListener("click", () => {
-      renderMarketplacePage("home");
-    });
+  homeState.cartProductsLoading = true;
+  homeState.cartProductsError = false;
+  loadCartProducts(homeState.cart).then(products => {
+    homeState.cartProducts = products;
+    homeState.cartProductsKey = key;
+  }).catch(error => {
+    console.error("ZUNE cart products error:", error);
+    homeState.cartProductsError = true;
+    homeState.cartProductsKey = key;
+  }).finally(() => {
+    homeState.cartProductsLoading = false;
+    if (homeState.activeTab === "cart") renderMarketplacePage("cart");
   });
-
-  document.getElementById("z-checkout")
-    ?.addEventListener("click", () => {
-      alert(tx("checkoutComingSoon"));
-    });
 }
 
 // --------------------------------------------
