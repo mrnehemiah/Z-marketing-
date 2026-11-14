@@ -5,6 +5,15 @@
    HTML + CSS + VANILLA JAVASCRIPT
 ========================================= */
 
+import {
+  registerCustomer,
+  loginCustomer,
+  recoverPassword,
+  getCustomerSession,
+  getCurrentCustomer,
+  logoutCustomer
+} from "./auth.js";
+
 const app = document.getElementById("app");
 
 const state = {
@@ -18,7 +27,11 @@ const state = {
   email: "",
   password: "",
   confirmPassword: "",
-  showPassword: false
+  loginIdentity: "",
+  loginPassword: "",
+  showPassword: false,
+  loading: false,
+  signupSubmitted: false
 };
 
 /* TRANSLATIONS */
@@ -33,7 +46,7 @@ const translations = {
     subtitle: "Soko lako la kisasa. Nunua na uza kwa urahisi.",
     login: "Ingia",
     signup: "Jisajili",
-    emailOrPhone: "Barua pepe au namba ya simu",
+    emailOrPhone: "Barua pepe",
     password: "Nenosiri",
     forgot: "Umesahau nenosiri?",
     noAccount: "Huna akaunti?",
@@ -57,15 +70,32 @@ const translations = {
     invalidEmail: "Weka barua pepe sahihi.",
     passwordShort: "Nenosiri lazima liwe na angalau herufi 8.",
     passwordMismatch: "Nenosiri hazifanani.",
-    loginMessage: "Muonekano wa kuingia umekamilika. Uthibitishaji wa Supabase utaunganishwa katika hatua inayofuata.",
-    signupMessage: "Muundo wa usajili umekamilika. Uthibitishaji wa Supabase utaunganishwa katika hatua inayofuata.",
-    forgotMessage: "Huduma ya kurejesha nenosiri itaunganishwa na Supabase.",
+    loginMessage: "Muonekano wa kuingia umekamilika.",
+    signupMessage: "Muundo wa usajili umekamilika.",
+    forgotMessage: "Huduma ya kurejesha nenosiri.",
     stepOneTitle: "Tujuane kwanza",
     stepTwoTitle: "Namba yako ya simu",
     stepThreeTitle: "Barua pepe yako",
     stepFourTitle: "Linda akaunti yako",
     show: "Onyesha",
-    hide: "Ficha"
+    hide: "Ficha",
+    loginError: "Imeshindikana kuingia. Hakikisha taarifa zako ni sahihi.",
+    signupError: "Usajili umeshindikana. Jaribu tena.",
+    forgotError: "Imeshindikana kutuma kiungo cha kurejesha nenosiri.",
+    forgotPrompt: "Ingiza barua pepe yako:",
+    forgotSuccess: "Kiungo cha kurejesha nenosiri kimetumwa kwenye barua pepe yako ikiwa akaunti inapatikana.",
+    signupSuccess: "Usajili umepokelewa! Angalia barua pepe yako ili kuthibitisha akaunti.",
+    signupSessionSuccess: "Akaunti yako imetengenezwa na umeingia kikamilifu.",
+    loginSuccess: "Umeingia kikamilifu.",
+    logout: "Toka kwenye akaunti",
+    accountTitle: "Akaunti yako ya ZUNE",
+    accountWelcome: "Karibu kwenye akaunti yako.",
+    emailVerification: "Tafadhali fungua barua pepe yako na ubofye kiungo cha uthibitisho.",
+    loginAgain: "Rudi kuingia",
+    processing: "Inachakata...",
+    passwordRequired: "Tafadhali jaza barua pepe na nenosiri.",
+    emailOnly: "Kwa sasa tumia barua pepe kuingia. Kuingia kwa namba ya simu bado hakujawashwa.",
+    loginTitle: "Ingia kwenye akaunti yako"
   },
 
   en: {
@@ -77,7 +107,7 @@ const translations = {
     subtitle: "Your modern marketplace. Buy and sell with ease.",
     login: "Log In",
     signup: "Sign Up",
-    emailOrPhone: "Email or Phone Number",
+    emailOrPhone: "Email Address",
     password: "Password",
     forgot: "Forgot password?",
     noAccount: "Don't have an account?",
@@ -101,15 +131,32 @@ const translations = {
     invalidEmail: "Enter a valid email address.",
     passwordShort: "Password must contain at least 8 characters.",
     passwordMismatch: "Passwords do not match.",
-    loginMessage: "The login interface is ready. Supabase authentication will be connected in the next stage.",
-    signupMessage: "The signup interface is ready. Supabase authentication will be connected in the next stage.",
-    forgotMessage: "Password recovery will be connected to Supabase.",
+    loginMessage: "The login interface is ready.",
+    signupMessage: "The signup interface is ready.",
+    forgotMessage: "Password recovery.",
     stepOneTitle: "Let's get to know you",
     stepTwoTitle: "Your phone number",
     stepThreeTitle: "Your email address",
     stepFourTitle: "Secure your account",
     show: "Show",
-    hide: "Hide"
+    hide: "Hide",
+    loginError: "Login failed. Please check your details.",
+    signupError: "Registration failed. Please try again.",
+    forgotError: "Unable to send the password recovery link.",
+    forgotPrompt: "Enter your email address:",
+    forgotSuccess: "If an account exists, a password recovery link has been sent to your email.",
+    signupSuccess: "Registration received! Check your email to verify your account.",
+    signupSessionSuccess: "Your account has been created and you are now signed in.",
+    loginSuccess: "You have successfully logged in.",
+    logout: "Log Out",
+    accountTitle: "Your ZUNE Account",
+    accountWelcome: "Welcome to your account.",
+    emailVerification: "Please open your email and click the verification link.",
+    loginAgain: "Return to login",
+    processing: "Processing...",
+    passwordRequired: "Please enter your email and password.",
+    emailOnly: "For now, use your email address to log in. Phone login is not enabled yet.",
+    loginTitle: "Log in to your account"
   }
 };
 
@@ -422,7 +469,7 @@ function renderWelcome() {
   };
 
   document.getElementById("signupBtn").onclick = () => {
-    state.signupStep = 1;
+    resetSignup();
     waveTo(renderSignup);
   };
 
@@ -441,7 +488,7 @@ function renderLogin(error = "") {
       <div class="panel">
         <div class="brand-area">
           ${logo()}
-          <h1 class="page-title">${t("login")}</h1>
+          <h1 class="page-title">${t("loginTitle")}</h1>
         </div>
 
         <form id="loginForm">
@@ -449,9 +496,10 @@ function renderLogin(error = "") {
             <label>${t("emailOrPhone")}</label>
             <input
               class="form-control"
-              type="text"
+              type="email"
               id="loginIdentity"
               autocomplete="username"
+              value="${escapeHTML(state.loginIdentity)}"
               required
             >
           </div>
@@ -464,6 +512,7 @@ function renderLogin(error = "") {
                 type="${state.showPassword ? "text" : "password"}"
                 id="loginPassword"
                 autocomplete="current-password"
+                value="${escapeHTML(state.loginPassword)}"
                 required
               >
               <button
@@ -480,10 +529,11 @@ function renderLogin(error = "") {
             ${t("forgot")}
           </button>
 
-          <p class="form-error">${error}</p>
+          <p class="form-error">${escapeHTML(error)}</p>
 
-          <button class="btn btn-primary full-button" type="submit">
-            ${t("login")}
+          <button class="btn btn-primary full-button" id="loginSubmit"
+            type="submit">
+            ${state.loading ? t("processing") : t("login")}
           </button>
         </form>
 
@@ -500,16 +550,20 @@ function renderLogin(error = "") {
   `;
 
   document.getElementById("toggleLoginPassword").onclick = () => {
+    const passwordInput = document.getElementById("loginPassword");
+
     state.showPassword = !state.showPassword;
-    renderLogin();
+
+    passwordInput.type = state.showPassword ? "text" : "password";
+
+    document.getElementById("toggleLoginPassword").textContent =
+      state.showPassword ? t("hide") : t("show");
   };
 
-  document.getElementById("forgotBtn").onclick = () => {
-    alert(t("forgotMessage"));
-  };
+  document.getElementById("forgotBtn").onclick = handleForgotPassword;
 
   document.getElementById("goSignup").onclick = () => {
-    state.signupStep = 1;
+    resetSignup();
     waveTo(renderSignup);
   };
 
@@ -517,11 +571,77 @@ function renderLogin(error = "") {
     waveTo(renderWelcome);
   };
 
-  document.getElementById("loginForm").onsubmit = (event) => {
-    event.preventDefault();
+  document.getElementById("loginForm").onsubmit = handleLogin;
+}
 
-    alert(t("loginMessage"));
-  };
+/* LOGIN WITH SUPABASE */
+
+async function handleLogin(event) {
+  event.preventDefault();
+
+  state.loginIdentity = document.getElementById("loginIdentity").value.trim();
+  state.loginPassword = document.getElementById("loginPassword").value;
+
+  if (!state.loginIdentity || !state.loginPassword) {
+    renderLogin(t("passwordRequired"));
+    return;
+  }
+
+  state.loading = true;
+  renderLogin();
+
+  try {
+    await loginCustomer(
+      state.loginIdentity,
+      state.loginPassword
+    );
+
+    state.loading = false;
+    state.loginPassword = "";
+
+    renderAccount();
+  } catch (error) {
+    state.loading = false;
+
+    renderLogin(error.message || t("loginError"));
+  }
+}
+
+/* FORGOT PASSWORD */
+
+async function handleForgotPassword() {
+  const email = prompt(t("forgotPrompt"));
+
+  if (!email) return;
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailPattern.test(email.trim())) {
+    alert(t("invalidEmail"));
+    return;
+  }
+
+  try {
+    await recoverPassword(email.trim());
+
+    alert(t("forgotSuccess"));
+  } catch (error) {
+    alert(error.message || t("forgotError"));
+  }
+}
+
+/* SIGNUP RESET */
+
+function resetSignup() {
+  state.signupStep = 1;
+  state.firstName = "";
+  state.middleName = "";
+  state.lastName = "";
+  state.phone = "+255";
+  state.email = "";
+  state.password = "";
+  state.confirmPassword = "";
+  state.signupSubmitted = false;
 }
 
 /* SIGNUP SCREEN */
@@ -592,6 +712,7 @@ function renderSignup(error = "") {
         <input class="form-control"
           type="password" id="newPassword"
           autocomplete="new-password"
+          value="${escapeHTML(state.password)}"
           required>
       </div>
 
@@ -600,17 +721,32 @@ function renderSignup(error = "") {
         <input class="form-control"
           type="password" id="confirmPassword"
           autocomplete="new-password"
+          value="${escapeHTML(state.confirmPassword)}"
           required>
       </div>
     `;
   }
 
-  if (step === 5) {
+  if (step === 5 && !state.signupSubmitted) {
     content = `
       <h2 class="page-title">${t("verifyTitle")}</h2>
 
       <p class="page-description">
         ${t("verifyText")}
+      </p>
+
+      <p class="page-description">
+        ${escapeHTML(state.email)}
+      </p>
+    `;
+  }
+
+  if (step === 5 && state.signupSubmitted) {
+    content = `
+      <h2 class="page-title">${t("verifyTitle")}</h2>
+
+      <p class="page-description">
+        ${t("signupSuccess")}
       </p>
 
       <p class="page-description">
@@ -640,11 +776,11 @@ function renderSignup(error = "") {
         <form id="signupForm">
           ${content}
 
-          <p class="form-error">${error}</p>
+          <p class="form-error">${escapeHTML(error)}</p>
 
           <div class="form-actions">
             ${
-              step > 1
+              step > 1 && !state.signupSubmitted
                 ? `<button type="button" class="btn btn-secondary" id="signupBack">
                     ${t("back")}
                   </button>`
@@ -653,8 +789,17 @@ function renderSignup(error = "") {
                   </button>`
             }
 
-            <button type="submit" class="btn btn-primary">
-              ${step === 5 ? t("finish") : t("continue")}
+            <button type="submit" class="btn btn-primary" id="signupSubmit"
+              ${state.loading ? "disabled" : ""}>
+              ${
+                state.loading
+                  ? t("processing")
+                  : state.signupSubmitted
+                    ? t("loginAgain")
+                    : step === 5
+                      ? t("finish")
+                      : t("continue")
+              }
             </button>
           </div>
         </form>
@@ -694,9 +839,7 @@ function renderSignup(error = "") {
   };
 }
 
-/* SAVE FORM DATA */
-
-function saveSignupFields() {
+/* SAVE FORM DATA */function saveSignupFields() {
   const fields = [
     ["firstName", "firstName"],
     ["middleName", "middleName"],
@@ -712,18 +855,34 @@ function saveSignupFields() {
       state[key] = input.value.trim();
     }
   });
+
+  const passwordInput = document.getElementById("newPassword");
+  const confirmInput = document.getElementById("confirmPassword");
+
+  if (passwordInput) {
+    state.password = passwordInput.value;
+  }
+
+  if (confirmInput) {
+    state.confirmPassword = confirmInput.value;
+  }
 }
 
 /* SIGNUP VALIDATION AND NAVIGATION */
 
-function handleSignup(event) {
+async function handleSignup(event) {
   event.preventDefault();
+
+  if (state.signupSubmitted) {
+    state.loginIdentity = state.email;
+    waveTo(renderLogin);
+    return;
+  }
 
   saveSignupFields();
 
   const step = state.signupStep;
-
-  if (step === 1) {
+if (step === 1) {
     if (
       !state.firstName ||
       !state.middleName ||
@@ -754,7 +913,8 @@ function handleSignup(event) {
 
   if (step === 4) {
     const password = document.getElementById("newPassword").value;
-    const confirm = document.getElementById("confirmPassword").value;
+    const confirm = document.getElementById("confirmPassword").value;state.password = password;
+    state.confirmPassword = confirm;
 
     if (password.length < 8) {
       renderSignup(t("passwordShort"));
@@ -765,14 +925,41 @@ function handleSignup(event) {
       renderSignup(t("passwordMismatch"));
       return;
     }
-
-    state.password = password;
-    state.confirmPassword = confirm;
   }
 
   if (step === 5) {
-    alert(t("signupMessage"));
-    return;
+    state.loading = true;
+    renderSignup();
+
+    try {
+      const result = await registerCustomer({
+        firstName: state.firstName,
+        middleName: state.middleName,
+        lastName: state.lastName,
+        phone: state.phone,
+        email: state.email,
+        password: state.password
+      });
+
+      state.loading = false;
+      state.password = "";
+      state.confirmPassword = "";
+
+      if (result.session) {
+        state.signupSubmitted = true;
+        renderAccount();
+        return;
+      }
+state.signupSubmitted = true;
+      renderSignup();
+      return;
+
+    } catch (error) {
+      state.loading = false;
+
+      renderSignup(error.message || t("signupError"));
+      return;
+    }
   }
 
   state.signupStep++;
@@ -780,9 +967,78 @@ function handleSignup(event) {
   waveTo(() => renderSignup());
 }
 
-/* SAFE HTML VALUES */
+/* CUSTOMER ACCOUNT SCREEN */
 
-function escapeHTML(value) {
+function renderAccount() {
+  state.screen = "account";
+
+  getCurrentCustomer()
+    .then((user) => {
+      if (!user) {
+        renderWelcome();
+        return;
+      }
+
+      const metadata = user.user_metadata || {};
+
+      const customerName = [
+        metadata.first_name,
+        metadata.middle_name,
+        metadata.last_name
+      ].filter(Boolean).join(" ");
+
+      app.innerHTML = `
+        <section class="page">
+          <div class="panel">
+            <div class="brand-area">
+              ${logo()}
+
+              <h1 class="page-title">
+                ${t("accountTitle")}
+              </h1>
+
+              <p class="welcome-description">
+                ${t("accountWelcome")}
+              </p>
+            </div>
+   <p class="page-description">
+              ${escapeHTML(customerName || user.email || "")}
+            </p>
+
+            <p class="page-description">
+              ${escapeHTML(user.email || "")}
+            </p>
+
+            <button class="btn btn-primary full-button" id="logoutBtn">
+              ${t("logout")}
+            </button>
+          </div>
+        </section>
+      `;
+
+      document.getElementById("logoutBtn").onclick = handleLogout;
+    })
+    .catch((error) => {
+      renderLogin(error.message || t("loginError"));
+    });
+}
+
+/* LOGOUT */
+
+async function handleLogout() {
+  try {
+    await logoutCustomer();
+
+    state.loginPassword = "";
+    state.loginIdentity = "";
+
+    waveTo(renderWelcome);
+  } catch (error) {
+    alert(error.message || "Logout failed.");
+  }
+}
+
+/* SAFE HTML VALUES */function escapeHTML(value) {
   return String(value).replace(/[&<>"']/g, (character) => {
     const entities = {
       "&": "&amp;",
@@ -798,8 +1054,26 @@ function escapeHTML(value) {
 
 /* START APPLICATION */
 
-if (state.language) {
-  renderWelcome();
-} else {
-  renderLanguage();
+async function startApp() {
+  if (state.language !== "sw" && state.language !== "en") {
+    renderLanguage();
+    return;
+  }
+
+  try {
+    const session = await getCustomerSession();
+
+    if (session) {
+      renderAccount();
+      return;
+    }
+
+    renderWelcome();
+
+  } catch (error) {
+    console.error("ZUNE startup error:", error);
+    renderWelcome();
+  }
 }
+
+startApp();
