@@ -1,10 +1,4 @@
 
-/* =========================================
-   ZUNE MARKETPLACE 2.0
-   MARKETPLACE HOME
-   SUPABASE + VANILLA JAVASCRIPT
-========================================= */
-
 import { supabase } from "./supabase.js";
 
 const PAGE_SIZE = 12;
@@ -19,10 +13,12 @@ const homeState = {
   hasMore: true,
   activeTab: "home",
   saved: JSON.parse(localStorage.getItem("zune_saved_products") || "[]"),
+  cart: JSON.parse(localStorage.getItem("zune_cart") || "[]"),
   user: null,
   app: null,
   onLogout: null,
-  observer: null
+  observer: null,
+  requestId: 0
 };
 
 const homeText = {
@@ -30,7 +26,6 @@ const homeText = {
     search: "Tafuta bidhaa...",
     categories: "Makundi ya bidhaa",
     all: "Zote",
-    featured: "Bidhaa maalum",
     latest: "Bidhaa mpya",
     empty: "Bado hakuna bidhaa zilizowekwa.",
     emptySearch: "Hakuna bidhaa zilizopatikana.",
@@ -38,10 +33,11 @@ const homeText = {
     retry: "Jaribu tena",
     home: "Nyumbani",
     explore: "Gundua",
-    ai: "ZUNE AI",
+    cart: "Kikapu",
     saved: "Zilizohifadhiwa",
     me: "Akaunti",
     savedEmpty: "Bado hujahifadhi bidhaa.",
+    cartEmpty: "Kikapu chako bado hakina bidhaa.",
     price: "Bei",
     seller: "Muuzaji",
     account: "Akaunti yangu",
@@ -50,19 +46,25 @@ const homeText = {
     noCategories: "Makundi yataonekana hapa",
     loadError: "Imeshindikana kupakia bidhaa.",
     end: "Umefika mwisho wa bidhaa.",
-    aiTitle: "ZUNE AI",
-    aiText: "Msaidizi wako wa ununuzi atapatikana hapa hivi karibuni.",
     exploreTitle: "Gundua bidhaa",
     savedTitle: "Bidhaa ulizohifadhi",
-    homeTitle: "Karibu sokoni",
-    searchButton: "Tafuta"
+    cartTitle: "Kikapu chako",
+    homeTitle: "Gundua bidhaa bora kutoka kwa wauzaji mbalimbali.",
+    addCart: "Weka kikapuni",
+    added: "Imeongezwa kikapuni",
+    remove: "Ondoa",
+    total: "Jumla",
+    continueShopping: "Endelea kununua",
+    searchButton: "Tafuta",
+    quantity: "Idadi",
+    cartCount: "Bidhaa",
+    emptyName: "Bidhaa"
   },
 
   en: {
     search: "Search products...",
     categories: "Product categories",
     all: "All",
-    featured: "Featured products",
     latest: "Latest products",
     empty: "No products have been listed yet.",
     emptySearch: "No products found.",
@@ -70,10 +72,11 @@ const homeText = {
     retry: "Try again",
     home: "Home",
     explore: "Explore",
-    ai: "ZUNE AI",
+    cart: "Cart",
     saved: "Saved",
     me: "Account",
     savedEmpty: "You have not saved any products yet.",
+    cartEmpty: "Your cart is empty.",
     price: "Price",
     seller: "Seller",
     account: "My account",
@@ -82,12 +85,19 @@ const homeText = {
     noCategories: "Categories will appear here",
     loadError: "Unable to load products.",
     end: "You have reached the end.",
-    aiTitle: "ZUNE AI",
-    aiText: "Your shopping assistant will be available here soon.",
     exploreTitle: "Explore products",
     savedTitle: "Your saved products",
-    homeTitle: "Welcome to the marketplace",
-    searchButton: "Search"
+    cartTitle: "Your shopping cart",
+    homeTitle: "Discover great products from different sellers.",
+    addCart: "Add to cart",
+    added: "Added to cart",
+    remove: "Remove",
+    total: "Total",
+    continueShopping: "Continue shopping",
+    searchButton: "Search",
+    quantity: "Quantity",
+    cartCount: "Items",
+    emptyName: "Product"
   }
 };
 
@@ -117,7 +127,65 @@ function money(value) {
   ).format(amount) + " TSh";
 }
 
-/* HOME STYLES */
+function getCartCount() {
+  return homeState.cart.reduce(
+    (total, item) => total + Math.max(0, Number(item.quantity) || 0),
+    0
+  );
+}
+
+function saveCart() {
+  localStorage.setItem(
+    "zune_cart",
+    JSON.stringify(homeState.cart)
+  );
+
+  updateCartBadges();
+}
+
+function updateCartBadges() {
+  document.querySelectorAll("[data-cart-count]").forEach(badge => {
+    const count = getCartCount();
+
+    badge.textContent = count > 99 ? "99+" : String(count);
+    badge.hidden = count === 0;
+  });
+}
+
+/* MODERN ICONS */
+
+function zIcon(name) {
+  const icons = {
+    home: '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
+    explore: '<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5M14 8l-2 5-5 2 2-5z"/>',
+    cart: '<path d="M3 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 1.9-1.5L22 8H6"/><circle cx="10" cy="21" r="1"/><circle cx="18" cy="21" r="1"/>',
+    saved: '<path d="M20.8 8.6c0 5.1-8.8 11-8.8 11s-8.8-5.9-8.8-11a4.8 4.8 0 0 1 8.8-2.5 4.8 4.8 0 0 1 8.8 2.5z"/>',
+    account: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>',
+    bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
+    filter: '<path d="M4 7h16M7 12h10m-7 5h4"/><circle cx="8" cy="7" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="11" cy="17" r="1"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    minus: '<path d="M5 12h14"/>',
+    trash: '<path d="M3 6h18M8 6V4h8v2m3 0-1 15H6L5 6m4 4v7m6-7v7"/>',
+    arrow: '<path d="M5 12h14m-7-7 7 7-7 7"/>'
+  };
+
+  return `
+    <svg
+      viewBox="0 0 24 24"
+      width="22"
+      height="22"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.8"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >${icons[name] || icons.home}</svg>
+  `;
+}
+
+/* LUXURY EMERALD MARKETPLACE STYLES */
 
 function addHomeStyles() {
   if (document.getElementById("zuneHomeStyles")) return;
@@ -130,13 +198,14 @@ function addHomeStyles() {
       min-height: 100vh;
       background: var(--background);
       color: var(--text);
-      padding-bottom: 92px;
+      padding-bottom: 100px;
+      font-family: inherit;
     }
 
     .z-home-header {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      padding: 16px;
+      padding: 15px 16px 14px;
       position: sticky;
       top: 0;
       z-index: 20;
@@ -147,7 +216,7 @@ function addHomeStyles() {
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 15px;
     }
 
     .z-home-brand {
@@ -164,29 +233,48 @@ function addHomeStyles() {
 
     .z-home-actions {
       display: flex;
-      gap: 8px;
+      align-items: center;
+      gap: 9px;
     }
 
     .z-icon-button {
       width: 42px;
       height: 42px;
-      border-radius: 50%;
+      border-radius: 14px;
       border: 1px solid var(--border);
       background: var(--background);
       color: var(--text);
-      font-size: 19px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
+      transition: transform .2s ease, background .2s ease;
+    }
+
+    .z-icon-button:active {
+      transform: scale(.94);
     }
 
     .z-search-box {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       background: var(--background);
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 15px;
       padding: 0 13px;
-      height: 48px;
+      min-height: 49px;
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .z-search-box:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
+    }
+
+    .z-search-box svg {
+      flex-shrink: 0;
+      color: var(--text-muted);
     }
 
     .z-search-box input {
@@ -202,27 +290,63 @@ function addHomeStyles() {
     .z-home-content {
       max-width: 1100px;
       margin: auto;
-      padding: 20px 15px;
+      padding: 19px 15px 25px;
     }
 
     .z-home-welcome {
+      position: relative;
+      overflow: hidden;
       background: var(--primary);
       color: white;
-      border-radius: 18px;
-      padding: 22px 18px;
-      margin-bottom: 25px;
+      border-radius: 21px;
+      padding: 23px 19px;
+      margin-bottom: 26px;
+      box-shadow: 0 9px 25px color-mix(in srgb, var(--primary) 17%, transparent);
+    }
+
+    .z-home-welcome::after {
+      content: "";
+      position: absolute;
+      width: 170px;
+      height: 170px;
+      right: -65px;
+      top: -75px;
+      border: 1px solid rgb(255 255 255 / 17%);
+      border-radius: 50%;
+      box-shadow: 0 0 0 22px rgb(255 255 255 / 5%),
+                  0 0 0 45px rgb(255 255 255 / 4%);
+      pointer-events: none;
+    }
+
+    .z-welcome-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.1px;
+      text-transform: uppercase;
+      opacity: .9;
+      margin-bottom: 11px;
     }
 
     .z-home-welcome h2 {
+      position: relative;
+      z-index: 1;
       margin: 0 0 8px;
-      font-size: 21px;
+      font-size: 22px;
+      line-height: 1.25;
+      font-weight: 800;
     }
 
     .z-home-welcome p {
+      position: relative;
+      z-index: 1;
       margin: 0;
+      max-width: 290px;
       opacity: .9;
-      line-height: 1.5;
-      font-size: 14px;
+      line-height: 1.55;
+      font-size: 13px;
     }
 
     .z-section-heading {
@@ -234,7 +358,8 @@ function addHomeStyles() {
     }
 
     .z-section-heading h2 {
-      font-size: 17px;
+      font-size: 16px;
+      font-weight: 800;
       margin: 0;
     }
 
@@ -253,13 +378,18 @@ function addHomeStyles() {
     .z-category {
       flex: 0 0 auto;
       padding: 10px 16px;
-      border-radius: 25px;
+      border-radius: 13px;
       border: 1px solid var(--border);
       background: var(--surface);
       color: var(--text);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       cursor: pointer;
+      transition: background .2s ease, color .2s ease, transform .2s ease;
+    }
+
+    .z-category:active {
+      transform: scale(.96);
     }
 
     .z-category.active {
@@ -279,26 +409,29 @@ function addHomeStyles() {
       overflow: hidden;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 15px;
+      border-radius: 17px;
       position: relative;
+      box-shadow: 0 3px 12px rgb(0 0 0 / 3%);
+      transition: transform .2s ease, box-shadow .2s ease;
     }
 
-    .z-product-image {
-      width: 100%;
-      aspect-ratio: 1 / 1;
-      object-fit: cover;
-      display: block;
-      background: var(--background);
+    .z-product-card:active {
+      transform: scale(.985);
     }
 
+    .z-product-image,
     .z-product-placeholder {
       width: 100%;
       aspect-ratio: 1 / 1;
+      object-fit: cover;
       display: flex;
       align-items: center;
       justify-content: center;
       background: var(--background);
-      font-size: 42px;
+    }
+
+    .z-product-placeholder {
+      font-size: 40px;
     }
 
     .z-product-info {
@@ -316,29 +449,54 @@ function addHomeStyles() {
 
     .z-product-price {
       font-size: 14px;
-      font-weight: 800;
+      font-weight: 900;
       color: var(--primary);
-      margin: 0;
+      margin: 0 0 6px;
     }
 
     .z-product-category {
       font-size: 11px;
       color: var(--text-muted);
-      margin-top: 6px;
+      margin: 0 0 10px;
     }
 
     .z-save-product {
       position: absolute;
       top: 9px;
       right: 9px;
-      border: none;
+      border: 1px solid var(--border);
       background: var(--surface);
+      color: var(--text);
       border-radius: 50%;
-      width: 36px;
-      height: 36px;
+      width: 35px;
+      height: 35px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 18px;
       cursor: pointer;
       box-shadow: var(--shadow);
+    }
+
+    .z-add-cart {
+      width: 100%;
+      min-height: 37px;
+      border: none;
+      border-radius: 10px;
+      background: var(--primary);
+      color: white;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+
+    .z-add-cart:active {
+      transform: scale(.97);
     }
 
     .z-empty-state {
@@ -347,14 +505,16 @@ function addHomeStyles() {
       color: var(--text-muted);
       background: var(--surface);
       border: 1px dashed var(--border);
-      border-radius: 15px;
+      border-radius: 16px;
       line-height: 1.6;
     }
 
     .z-empty-icon {
-      display: block;
-      font-size: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       margin-bottom: 12px;
+      font-size: 38px;
     }
 
     .z-load-status {
@@ -373,27 +533,41 @@ function addHomeStyles() {
       display: flex;
       justify-content: space-around;
       align-items: center;
+      gap: 3px;
       background: var(--surface);
       border-top: 1px solid var(--border);
-      padding: 9px 4px calc(9px + env(safe-area-inset-bottom));
+      padding: 9px 7px calc(9px + env(safe-area-inset-bottom));
+      box-shadow: 0 -5px 20px rgb(0 0 0 / 4%);
     }
 
     .z-nav-item {
+      position: relative;
       border: none;
       background: transparent;
       color: var(--text-muted);
       min-width: 0;
       flex: 1;
+      min-height: 57px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
+      justify-content: center;
+      gap: 5px;
       font-size: 10px;
+      font-weight: 600;
       cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .z-nav-item span:first-child {
-      font-size: 20px;
+    .z-nav-icon {
+      position: relative;
+      width: 42px;
+      height: 34px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .2s ease, color .2s ease, transform .2s ease;
     }
 
     .z-nav-item.active {
@@ -401,27 +575,43 @@ function addHomeStyles() {
       font-weight: 800;
     }
 
-    .z-nav-ai span:first-child {
-      width: 38px;
-      height: 38px;
+    .z-nav-item.active .z-nav-icon {
+      background: var(--primary);
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    .z-cart-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      min-width: 17px;
+      height: 17px;
+      padding: 0 4px;
+      border-radius: 20px;
+      background: #E87932;
+      color: white;
+      border: 2px solid var(--surface);
+      font-size: 9px;
+      font-weight: 900;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 50%;
-      background: var(--primary);
-      color: white;
-      margin-top: -17px;
-      border: 3px solid var(--surface);
+    }
+
+    .z-cart-badge[hidden] {
+      display: none;
     }
 
     .z-page-title {
       font-size: 21px;
+      font-weight: 800;
       margin: 4px 0 17px;
     }
 
     .z-account-card {
       padding: 22px;
-      border-radius: 16px;
+      border-radius: 18px;
       border: 1px solid var(--border);
       background: var(--surface);
       text-align: center;
@@ -449,6 +639,112 @@ function addHomeStyles() {
       cursor: pointer;
     }
 
+    .z-cart-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .z-cart-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+    }
+
+    .z-cart-item img,
+    .z-cart-item-placeholder {
+      width: 76px;
+      height: 76px;
+      flex-shrink: 0;
+      object-fit: cover;
+      border-radius: 11px;
+      background: var(--background);
+    }
+
+    .z-cart-item-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+    }
+
+    .z-cart-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .z-cart-item-info h3 {
+      font-size: 13px;
+      margin: 0 0 6px;
+      overflow-wrap: anywhere;
+    }
+
+    .z-cart-item-info p {
+      color: var(--primary);
+      font-weight: 800;
+      font-size: 13px;
+      margin: 0;
+    }
+
+    .z-quantity-controls {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-top: 9px;
+    }
+
+    .z-quantity-controls button {
+      width: 27px;
+      height: 27px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--background);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .z-cart-remove {
+      border: none;
+      background: transparent;
+      color: #D65D52;
+      padding: 7px;
+      cursor: pointer;
+    }
+
+    .z-cart-summary {
+      margin-top: 18px;
+      padding: 17px;
+      border-radius: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .z-cart-total {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-weight: 900;
+      font-size: 17px;
+    }
+
+    .z-continue-shopping {
+      width: 100%;
+      border: 1px solid var(--primary);
+      background: transparent;
+      color: var(--primary);
+      border-radius: 11px;
+      padding: 12px;
+      margin-top: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
     @media (min-width: 700px) {
       .z-product-grid {
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -457,12 +753,30 @@ function addHomeStyles() {
       .z-home-content {
         padding: 25px;
       }
+
+      .z-bottom-nav {
+        left: 50%;
+        right: auto;
+        width: min(600px, 96%);
+        transform: translateX(-50%);
+        bottom: 12px;
+        border: 1px solid var(--border);
+        border-radius: 19px;
+        padding-bottom: 9px;
+      }
+
+      .z-home {
+        padding-bottom: 115px;
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .z-home * {
+      .z-home *,
+      .z-home *::before,
+      .z-home *::after {
         scroll-behavior: auto !important;
         transition: none !important;
+        animation: none !important;
       }
     }
   `;
@@ -499,18 +813,21 @@ async function loadCategories() {
 }
 
 async function loadProducts(reset = false) {
-  if (homeState.loading) return;
-
   if (reset) {
+    homeState.requestId++;
     homeState.page = 0;
     homeState.products = [];
     homeState.hasMore = true;
+    homeState.loading = false;
   }
 
-  if (!homeState.hasMore) return;
+  if (homeState.loading || !homeState.hasMore) return;
+
+  const currentRequest = homeState.requestId;
 
   homeState.loading = true;
   updateProductArea();
+  updateLoadStatus();
 
   try {
     let query = supabase
@@ -545,6 +862,7 @@ async function loadProducts(reset = false) {
 
     const { data, error } = await query;
 
+    if (currentRequest !== homeState.requestId) return;
     if (error) throw error;
 
     const newProducts = data || [];
@@ -565,572 +883,15 @@ async function loadProducts(reset = false) {
     updateProductArea();
 
   } catch (error) {
+    if (currentRequest !== homeState.requestId) return;
+
     console.error("ZUNE product loading error:", error);
     showLoadError();
 
   } finally {
-    homeState.loading = false;
-    updateLoadStatus();
-  }
-}
-
-/* PRODUCT CARD */
-
-function productCard(product) {
-  const saved = homeState.saved.includes(product.id);
-
-  const image =
-    product.image_url ||
-    (Array.isArray(product.image_urls) ? product.image_urls[0] : "");
-
-  return `
-    <article class="z-product-card">
-      ${
-        image
-          ? `<img
-              class="z-product-image"
-              src="${safe(image)}"
-              alt="${safe(product.title)}"
-              loading="lazy"
-            >`
-          : `<div class="z-product-placeholder">🛍️</div>`
-      }
-
-      <button
-        class="z-save-product"
-        data-save-product="${safe(product.id)}"
-        aria-label="Save product"
-      >
-        ${saved ? "❤️" : "♡"}
-      </button>
-
-      <div class="z-product-info">
-        <h3 class="z-product-name">
-          ${safe(product.title)}
-        </h3>
-
-        <p class="z-product-price">
-          ${money(product.price)}
-        </p>
-
-        <p class="z-product-category">
-          ${safe(product.category || "")}
-        </p>
-      </div>
-    </article>
-  `;
-}
-
-/* PRODUCT AREA */
-
-function updateProductArea() {
-  const grid = document.getElementById("zProductGrid");
-
-  if (!grid) return;
-
-  if (homeState.products.length === 0 && !homeState.loading) {
-    grid.innerHTML = `
-      <div class="z-empty-state" style="grid-column:1/-1">
-        <span class="z-empty-icon">🛍️</span>
-        ${
-          homeState.search || homeState.selectedCategory
-            ? tx("emptySearch")
-            : tx("empty")
-        }
-      </div>
-    `;
-  } else {
-    grid.innerHTML = homeState.products
-      .map(productCard)
-      .join("");
-  }
-
-  grid.querySelectorAll("[data-save-product]").forEach(button => {
-    button.onclick = () => {
-      toggleSaved(button.dataset.saveProduct);
-    };
-  });
-}
-
-function updateLoadStatus() {
-  const status = document.getElementById("zLoadStatus");
-
-  if (!status) return;
-
-  if (homeState.loading) {
-    status.textContent = tx("loading");
-  } else if (!homeState.hasMore && homeState.products.length > 0) {
-    status.textContent = tx("end");
-  } else {
-    status.textContent = "";
-  }
-}
-
-function showLoadError() {
-  const status = document.getElementById("zLoadStatus");
-
-  if (!status) return;
-
-  status.innerHTML = `
-    ${safe(tx("loadError"))}
-    <button id="zRetryProducts" class="text-button">
-      ${safe(tx("retry"))}
-    </button>
-  `;
-
-  document.getElementById("zRetryProducts").onclick = () => {
-    loadProducts();
-  };
-}
-
-/* SAVE PRODUCTS */
-
-function toggleSaved(productId) {
-  if (homeState.saved.includes(productId)) {
-    homeState.saved = homeState.saved.filter(id => id !== productId);
-  } else {
-    homeState.saved.push(productId);
-  }
-
-  localStorage.setItem(
-    "zune_saved_products",
-    JSON.stringify(homeState.saved)
-  );
-
-  if (homeState.activeTab === "saved") {
-    renderSavedPage();
-  } else {
-    updateProductArea();
-  }
-}
-
-/* CATEGORIES */
-
-function renderCategories() {
-  const container = document.getElementById("zCategoryList");
-
-  if (!container) return;
-
-  const allButton = `
-    <button
-      class="z-category ${!homeState.selectedCategory ? "active" : ""}"
-      data-category=""
-    >
-      ${safe(tx("all"))}
-    </button>
-  `;
-
-  const buttons = homeState.categories.map(category => `
-    <button
-      class="z-category ${
-        homeState.selectedCategory === category.id ? "active" : ""
-      }"
-      data-category="${safe(category.id)}"
-    >
-      ${safe(category.name)}
-    </button>
-  `).join("");
-
-  container.innerHTML = allButton + buttons;
-
-  container.querySelectorAll("[data-category]").forEach(button => {
-    button.onclick = () => {
-      homeState.selectedCategory = button.dataset.category;
-
-      renderCategories();
-      loadProducts(true);
-    };
-  });
-}
-
-/* HOME CONTENT */
-
-function renderHomePage() {
-  homeState.activeTab = "home";
-
-  const metadata = homeState.user?.user_metadata || {};
-  const name = metadata.first_name || "";
-
-  homeState.app.innerHTML = `
-    <div class="z-home">
-      <header class="z-home-header">
-        <div class="z-home-top">
-          <div class="z-home-brand">
-            ${homeLogo()}
-          </div>
-
-          <div class="z-home-actions">
-            <button class="z-icon-button" id="zSavedShortcut">♡</button>
-            <button class="z-icon-button" id="zAccountShortcut">👤</button>
-          </div>
-        </div>
-
-        <div class="z-search-box">
-          <span>⌕</span>
-          <input
-            id="zProductSearch"
-            type="search"
-            placeholder="${safe(tx("search"))}"
-          >
-        </div>
-      </header>
-
-      <main class="z-home-content">
-        <section class="z-home-welcome">
-          <h2>
-            ${safe(name ? `Habari, ${name}!` : tx("welcome"))}
-          </h2>
-          <p>${safe(tx("homeTitle"))}</p>
-        </section>
-
-        <div class="z-section-heading">
-          <h2>${safe(tx("categories"))}</h2>
-        </div>
-
-        <div class="z-category-list" id="zCategoryList">
-          <button class="z-category active">${safe(tx("all"))}</button>
-        </div>
-
-        <div class="z-section-heading">
-          <h2>${safe(tx("latest"))}</h2>
-        </div>
-
-        <div class="z-product-grid" id="zProductGrid"></div>
-
-        <div class="z-load-status" id="zLoadStatus"></div>
-
-        <div id="zScrollSentinel" style="height:2px"></div>
-      </main>
-
-      ${renderBottomNavigation()}
-    </div>
-  `;
-
-  document.getElementById("zSavedShortcut").onclick = renderSavedPage;
-  document.getElementById("zAccountShortcut").onclick = renderAccountPage;
-
-  const search = document.getElementById("zProductSearch");
-
-  let searchTimer;
-
-  search.oninput = () => {
-    clearTimeout(searchTimer);
-
-    searchTimer = setTimeout(() => {
-      homeState.search = search.value.trim();
-      loadProducts(true);
-    }, 400);
-  };
-
-  renderCategories();
-  updateProductArea();
-  observeInfiniteScroll();
-  loadProducts(true);
-}
-
-/* BOTTOM NAVIGATION */
-
-function renderBottomNavigation() {
-  const items = [
-    ["home", "⌂", tx("home")],
-    ["explore", "⌕", tx("explore")],
-    ["ai", "✦", tx("ai")],
-    ["saved", "♡", tx("saved")],
-    ["me", "♙", tx("me")]
-  ];
-
-  return `
-    <nav class="z-bottom-nav">
-      ${items.map(([id, icon, label]) => `
-        <button
-          class="z-nav-item ${id === "ai" ? "z-nav-ai" : ""} ${
-            homeState.activeTab === id ? "active" : ""
-          }"
-          data-nav="${id}"
-        >
-          <span>${icon}</span>
-          <span>${safe(label)}</span>
-        </button>
-      `).join("")}
-    </nav>
-  `;
-}
-
-/* NAVIGATION EVENTS */
-
-function bindNavigation() {
-  document.querySelectorAll("[data-nav]").forEach(button => {
-    button.onclick = () => {
-      const page = button.dataset.nav;
-
-      if (page === "home") renderHomePage();
-      if (page === "explore") renderExplorePage();
-      if (page === "ai") renderAIPage();
-      if (page === "saved") renderSavedPage();
-      if (page === "me") renderAccountPage();
-    };
-  });
-}
-
-/* INFINITE SCROLL */
-
-function observeInfiniteScroll() {
-  if (homeState.observer) {
-    homeState.observer.disconnect();
-  }
-
-  const sentinel = document.getElementById("zScrollSentinel");
-
-  if (!sentinel || !("IntersectionObserver" in window)) return;
-
-  homeState.observer = new IntersectionObserver(entries => {
-    if (entries[0].isIntersecting) {
-      loadProducts();
+    if (currentRequest === homeState.requestId) {
+      homeState.loading = false;
+      updateLoadStatus();
     }
-  }, {
-    rootMargin: "400px"
-  });
-
-  homeState.observer.observe(sentinel);
-}
-
-/* EXPLORE PAGE */
-
-function renderExplorePage() {
-  homeState.activeTab = "explore";
-
-  homeState.app.innerHTML = `
-    <div class="z-home">
-      <header class="z-home-header">
-        <div class="z-home-brand">
-          ${homeLogo()}
-        </div>
-      </header>
-
-      <main class="z-home-content">
-        <h2 class="z-page-title">${safe(tx("exploreTitle"))}</h2>
-
-        <div class="z-search-box">
-          <span>⌕</span>
-          <input
-            id="zExploreSearch"
-            type="search"
-            placeholder="${safe(tx("search"))}"
-            value="${safe(homeState.search)}"
-          >
-        </div>
-
-        <div class="z-section-heading">
-          <h2>${safe(tx("categories"))}</h2>
-        </div>
-
-        <div class="z-category-list" id="zCategoryList"></div>
-
-        <div class="z-product-grid" id="zProductGrid"></div>
-
-        <div class="z-load-status" id="zLoadStatus"></div>
-
-        <div id="zScrollSentinel" style="height:2px"></div>
-      </main>
-
-      ${renderBottomNavigation()}
-    </div>
-  `;
-
-  const search = document.getElementById("zExploreSearch");
-
-  let searchTimer;
-
-  search.oninput = () => {
-    clearTimeout(searchTimer);
-
-    searchTimer = setTimeout(() => {
-      homeState.search = search.value.trim();
-      loadProducts(true);
-    }, 400);
-  };
-
-  renderCategories();
-  updateProductArea();
-  observeInfiniteScroll();
-  loadProducts(true);
-  bindNavigation();
-}
-
-/* SAVED PRODUCTS PAGE */
-
-function renderSavedPage() {
-  homeState.activeTab = "saved";
-
-  const savedProducts = homeState.products.filter(product =>
-    homeState.saved.includes(product.id)
-  );
-
-  homeState.app.innerHTML = `
-    <div class="z-home">
-      <header class="z-home-header">
-        <div class="z-home-brand">
-          ${homeLogo()}
-        </div>
-      </header>
-
-      <main class="z-home-content">
-        <h2 class="z-page-title">${safe(tx("savedTitle"))}</h2>
-
-        <div class="z-product-grid" id="zSavedGrid">
-          ${
-            savedProducts.length
-              ? savedProducts.map(productCard).join("")
-              : `
-                <div class="z-empty-state" style="grid-column:1/-1">
-                  <span class="z-empty-icon">♡</span>
-                  ${safe(tx("savedEmpty"))}
-                </div>
-              `
-          }
-        </div>
-      </main>
-
-      ${renderBottomNavigation()}
-    </div>
-  `;
-
-  document.querySelectorAll("[data-save-product]").forEach(button => {
-    button.onclick = () => {
-      toggleSaved(button.dataset.saveProduct);
-    };
-  });
-
-  bindNavigation();
-}
-
-/* ZUNE AI PAGE */
-
-function renderAIPage() {
-  homeState.activeTab = "ai";
-
-  homeState.app.innerHTML = `
-    <div class="z-home">
-      <header class="z-home-header">
-        <div class="z-home-brand">
-          ${homeLogo()}
-        </div>
-      </header>
-
-      <main class="z-home-content">
-        <div class="z-account-card">
-          <div style="font-size:48px;margin-bottom:12px">✦</div>
-
-          <h2 class="z-page-title">${safe(tx("aiTitle"))}</h2>
-
-          <p>${safe(tx("aiText"))}</p>
-        </div>
-      </main>
-
-      ${renderBottomNavigation()}
-    </div>
-  `;
-
-  bindNavigation();
-}
-
-/* ACCOUNT PAGE */
-
-function renderAccountPage() {
-  homeState.activeTab = "me";
-
-  const email = homeState.user?.email || "";
-  const metadata = homeState.user?.user_metadata || {};
-  const name = metadata.first_name || metadata.full_name || tx("account");
-
-  homeState.app.innerHTML = `
-    <div class="z-home">
-      <header class="z-home-header">
-        <div class="z-home-brand">
-          ${homeLogo()}
-        </div>
-      </header>
-
-      <main class="z-home-content">
-        <h2 class="z-page-title">${safe(tx("account"))}</h2>
-
-        <div class="z-account-card">
-          <div style="font-size:48px">👤</div>
-
-          <h2>${safe(name)}</h2>
-
-          <p class="z-account-email">
-            ${safe(email)}
-          </p>
-
-          <button class="z-logout-button" id="zLogoutButton">
-            ${safe(tx("logout"))}
-          </button>
-        </div>
-      </main>
-
-      ${renderBottomNavigation()}
-    </div>
-  `;
-
-  document.getElementById("zLogoutButton").onclick = async () => {
-    const button = document.getElementById("zLogoutButton");
-
-    button.disabled = true;
-    button.textContent = "...";
-
-    try {
-      if (typeof homeState.onLogout === "function") {
-        await homeState.onLogout();
-      } else {
-        const { error } = await supabase.auth.signOut();
-
-        if (error) throw error;
-
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error("ZUNE logout error:", error);
-
-      button.disabled = false;
-      button.textContent = tx("logout");
-
-      alert(
-        language() === "sw"
-          ? "Imeshindikana kutoka kwenye akaunti."
-          : "Unable to log out."
-      );
-    }
-  };
-
-  bindNavigation();
-}
-
-/* MAIN MARKETPLACE ENTRY */
-
-export async function renderMarketplaceHome({
-  app,
-  user,
-  onLogout
-}) {
-  if (!app) {
-    console.error("ZUNE: Marketplace app container is missing.");
-    return;
   }
-
-  homeState.app = app;
-  homeState.user = user || null;
-  homeState.onLogout = onLogout || null;
-
-  addHomeStyles();
-
-  try {
-    await loadCategories();
-  } catch (error) {
-    console.error("ZUNE category loading error:", error);
-    homeState.categories = [];
-  }
-
-  renderHomePage();
-  bindNavigation();
 }
