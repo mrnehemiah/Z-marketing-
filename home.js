@@ -692,6 +692,12 @@ function addHomeStyles() {
     .z-seller-panel p { color:var(--text-muted,#71817a); line-height:1.5; font-size:13px; }
     .z-seller-status { padding:12px; border-radius:11px; background:var(--background,#f5f7f6); margin:12px 0; }
     .z-seller-status strong { display:block; margin-bottom:5px; }
+    .z-theme-panel { margin-top: 18px; }
+    .z-theme-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:14px; }
+    .z-theme-option { min-width:0; display:flex; align-items:center; gap:8px; padding:10px; border:1px solid var(--border); border-radius:12px; background:var(--surface); color:var(--text); text-align:left; font-size:12px; font-weight:700; cursor:pointer; }
+    .z-theme-option.active { border:2px solid var(--primary); padding:9px; }
+    .z-theme-swatch { width:23px; height:23px; flex:0 0 23px; border-radius:50%; background:var(--theme-swatch); box-shadow:inset 0 0 0 2px rgba(255,255,255,.45); }
+    .z-theme-check { margin-left:auto; color:var(--primary); font-weight:900; }
     .z-seller-form { display:grid; gap:12px; margin-top:14px; }
     .z-seller-form label { display:grid; gap:6px; font-size:12px; font-weight:700; }
     .z-seller-form input,.z-seller-form textarea { width:100%; min-height:44px; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border,#e4ebe7); border-radius:10px; background:var(--background,#f5f7f6); color:var(--text,#17231e); font:inherit; }
@@ -1941,6 +1947,42 @@ function renderSellerApplicationForm() {
   </form>`;
 }
 
+const ZUNE_THEMES = [
+  { id: "emerald", sw: "Emerald", en: "Emerald Green", color: "#087A55" },
+  { id: "luxury", sw: "Luxury Dark", en: "Luxury Dark", color: "#C69B36" },
+  { id: "ocean", sw: "Ocean Blue", en: "Ocean Blue", color: "#1676C5" },
+  { id: "royal", sw: "Royal Purple", en: "Royal Purple", color: "#7546B8" },
+  { id: "nature", sw: "Nature", en: "Nature", color: "#426B3D" },
+  { id: "blossom", sw: "Blossom Pink", en: "Blossom Pink", color: "#D94F83" },
+  { id: "sunset", sw: "Sunset", en: "Sunset", color: "#D65B3C" },
+  { id: "minimal", sw: "Minimal Light", en: "Minimal Light", color: "#424B57" }
+];
+
+function applyZuneTheme(themeId) {
+  const valid = ZUNE_THEMES.some(theme => theme.id === themeId);
+  const selected = valid ? themeId : "emerald";
+  document.documentElement.setAttribute("data-theme", selected);
+  try { localStorage.setItem("zune_theme", selected); } catch (error) {
+    console.warn("ZUNE theme preference could not be saved:", error);
+  }
+}
+
+function renderThemeSettings() {
+  const sw = language() === "sw";
+  const selected = localStorage.getItem("zune_theme") || "emerald";
+  return `<section class="z-seller-panel z-theme-panel">
+    <h2>${sw ? "Muonekano wa ZUNE" : "ZUNE Appearance"}</h2>
+    <p>${sw ? "Chagua rangi na muonekano unaoupenda. Chaguo lako litahifadhiwa kwenye kifaa hiki." : "Choose the colors and appearance you prefer. Your choice will be saved on this device."}</p>
+    <div class="z-theme-grid">
+      ${ZUNE_THEMES.map(theme => `<button type="button" class="z-theme-option ${selected === theme.id ? "active" : ""}" data-zune-theme="${theme.id}" aria-pressed="${selected === theme.id}">
+        <span class="z-theme-swatch" style="--theme-swatch:${theme.color}"></span>
+        <span>${sw ? theme.sw : theme.en}</span>
+        <span class="z-theme-check">${selected === theme.id ? "✓" : ""}</span>
+      </button>`).join("")}
+    </div>
+  </section>`;
+}
+
 function renderAccountPage() {
   const user = homeState.user;
   const sw = language() === "sw";
@@ -1967,7 +2009,7 @@ function renderAccountPage() {
     <div class="z-account-card"><div style="width:75px;height:75px;border-radius:50%;margin:0 auto 13px;display:flex;align-items:center;justify-content:center;background:var(--primary);color:white;font-size:28px;font-weight:900">${safe(name.charAt(0).toUpperCase())}</div><h2>${safe(name)}</h2><p class="z-account-email">${safe(email)}</p><p class="z-account-message">${role === "vendor" ? label("Akaunti ya Muuzaji","Seller Account") : label("Akaunti ya Mteja","Customer Account")}</p></div>
     ${homeState.accountLoading ? `<p class="z-account-message">${label("Inapakia taarifa za akaunti...","Loading account details...")}</p>` : ""}
     ${homeState.accountError ? `<p class="z-account-message" role="alert">${safe(homeState.accountError)}</p>` : ""}
-    ${sellerContent}<div style="margin-top:20px"><button type="button" class="z-continue-shopping" data-account-saved>♡ ${tx("saved")}</button><button type="button" class="z-continue-shopping" data-account-cart>${zIcon("cart")} ${tx("cart")}</button><button type="button" class="z-logout-button" id="z-logout-button">${tx("logout")}</button></div>
+    ${sellerContent}${renderThemeSettings()}<div style="margin-top:20px"><button type="button" class="z-continue-shopping" data-account-saved>♡ ${tx("saved")}</button><button type="button" class="z-continue-shopping" data-account-cart>${zIcon("cart")} ${tx("cart")}</button><button type="button" class="z-logout-button" id="z-logout-button">${tx("logout")}</button></div>
   </main></section>`;
 }
 
@@ -1998,6 +2040,18 @@ async function loadAccountDetails() {
 }
 
 function bindAccountEvents() {
+  document.querySelectorAll("[data-zune-theme]").forEach(button => {
+    button.addEventListener("click", () => {
+      applyZuneTheme(button.dataset.zuneTheme);
+      document.querySelectorAll("[data-zune-theme]").forEach(option => {
+        const active = option.dataset.zuneTheme === button.dataset.zuneTheme;
+        option.classList.toggle("active", active);
+        option.setAttribute("aria-pressed", String(active));
+        const check = option.querySelector(".z-theme-check");
+        if (check) check.textContent = active ? "✓" : "";
+      });
+    });
+  });
   document.querySelector("[data-account-saved]")?.addEventListener("click",()=>renderMarketplacePage("saved"));
   document.querySelector("[data-account-cart]")?.addEventListener("click",()=>renderMarketplacePage("cart"));
   document.getElementById("z-logout-button")?.addEventListener("click",async()=>{
@@ -2129,6 +2183,7 @@ export async function renderMarketplaceHome({
   homeState.user = user || null;
   homeState.onLogout = onLogout || null;
 
+  applyZuneTheme(localStorage.getItem("zune_theme") || "emerald");
   addHomeStyles();
 
   // Onyesha ukurasa wa Home mara moja.
