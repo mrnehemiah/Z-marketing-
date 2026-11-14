@@ -25,4 +25,11 @@ begin
     create policy "Users read own security events" on public.security_events
       for select to authenticated using ((select auth.uid()) = user_id);
   end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='stores' and policyname='Public can view active stores') then
+    create policy "Public can view active stores" on public.stores
+      for select to anon using (is_active = true);
+  end if;
 end $$;
+
+-- Public QR profiles may read only the minimal store fields needed for identity display.
+grant select (owner_id, store_name, verification_status, is_active) on public.stores to anon;
