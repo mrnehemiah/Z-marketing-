@@ -1,25 +1,54 @@
+// ============================================
+// ZUNE MARKETPLACE 2.0
+// HOME.JS — SEHEMU YA 1/4
+// ============================================
 
 import { supabase } from "./supabase.js";
 
+// --------------------------------------------
+// 1. SETTINGS AND STATE
+// --------------------------------------------
+
 const PAGE_SIZE = 12;
+
+function readStorage(key, fallback) {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : fallback;
+  } catch (error) {
+    console.warn("ZUNE storage error:", key, error);
+    return fallback;
+  }
+}
 
 const homeState = {
   products: [],
   categories: [],
+
   selectedCategory: "",
   search: "",
+
   page: 0,
   loading: false,
+  loadError: false,
   hasMore: true,
+
   activeTab: "home",
-  saved: JSON.parse(localStorage.getItem("zune_saved_products") || "[]"),
-  cart: JSON.parse(localStorage.getItem("zune_cart") || "[]"),
+
+  saved: readStorage("zune_saved_products", []),
+  cart: readStorage("zune_cart", []),
+
   user: null,
   app: null,
   onLogout: null,
+
   observer: null,
   requestId: 0
 };
+
+// --------------------------------------------
+// 2. LANGUAGE TRANSLATIONS
+// --------------------------------------------
 
 const homeText = {
   sw: {
@@ -27,38 +56,60 @@ const homeText = {
     categories: "Makundi ya bidhaa",
     all: "Zote",
     latest: "Bidhaa mpya",
+
     empty: "Bado hakuna bidhaa zilizowekwa.",
     emptySearch: "Hakuna bidhaa zilizopatikana.",
+
     loading: "Inapakia bidhaa...",
     retry: "Jaribu tena",
+    loadError: "Imeshindikana kupakia bidhaa.",
+    end: "Umefika mwisho wa bidhaa.",
+
     home: "Nyumbani",
     explore: "Gundua",
     cart: "Kikapu",
     saved: "Zilizohifadhiwa",
     me: "Akaunti",
+
     savedEmpty: "Bado hujahifadhi bidhaa.",
     cartEmpty: "Kikapu chako bado hakina bidhaa.",
+
     price: "Bei",
     seller: "Muuzaji",
     account: "Akaunti yangu",
     logout: "Toka kwenye akaunti",
+
     welcome: "Karibu ZUNE",
-    noCategories: "Makundi yataonekana hapa",
-    loadError: "Imeshindikana kupakia bidhaa.",
-    end: "Umefika mwisho wa bidhaa.",
+    homeTitle: "Gundua bidhaa bora kutoka kwa wauzaji mbalimbali.",
     exploreTitle: "Gundua bidhaa",
     savedTitle: "Bidhaa ulizohifadhi",
     cartTitle: "Kikapu chako",
-    homeTitle: "Gundua bidhaa bora kutoka kwa wauzaji mbalimbali.",
+
     addCart: "Weka kikapuni",
     added: "Imeongezwa kikapuni",
     remove: "Ondoa",
     total: "Jumla",
     continueShopping: "Endelea kununua",
-    searchButton: "Tafuta",
+
     quantity: "Idadi",
     cartCount: "Bidhaa",
-    emptyName: "Bidhaa"
+    emptyName: "Bidhaa",
+
+    orderSummary: "Muhtasari wa oda",
+    subtotal: "Jumla ndogo",
+    checkout: "Endelea kulipia",
+    checkoutNote: "Malipo yatapatikana baada ya kuunganishwa kwa mfumo wa malipo.",
+    checkoutComingSoon: "Mfumo wa malipo utaunganishwa baadaye.",
+
+    yourCollection: "Mkusanyiko wako",
+    yourProfile: "Wasifu wako",
+    noSaved: "Hakuna bidhaa zilizohifadhiwa",
+    noSavedText: "Hifadhi bidhaa unazozipenda ili uzipate kwa urahisi.",
+    exploreProducts: "Gundua bidhaa",
+
+    yourCart: "Ununuzi wako",
+    emptyCart: "Kikapu kiko tupu",
+    emptyCartText: "Ongeza bidhaa unazotaka kununua."
   },
 
   en: {
@@ -66,43 +117,71 @@ const homeText = {
     categories: "Product categories",
     all: "All",
     latest: "Latest products",
+
     empty: "No products have been listed yet.",
     emptySearch: "No products found.",
+
     loading: "Loading products...",
     retry: "Try again",
+    loadError: "Unable to load products.",
+    end: "You have reached the end.",
+
     home: "Home",
     explore: "Explore",
     cart: "Cart",
     saved: "Saved",
     me: "Account",
+
     savedEmpty: "You have not saved any products yet.",
     cartEmpty: "Your cart is empty.",
+
     price: "Price",
     seller: "Seller",
     account: "My account",
     logout: "Log out",
+
     welcome: "Welcome to ZUNE",
-    noCategories: "Categories will appear here",
-    loadError: "Unable to load products.",
-    end: "You have reached the end.",
+    homeTitle: "Discover great products from different sellers.",
     exploreTitle: "Explore products",
     savedTitle: "Your saved products",
     cartTitle: "Your shopping cart",
-    homeTitle: "Discover great products from different sellers.",
+
     addCart: "Add to cart",
     added: "Added to cart",
     remove: "Remove",
     total: "Total",
     continueShopping: "Continue shopping",
-    searchButton: "Search",
+
     quantity: "Quantity",
     cartCount: "Items",
-    emptyName: "Product"
+    emptyName: "Product",
+
+    orderSummary: "Order summary",
+    subtotal: "Subtotal",
+    checkout: "Continue to checkout",
+    checkoutNote: "Payments will be available after payment integration.",
+    checkoutComingSoon: "Payment system will be connected later.",
+
+    yourCollection: "Your collection",
+    yourProfile: "Your profile",
+    noSaved: "No saved products",
+    noSavedText: "Save products you like to find them easily.",
+    exploreProducts: "Explore products",
+
+    yourCart: "Your shopping",
+    emptyCart: "Your cart is empty",
+    emptyCartText: "Add products you want to buy."
   }
 };
 
+// --------------------------------------------
+// 3. LANGUAGE AND TEXT HELPERS
+// --------------------------------------------
+
 function language() {
-  return localStorage.getItem("zune_language") === "en" ? "en" : "sw";
+  return localStorage.getItem("zune_language") === "en"
+    ? "en"
+    : "sw";
 }
 
 function tx(key) {
@@ -127,9 +206,14 @@ function money(value) {
   ).format(amount) + " TSh";
 }
 
+// --------------------------------------------
+// 4. CART STORAGE HELPERS
+// --------------------------------------------
+
 function getCartCount() {
   return homeState.cart.reduce(
-    (total, item) => total + Math.max(0, Number(item.quantity) || 0),
+    (total, item) =>
+      total + Math.max(0, Number(item.quantity) || 0),
     0
   );
 }
@@ -152,22 +236,29 @@ function updateCartBadges() {
   });
 }
 
-/* MODERN ICONS */
+// --------------------------------------------
+// 5. ICON SYSTEM
+// --------------------------------------------
 
 function zIcon(name) {
   const icons = {
     home: '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
+
     explore: '<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5M14 8l-2 5-5 2 2-5z"/>',
+
     cart: '<path d="M3 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 1.9-1.5L22 8H6"/><circle cx="10" cy="21" r="1"/><circle cx="18" cy="21" r="1"/>',
+
     saved: '<path d="M20.8 8.6c0 5.1-8.8 11-8.8 11s-8.8-5.9-8.8-11a4.8 4.8 0 0 1 8.8-2.5 4.8 4.8 0 0 1 8.8 2.5z"/>',
+
     account: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+
     search: '<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>',
-    bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
-    filter: '<path d="M4 7h16M7 12h10m-7 5h4"/><circle cx="8" cy="7" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="11" cy="17" r="1"/>',
+
     plus: '<path d="M12 5v14M5 12h14"/>',
+
     minus: '<path d="M5 12h14"/>',
-    trash: '<path d="M3 6h18M8 6V4h8v2m3 0-1 15H6L5 6m4 4v7m6-7v7"/>',
-    arrow: '<path d="M5 12h14m-7-7 7 7-7 7"/>'
+
+    trash: '<path d="M3 6h18M8 6V4h8v2m3 0-1 15H6L5 6m4 4v7m6-7v7"/>'
   };
 
   return `
@@ -181,11 +272,15 @@ function zIcon(name) {
       stroke-linecap="round"
       stroke-linejoin="round"
       aria-hidden="true"
-    >${icons[name] || icons.home}</svg>
+    >
+      ${icons[name] || icons.home}
+    </svg>
   `;
 }
 
-/* LUXURY EMERALD MARKETPLACE STYLES */
+// --------------------------------------------
+// 6. LUXURY EMERALD STYLES
+// --------------------------------------------
 
 function addHomeStyles() {
   if (document.getElementById("zuneHomeStyles")) return;
@@ -194,21 +289,26 @@ function addHomeStyles() {
   style.id = "zuneHomeStyles";
 
   style.textContent = `
-    .z-home {
+
+    .z-home,
+    .z-marketplace {
       min-height: 100vh;
-      background: var(--background);
-      color: var(--text);
-      padding-bottom: 100px;
+      background: var(--background, #f5f7f6);
+      color: var(--text, #17231e);
       font-family: inherit;
     }
 
+    .z-home {
+      padding-bottom: 100px;
+    }
+
     .z-home-header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 15px 16px 14px;
       position: sticky;
       top: 0;
       z-index: 20;
+      background: var(--surface, #ffffff);
+      border-bottom: 1px solid var(--border, #e4ebe7);
+      padding: 15px 16px;
     }
 
     .z-home-top {
@@ -227,8 +327,13 @@ function addHomeStyles() {
       font-weight: 800;
     }
 
-    .z-home-brand .zune-logo {
+    .zune-logo {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      color: var(--primary, #087a55);
       font-size: 25px;
+      font-weight: 900;
     }
 
     .z-home-actions {
@@ -241,40 +346,24 @@ function addHomeStyles() {
       width: 42px;
       height: 42px;
       border-radius: 14px;
-      border: 1px solid var(--border);
-      background: var(--background);
-      color: var(--text);
+      border: 1px solid var(--border, #e4ebe7);
+      background: var(--background, #f5f7f6);
+      color: var(--text, #17231e);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: transform .2s ease, background .2s ease;
-    }
-
-    .z-icon-button:active {
-      transform: scale(.94);
     }
 
     .z-search-box {
       display: flex;
       align-items: center;
       gap: 10px;
-      background: var(--background);
-      border: 1px solid var(--border);
-      border-radius: 15px;
-      padding: 0 13px;
       min-height: 49px;
-      transition: border-color .2s ease, box-shadow .2s ease;
-    }
-
-    .z-search-box:focus-within {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
-    }
-
-    .z-search-box svg {
-      flex-shrink: 0;
-      color: var(--text-muted);
+      padding: 0 13px;
+      background: var(--background, #f5f7f6);
+      border: 1px solid var(--border, #e4ebe7);
+      border-radius: 15px;
     }
 
     .z-search-box input {
@@ -283,7 +372,7 @@ function addHomeStyles() {
       border: none;
       outline: none;
       background: transparent;
-      color: var(--text);
+      color: var(--text, #17231e);
       font-size: 14px;
     }
 
@@ -296,55 +385,29 @@ function addHomeStyles() {
     .z-home-welcome {
       position: relative;
       overflow: hidden;
-      background: var(--primary);
+      background: var(--primary, #087a55);
       color: white;
       border-radius: 21px;
       padding: 23px 19px;
       margin-bottom: 26px;
-      box-shadow: 0 9px 25px color-mix(in srgb, var(--primary) 17%, transparent);
-    }
-
-    .z-home-welcome::after {
-      content: "";
-      position: absolute;
-      width: 170px;
-      height: 170px;
-      right: -65px;
-      top: -75px;
-      border: 1px solid rgb(255 255 255 / 17%);
-      border-radius: 50%;
-      box-shadow: 0 0 0 22px rgb(255 255 255 / 5%),
-                  0 0 0 45px rgb(255 255 255 / 4%);
-      pointer-events: none;
     }
 
     .z-welcome-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
       font-size: 10px;
       font-weight: 800;
       letter-spacing: 1.1px;
-      text-transform: uppercase;
-      opacity: .9;
       margin-bottom: 11px;
     }
 
     .z-home-welcome h2 {
-      position: relative;
-      z-index: 1;
       margin: 0 0 8px;
       font-size: 22px;
-      line-height: 1.25;
       font-weight: 800;
     }
 
     .z-home-welcome p {
-      position: relative;
-      z-index: 1;
       margin: 0;
       max-width: 290px;
-      opacity: .9;
       line-height: 1.55;
       font-size: 13px;
     }
@@ -354,7 +417,6 @@ function addHomeStyles() {
       justify-content: space-between;
       align-items: center;
       margin: 23px 0 13px;
-      gap: 10px;
     }
 
     .z-section-heading h2 {
@@ -379,23 +441,18 @@ function addHomeStyles() {
       flex: 0 0 auto;
       padding: 10px 16px;
       border-radius: 13px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
+      border: 1px solid var(--border, #e4ebe7);
+      background: var(--surface, #ffffff);
+      color: var(--text, #17231e);
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
-      transition: background .2s ease, color .2s ease, transform .2s ease;
-    }
-
-    .z-category:active {
-      transform: scale(.96);
     }
 
     .z-category.active {
-      background: var(--primary);
+      background: var(--primary, #087a55);
       color: white;
-      border-color: var(--primary);
+      border-color: var(--primary, #087a55);
     }
 
     .z-product-grid {
@@ -407,16 +464,11 @@ function addHomeStyles() {
     .z-product-card {
       min-width: 0;
       overflow: hidden;
-      background: var(--surface);
-      border: 1px solid var(--border);
+      background: var(--surface, #ffffff);
+      border: 1px solid var(--border, #e4ebe7);
       border-radius: 17px;
       position: relative;
       box-shadow: 0 3px 12px rgb(0 0 0 / 3%);
-      transition: transform .2s ease, box-shadow .2s ease;
-    }
-
-    .z-product-card:active {
-      transform: scale(.985);
     }
 
     .z-product-image,
@@ -427,7 +479,7 @@ function addHomeStyles() {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--background);
+      background: var(--background, #f5f7f6);
     }
 
     .z-product-placeholder {
@@ -450,13 +502,13 @@ function addHomeStyles() {
     .z-product-price {
       font-size: 14px;
       font-weight: 900;
-      color: var(--primary);
+      color: var(--primary, #087a55);
       margin: 0 0 6px;
     }
 
     .z-product-category {
       font-size: 11px;
-      color: var(--text-muted);
+      color: var(--text-muted, #71817a);
       margin: 0 0 10px;
     }
 
@@ -464,9 +516,9 @@ function addHomeStyles() {
       position: absolute;
       top: 9px;
       right: 9px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
+      border: 1px solid var(--border, #e4ebe7);
+      background: var(--surface, #ffffff);
+      color: var(--text, #17231e);
       border-radius: 50%;
       width: 35px;
       height: 35px;
@@ -475,36 +527,31 @@ function addHomeStyles() {
       justify-content: center;
       font-size: 18px;
       cursor: pointer;
-      box-shadow: var(--shadow);
     }
 
-    .z-add-cart {
+    .z-add-cart,
+    .z-primary-button {
       width: 100%;
-      min-height: 37px;
+      min-height: 40px;
       border: none;
       border-radius: 10px;
-      background: var(--primary);
+      background: var(--primary, #087a55);
       color: white;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 800;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      transition: opacity .2s ease, transform .2s ease;
-    }
-
-    .z-add-cart:active {
-      transform: scale(.97);
+      gap: 7px;
     }
 
     .z-empty-state {
       padding: 35px 15px;
       text-align: center;
-      color: var(--text-muted);
-      background: var(--surface);
-      border: 1px dashed var(--border);
+      color: var(--text-muted, #71817a);
+      background: var(--surface, #ffffff);
+      border: 1px dashed var(--border, #e4ebe7);
       border-radius: 16px;
       line-height: 1.6;
     }
@@ -520,7 +567,7 @@ function addHomeStyles() {
     .z-load-status {
       text-align: center;
       padding: 20px 10px;
-      color: var(--text-muted);
+      color: var(--text-muted, #71817a);
       font-size: 13px;
     }
 
@@ -534,8 +581,8 @@ function addHomeStyles() {
       justify-content: space-around;
       align-items: center;
       gap: 3px;
-      background: var(--surface);
-      border-top: 1px solid var(--border);
+      background: var(--surface, #ffffff);
+      border-top: 1px solid var(--border, #e4ebe7);
       padding: 9px 7px calc(9px + env(safe-area-inset-bottom));
       box-shadow: 0 -5px 20px rgb(0 0 0 / 4%);
     }
@@ -544,7 +591,7 @@ function addHomeStyles() {
       position: relative;
       border: none;
       background: transparent;
-      color: var(--text-muted);
+      color: var(--text-muted, #71817a);
       min-width: 0;
       flex: 1;
       min-height: 57px;
@@ -556,7 +603,6 @@ function addHomeStyles() {
       font-size: 10px;
       font-weight: 600;
       cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
     }
 
     .z-nav-icon {
@@ -567,18 +613,16 @@ function addHomeStyles() {
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background .2s ease, color .2s ease, transform .2s ease;
     }
 
     .z-nav-item.active {
-      color: var(--primary);
+      color: var(--primary, #087a55);
       font-weight: 800;
     }
 
     .z-nav-item.active .z-nav-icon {
-      background: var(--primary);
+      background: var(--primary, #087a55);
       color: white;
-      transform: translateY(-2px);
     }
 
     .z-cart-badge {
@@ -591,7 +635,7 @@ function addHomeStyles() {
       border-radius: 20px;
       background: #E87932;
       color: white;
-      border: 2px solid var(--surface);
+      border: 2px solid var(--surface, #ffffff);
       font-size: 9px;
       font-weight: 900;
       display: flex;
@@ -609,22 +653,21 @@ function addHomeStyles() {
       margin: 4px 0 17px;
     }
 
-    .z-account-card {
-      padding: 22px;
+    .z-account-card,
+    .z-cart-summary {
+      padding: 20px;
       border-radius: 18px;
-      border: 1px solid var(--border);
-      background: var(--surface);
+      border: 1px solid var(--border, #e4ebe7);
+      background: var(--surface, #ffffff);
+    }
+
+    .z-account-card {
       text-align: center;
     }
 
-    .z-account-card .zune-logo {
-      margin-bottom: 18px;
-    }
-
     .z-account-email {
-      color: var(--text-muted);
+      color: var(--text-muted, #71817a);
       overflow-wrap: anywhere;
-      margin: 15px 0;
     }
 
     .z-logout-button {
@@ -633,7 +676,7 @@ function addHomeStyles() {
       margin-top: 15px;
       border: none;
       border-radius: 12px;
-      background: var(--primary);
+      background: var(--primary, #087a55);
       color: white;
       font-weight: 800;
       cursor: pointer;
@@ -649,8 +692,8 @@ function addHomeStyles() {
       align-items: center;
       gap: 12px;
       padding: 11px;
-      background: var(--surface);
-      border: 1px solid var(--border);
+      background: var(--surface, #ffffff);
+      border: 1px solid var(--border, #e4ebe7);
       border-radius: 15px;
     }
 
@@ -661,14 +704,7 @@ function addHomeStyles() {
       flex-shrink: 0;
       object-fit: cover;
       border-radius: 11px;
-      background: var(--background);
-    }
-
-    .z-cart-item-placeholder {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
+      background: var(--background, #f5f7f6);
     }
 
     .z-cart-item-info {
@@ -682,13 +718,6 @@ function addHomeStyles() {
       overflow-wrap: anywhere;
     }
 
-    .z-cart-item-info p {
-      color: var(--primary);
-      font-weight: 800;
-      font-size: 13px;
-      margin: 0;
-    }
-
     .z-quantity-controls {
       display: flex;
       align-items: center;
@@ -697,12 +726,12 @@ function addHomeStyles() {
     }
 
     .z-quantity-controls button {
-      width: 27px;
-      height: 27px;
-      border: 1px solid var(--border);
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--border, #e4ebe7);
       border-radius: 8px;
-      background: var(--background);
-      color: var(--text);
+      background: var(--background, #f5f7f6);
+      color: var(--text, #17231e);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -717,27 +746,20 @@ function addHomeStyles() {
       cursor: pointer;
     }
 
-    .z-cart-summary {
-      margin-top: 18px;
-      padding: 17px;
-      border-radius: 16px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-    }
-
     .z-cart-total {
       display: flex;
       justify-content: space-between;
       gap: 10px;
       font-weight: 900;
       font-size: 17px;
+      margin-bottom: 15px;
     }
 
     .z-continue-shopping {
       width: 100%;
-      border: 1px solid var(--primary);
+      border: 1px solid var(--primary, #087a55);
       background: transparent;
-      color: var(--primary);
+      color: var(--primary, #087a55);
       border-radius: 11px;
       padding: 12px;
       margin-top: 13px;
@@ -760,7 +782,7 @@ function addHomeStyles() {
         width: min(600px, 96%);
         transform: translateX(-50%);
         bottom: 12px;
-        border: 1px solid var(--border);
+        border: 1px solid var(--border, #e4ebe7);
         border-radius: 19px;
         padding-bottom: 9px;
       }
@@ -771,9 +793,9 @@ function addHomeStyles() {
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .z-home *,
-      .z-home *::before,
-      .z-home *::after {
+      .z-marketplace *,
+      .z-marketplace *::before,
+      .z-marketplace *::after {
         scroll-behavior: auto !important;
         transition: none !important;
         animation: none !important;
@@ -784,153 +806,182 @@ function addHomeStyles() {
   document.head.appendChild(style);
 }
 
-/* LOGO */
+// --------------------------------------------
+// MWISHO WA SEHEMU YA 1/4
+// SEHEMU YA 2/4 ITAENDELEA HAPA CHINI
+// --------------------------------------------
+// ============================================
+// ZUNE MARKETPLACE 2.0
+// HOME.JS — SEHEMU YA 2/4
+// ============================================
 
-function homeLogo() {
-  return `
-    <div class="zune-logo">
-      <span class="z-letter">Ⓩ</span>
-      <span class="u-letter">Ⓤ</span>
-      <span class="n-letter">Ⓝ</span>
-      <span class="e-letter">Ⓔ</span>
-    </div>
-  `;
-}
-
-/* PRODUCT DATA */
+// --------------------------------------------
+// 7. LOAD CATEGORIES FROM SUPABASE
+// --------------------------------------------
 
 async function loadCategories() {
-  const { data, error } = await supabase
-    .from("categories")
-    .select("id,name,slug,image_url")
-    .in("status", ["active", "approved"])
-    .order("display_order", { ascending: true })
-    .limit(30);
+  try {
+    const { data, error } = await supabase
+      .from("categories")
+      .select("*")
+      .in("status", ["active", "approved"])
+      .order("display_order", { ascending: true });
 
-  if (error) throw error;
+    if (error) throw error;
 
-  homeState.categories = data || [];
+    homeState.categories = data || [];
+
+  } catch (error) {
+    console.error("ZUNE categories error:", error);
+    homeState.categories = [];
+  }
 }
 
+// --------------------------------------------
+// 8. LOAD PRODUCTS WITH PAGINATION
+// --------------------------------------------
+
 async function loadProducts(reset = false) {
+  if (homeState.loading) return;
+
+  if (!reset && !homeState.hasMore) return;
+
   if (reset) {
     homeState.requestId++;
-    homeState.page = 0;
     homeState.products = [];
+    homeState.page = 0;
     homeState.hasMore = true;
-    homeState.loading = false;
+    homeState.loadError = false;
   }
 
-  if (homeState.loading || !homeState.hasMore) return;
-
-  const currentRequest = homeState.requestId;
+  const requestId = homeState.requestId;
 
   homeState.loading = true;
-  updateProductArea();
   updateLoadStatus();
 
   try {
     let query = supabase
       .from("products")
-      .select(`
-        id,
-        title,
-        description,
-        price,
-        image_url,
-        image_urls,
-        category,
-        category_id,
-        is_featured,
-        is_deal,
-        discount_percent,
-        created_at
-      `)
+      .select("*")
       .order("created_at", { ascending: false })
       .range(
         homeState.page * PAGE_SIZE,
-        homeState.page * PAGE_SIZE + PAGE_SIZE - 1
+        (homeState.page + 1) * PAGE_SIZE - 1
       );
 
     if (homeState.selectedCategory) {
-      query = query.eq("category_id", homeState.selectedCategory);
+      query = query.eq(
+        "category_id",
+        homeState.selectedCategory
+      );
     }
 
     if (homeState.search.trim()) {
-      query = query.ilike("title", `%${homeState.search.trim()}%`);
+      const searchValue = homeState.search.trim()
+        .replace(/[,%()]/g, " ");
+
+      query = query.ilike(
+        "title",
+        `%${searchValue}%`
+      );
     }
 
     const { data, error } = await query;
 
-    if (currentRequest !== homeState.requestId) return;
     if (error) throw error;
 
-    const newProducts = data || [];
+    if (requestId !== homeState.requestId) return;
 
-    const existingIds = new Set(
-      homeState.products.map(product => product.id)
-    );
+    const products = data || [];
 
-    const uniqueProducts = newProducts.filter(
-      product => !existingIds.has(product.id)
-    );
+    if (reset) {
+      homeState.products = products;
+    } else {
+      const existingIds = new Set(
+        homeState.products.map(product => String(product.id))
+      );
 
-    homeState.products.push(...uniqueProducts);
+      const newProducts = products.filter(
+        product => !existingIds.has(String(product.id))
+      );
 
-    homeState.hasMore = newProducts.length === PAGE_SIZE;
+      homeState.products.push(...newProducts);
+    }
+
     homeState.page++;
-
-    updateProductArea();
+    homeState.hasMore = products.length === PAGE_SIZE;
+    homeState.loadError = false;
 
   } catch (error) {
-    if (currentRequest !== homeState.requestId) return;
-
-    console.error("ZUNE product loading error:", error);
-    showLoadError();
+    if (requestId === homeState.requestId) {
+      console.error("ZUNE products error:", error);
+      homeState.loadError = true;
+    }
 
   } finally {
-    if (currentRequest === homeState.requestId) {
+    if (requestId === homeState.requestId) {
       homeState.loading = false;
       updateLoadStatus();
+      updateProductArea();
     }
   }
 }
 
-/* PRODUCT CARD */
+// --------------------------------------------
+// 9. PRODUCT IMAGE
+// --------------------------------------------
+
+function productImage(product) {
+  const image = product.image_url;
+
+  if (!image) {
+    return `
+      <div class="z-product-placeholder">
+        <span>📦</span>
+      </div>
+    `;
+  }
+
+  return `
+    <img
+      class="z-product-image"
+      src="${safe(image)}"
+      alt="${safe(product.title)}"
+      loading="lazy"
+      onerror="this.style.display='none'"
+    >
+  `;
+}
+
+// --------------------------------------------
+// 10. PRODUCT CARD
+// --------------------------------------------
 
 function productCard(product) {
-  const saved = homeState.saved.includes(product.id);
+  const id = String(product.id);
 
-  const image =
-    product.image_url ||
-    (Array.isArray(product.image_urls) ? product.image_urls[0] : "");
-
-  const category = product.category || "";
+  const isSaved = homeState.saved
+    .map(String)
+    .includes(id);
 
   return `
     <article class="z-product-card">
-      ${
-        image
-          ? `<img
-              class="z-product-image"
-              src="${safe(image)}"
-              alt="${safe(product.title)}"
-              loading="lazy"
-            >`
-          : `<div class="z-product-placeholder">🛍️</div>`
-      }
 
       <button
+        type="button"
         class="z-save-product"
-        data-save-product="${safe(product.id)}"
-        aria-label="Save product"
+        data-save-product="${safe(id)}"
+        aria-label="${isSaved ? "Remove saved product" : "Save product"}"
       >
-        ${saved ? "♥" : "♡"}
+        ${isSaved ? "♥" : "♡"}
       </button>
 
+      ${productImage(product)}
+
       <div class="z-product-info">
+
         <h3 class="z-product-name">
-          ${safe(product.title)}
+          ${safe(product.title || tx("emptyName"))}
         </h3>
 
         <p class="z-product-price">
@@ -938,96 +989,39 @@ function productCard(product) {
         </p>
 
         <p class="z-product-category">
-          ${safe(category)}
+          ${safe(product.category || "")}
         </p>
 
         <button
+          type="button"
           class="z-add-cart"
-          data-add-cart="${safe(product.id)}"
+          data-add-cart="${safe(id)}"
         >
-          ${zIcon("cart")}
-          ${safe(tx("addCart"))}
+          ${tx("addCart")}
         </button>
+
       </div>
     </article>
   `;
 }
 
-/* PRODUCT AREA */
-
-function updateProductArea() {
-  const grid = document.getElementById("zProductGrid");
-
-  if (!grid) return;
-
-  if (homeState.products.length === 0 && !homeState.loading) {
-    grid.innerHTML = `
-      <div class="z-empty-state" style="grid-column:1/-1">
-        <span class="z-empty-icon">🛍️</span>
-        ${
-          homeState.search || homeState.selectedCategory
-            ? safe(tx("emptySearch"))
-            : safe(tx("empty"))
-        }
-      </div>
-    `;
-  } else {
-    grid.innerHTML = homeState.products
-      .map(productCard)
-      .join("");
-  }
-
-  grid.querySelectorAll("[data-save-product]").forEach(button => {
-    button.onclick = () => {
-      toggleSaved(button.dataset.saveProduct);
-    };
-  });
-
-  grid.querySelectorAll("[data-add-cart]").forEach(button => {
-    button.onclick = () => {
-      addToCart(button.dataset.addCart);
-    };
-  });
-}
-
-function updateLoadStatus() {
-  const status = document.getElementById("zLoadStatus");
-
-  if (!status) return;
-
-  if (homeState.loading) {
-    status.textContent = tx("loading");
-  } else if (!homeState.hasMore && homeState.products.length > 0) {
-    status.textContent = tx("end");
-  } else {
-    status.textContent = "";
-  }
-}
-
-function showLoadError() {
-  const status = document.getElementById("zLoadStatus");
-
-  if (!status) return;
-
-  status.innerHTML = `
-    ${safe(tx("loadError"))}
-    <button id="zRetryProducts" class="z-continue-shopping">
-      ${safe(tx("retry"))}
-    </button>
-  `;
-
-  document.getElementById("zRetryProducts").onclick = () => {
-    loadProducts();
-  };
-}
-
-/* SAVE PRODUCTS */
+// --------------------------------------------
+// 11. SAVE PRODUCT
+// --------------------------------------------
 
 function toggleSaved(productId) {
-  if (homeState.saved.includes(productId)) {
-    homeState.saved = homeState.saved.filter(id => id !== productId);
+  const id = String(productId);
+
+  const exists = homeState.saved
+    .map(String)
+    .includes(id);
+
+  if (exists) {
+    homeState.saved = homeState.saved.filter(
+      savedId => String(savedId) !== id
+    );
   } else {
-    homeState.saved.push(productId);
+    homeState.saved.push(id);
   }
 
   localStorage.setItem(
@@ -1035,275 +1029,491 @@ function toggleSaved(productId) {
     JSON.stringify(homeState.saved)
   );
 
-  if (homeState.activeTab === "saved") {
-    renderSavedPage();
-  } else {
-    updateProductArea();
-  }
+  updateProductArea();
 }
 
-/* CART FUNCTIONS */
+// --------------------------------------------
+// 12. ADD TO CART
+// --------------------------------------------
 
 function addToCart(productId) {
+  const id = String(productId);
+
   const product = homeState.products.find(
-    item => String(item.id) === String(productId)
+    item => String(item.id) === id
   );
 
-  if (!product) return;
+  if (!product) {
+    alert(
+      language() === "sw"
+        ? "Bidhaa haijapatikana. Jaribu kupakia tena."
+        : "Product not found. Please reload and try again."
+    );
+    return;
+  }
 
   const existing = homeState.cart.find(
-    item => String(item.id) === String(productId)
+    item => String(item.productId) === id
   );
 
   if (existing) {
-    existing.quantity = (Number(existing.quantity) || 0) + 1;
+    existing.quantity = Math.max(
+      1,
+      Number(existing.quantity || 1) + 1
+    );
   } else {
     homeState.cart.push({
-      id: product.id,
+      productId: id,
       quantity: 1
     });
   }
 
   saveCart();
 
-  const button = document.querySelector(
-    `[data-add-cart="${CSS.escape(String(productId))}"]`
-  );
-
-  if (button) {
-    const original = button.innerHTML;
-    button.textContent = tx("added");
-
-    setTimeout(() => {
-      if (button.isConnected) {
-        button.innerHTML = original;
-      }
-    }, 1000);
-  }
+  alert(tx("added"));
 }
 
+// --------------------------------------------
+// 13. CHANGE CART QUANTITY
+// --------------------------------------------
+
 function changeCartQuantity(productId, change) {
+  const id = String(productId);
+
   const item = homeState.cart.find(
-    entry => String(entry.id) === String(productId)
+    cartItem => String(cartItem.productId) === id
   );
 
   if (!item) return;
 
-  item.quantity = (Number(item.quantity) || 0) + change;
+  item.quantity = Number(item.quantity || 1) + change;
 
   if (item.quantity <= 0) {
     homeState.cart = homeState.cart.filter(
-      entry => String(entry.id) !== String(productId)
+      cartItem => String(cartItem.productId) !== id
     );
   }
 
   saveCart();
-  renderCartPage();
 }
 
+// --------------------------------------------
+// 14. REMOVE CART ITEM
+// --------------------------------------------
+
 function removeCartItem(productId) {
+  const id = String(productId);
+
   homeState.cart = homeState.cart.filter(
-    item => String(item.id) !== String(productId)
+    item => String(item.productId) !== id
   );
 
   saveCart();
-  renderCartPage();
 }
 
-/* CATEGORIES */
+// --------------------------------------------
+// 15. UPDATE PRODUCT AREA
+// --------------------------------------------
 
-function renderCategories() {
-  const container = document.getElementById("zCategoryList");
+function updateProductArea() {
+  const area = document.getElementById("z-product-area");
 
-  if (!container) return;
+  if (!area) return;
 
-  const allButton = `
-    <button
-      class="z-category ${!homeState.selectedCategory ? "active" : ""}"
-      data-category=""
-    >
-      ${safe(tx("all"))}
-    </button>
-  `;
+  if (homeState.products.length) {
+    area.innerHTML = `
+      <div class="z-product-grid">
+        ${homeState.products.map(productCard).join("")}
+      </div>
+    `;
+  } else if (!homeState.loading && !homeState.loadError) {
+    area.innerHTML = `
+      <div class="z-empty-state">
+        <div class="z-empty-icon">📦</div>
+        <strong>${tx("empty")}</strong>
+      </div>
+    `;
+  }
 
-  const buttons = homeState.categories.map(category => `
-    <button
-      class="z-category ${
-        homeState.selectedCategory === category.id ? "active" : ""
-      }"
-      data-category="${safe(category.id)}"
-    >
-      ${safe(category.name)}
-    </button>
-  `).join("");
+  area.querySelectorAll("[data-save-product]").forEach(button => {
+    button.addEventListener("click", () => {
+      toggleSaved(button.dataset.saveProduct);
+    });
+  });
 
-  container.innerHTML = allButton + buttons;
-
-  container.querySelectorAll("[data-category]").forEach(button => {
-    button.onclick = () => {
-      homeState.selectedCategory = button.dataset.category;
-
-      renderCategories();
-      loadProducts(true);
-    };
+  area.querySelectorAll("[data-add-cart]").forEach(button => {
+    button.addEventListener("click", () => {
+      addToCart(button.dataset.addCart);
+    });
   });
 }
 
-/* HOME CONTENT */
+// --------------------------------------------
+// 16. LOADING STATUS AND RETRY
+// --------------------------------------------
+
+function updateLoadStatus() {
+  const status = document.getElementById("z-load-status");
+
+  if (!status) return;
+
+  if (homeState.loading) {
+    status.innerHTML = `
+      <span>${tx("loading")}</span>
+    `;
+    return;
+  }
+
+  if (homeState.loadError) {
+    status.innerHTML = `
+      <span>${tx("loadError")}</span>
+      <br>
+      <button
+        type="button"
+        class="z-primary-button"
+        id="z-retry-products"
+        style="max-width:160px;margin:12px auto"
+      >
+        ${tx("retry")}
+      </button>
+    `;
+
+    document
+      .getElementById("z-retry-products")
+      ?.addEventListener("click", () => {
+        loadProducts(homeState.products.length === 0);
+      });
+
+    return;
+  }
+
+  if (!homeState.hasMore && homeState.products.length) {
+    status.textContent = tx("end");
+  } else {
+    status.textContent = "";
+  }
+}
+
+// --------------------------------------------
+// MWISHO WA SEHEMU YA 2/4
+// SEHEMU YA 3/4 ITAENDELEA HAPA CHINI
+// --------------------------------------------
+// ============================================
+// ZUNE MARKETPLACE 2.0
+// HOME.JS — SEHEMU YA 3/4
+// ============================================
+
+// --------------------------------------------
+// 17. RENDER CATEGORIES
+// --------------------------------------------
+
+function renderCategories() {
+  const categories = homeState.categories || [];
+
+  return `
+    <div class="z-category-list">
+
+      <button
+        type="button"
+        class="z-category ${!homeState.selectedCategory ? "active" : ""}"
+        data-category=""
+      >
+        ${tx("all")}
+      </button>
+
+      ${categories.map(category => `
+        <button
+          type="button"
+          class="z-category ${
+            String(homeState.selectedCategory) === String(category.id)
+              ? "active"
+              : ""
+          }"
+          data-category="${safe(category.id)}"
+        >
+          ${safe(category.name)}
+        </button>
+      `).join("")}
+
+    </div>
+  `;
+}
+
+// --------------------------------------------
+// 18. HOME PAGE
+// --------------------------------------------
 
 function renderHomePage() {
-  homeState.activeTab = "home";
-
-  const metadata = homeState.user?.user_metadata || {};
-  const name = metadata.first_name || "";
-
-  homeState.app.innerHTML = `
+  return `
     <div class="z-home">
+
       <header class="z-home-header">
+
         <div class="z-home-top">
+
           <div class="z-home-brand">
-            ${homeLogo()}
+            <div class="zune-logo">ⓏⓊⓃⒺ</div>
           </div>
 
           <div class="z-home-actions">
-            <button class="z-icon-button" id="zSavedShortcut"
-              aria-label="${safe(tx("saved"))}">
+
+            <button
+              type="button"
+              class="z-icon-button"
+              data-open-saved
+              aria-label="${tx("saved")}"
+            >
               ${zIcon("saved")}
             </button>
 
-            <button class="z-icon-button" id="zAccountShortcut"
-              aria-label="${safe(tx("me"))}">
-              ${zIcon("account")}
+            <button
+              type="button"
+              class="z-icon-button"
+              data-open-cart
+              aria-label="${tx("cart")}"
+            >
+              ${zIcon("cart")}
+              <span class="z-cart-badge" data-cart-count hidden>0</span>
             </button>
+
           </div>
+
         </div>
 
-        <div class="z-search-box">
+        <label class="z-search-box">
           ${zIcon("search")}
+
           <input
-            id="zProductSearch"
+            id="z-home-search"
             type="search"
-            placeholder="${safe(tx("search"))}"
+            placeholder="${tx("search")}"
+            value="${safe(homeState.search)}"
+            autocomplete="off"
           >
-        </div>
+        </label>
+
       </header>
 
       <main class="z-home-content">
+
         <section class="z-home-welcome">
-          <div class="z-welcome-tag">✦ ZUNE MARKETPLACE</div>
 
-          <h2>
-            ${safe(name ? `Habari, ${name}!` : tx("welcome"))}
-          </h2>
+          <div class="z-welcome-tag">ⓏⓊⓃⒺ MARKETPLACE</div>
 
-          <p>${safe(tx("homeTitle"))}</p>
+          <h2>${tx("welcome")}</h2>
+
+          <p>${tx("homeTitle")}</p>
+
         </section>
 
-        <div class="z-section-heading">
-          <h2>${safe(tx("categories"))}</h2>
-        </div>
+        <section>
 
-        <div class="z-category-list" id="zCategoryList">
-          <button class="z-category active">
-            ${safe(tx("all"))}
-          </button>
-        </div>
+          <div class="z-section-heading">
+            <h2>${tx("categories")}</h2>
+          </div>
 
-        <div class="z-section-heading">
-          <h2>${safe(tx("latest"))}</h2>
-        </div>
+          <div id="z-category-area">
+            ${renderCategories()}
+          </div>
 
-        <div class="z-product-grid" id="zProductGrid"></div>
+        </section>
 
-        <div class="z-load-status" id="zLoadStatus"></div>
+        <section>
 
-        <div id="zScrollSentinel" style="height:2px"></div>
+          <div class="z-section-heading">
+            <h2>${tx("latest")}</h2>
+          </div>
+
+          <div id="z-product-area">
+
+            ${
+              homeState.products.length
+                ? `
+                  <div class="z-product-grid">
+                    ${homeState.products.map(productCard).join("")}
+                  </div>
+                `
+                : ""
+            }
+
+          </div>
+
+          <div
+            class="z-load-status"
+            id="z-load-status"
+          ></div>
+
+          <div id="z-scroll-trigger"></div>
+
+        </section>
+
       </main>
 
-      ${renderBottomNavigation()}
     </div>
   `;
-
-  document.getElementById("zSavedShortcut").onclick = renderSavedPage;
-  document.getElementById("zAccountShortcut").onclick = renderAccountPage;
-
-  const search = document.getElementById("zProductSearch");
-
-  let searchTimer;
-
-  search.oninput = () => {
-    clearTimeout(searchTimer);
-
-    searchTimer = setTimeout(() => {
-      homeState.search = search.value.trim();
-      loadProducts(true);
-    }, 400);
-  };
-
-  renderCategories();
-  updateProductArea();
-  observeInfiniteScroll();
-  loadProducts(true);
-  bindNavigation();
 }
 
-/* BOTTOM NAVIGATION */
+// --------------------------------------------
+// 19. CATEGORY EVENTS
+// --------------------------------------------
+
+function bindCategoryEvents() {
+  const area = document.getElementById("z-category-area");
+
+  if (!area) return;
+
+  area.querySelectorAll("[data-category]").forEach(button => {
+    button.addEventListener("click", async () => {
+      homeState.selectedCategory = button.dataset.category || "";
+
+      homeState.page = 0;
+      homeState.products = [];
+      homeState.hasMore = true;
+
+      const categories = document.getElementById("z-category-area");
+
+      if (categories) {
+        categories.innerHTML = renderCategories();
+        bindCategoryEvents();
+      }
+
+      await loadProducts(true);
+    });
+  });
+}
+
+// --------------------------------------------
+// 20. SEARCH EVENTS
+// --------------------------------------------
+
+function bindSearchEvents() {
+  const input = document.getElementById("z-home-search");
+
+  if (!input) return;
+
+  let searchTimeout;
+
+  input.addEventListener("input", () => {
+    clearTimeout(searchTimeout);
+
+    searchTimeout = setTimeout(async () => {
+      homeState.search = input.value.trim();
+
+      homeState.products = [];
+      homeState.page = 0;
+      homeState.hasMore = true;
+
+      await loadProducts(true);
+
+    }, 450);
+  });
+}
+
+// --------------------------------------------
+// 21. HOME EVENTS
+// --------------------------------------------
+
+function bindHomeEvents() {
+  bindCategoryEvents();
+  bindSearchEvents();
+
+  document.querySelector("[data-open-saved]")
+    ?.addEventListener("click", () => {
+      renderMarketplacePage("saved");
+    });
+
+  document.querySelector("[data-open-cart]")
+    ?.addEventListener("click", () => {
+      renderMarketplacePage("cart");
+    });
+
+  updateProductArea();
+  updateLoadStatus();
+}
+
+// --------------------------------------------
+// 22. BOTTOM NAVIGATION
+// --------------------------------------------
 
 function renderBottomNavigation() {
   const items = [
-    ["home", "home", tx("home")],
-    ["explore", "explore", tx("explore")],
-    ["cart", "cart", tx("cart")],
-    ["saved", "saved", tx("saved")],
-    ["me", "account", tx("me")]
+    {
+      id: "home",
+      label: tx("home"),
+      icon: "home"
+    },
+    {
+      id: "explore",
+      label: tx("explore"),
+      icon: "explore"
+    },
+    {
+      id: "cart",
+      label: tx("cart"),
+      icon: "cart"
+    },
+    {
+      id: "saved",
+      label: tx("saved"),
+      icon: "saved"
+    },
+    {
+      id: "me",
+      label: tx("me"),
+      icon: "account"
+    }
   ];
 
   return `
-    <nav class="z-bottom-nav" aria-label="Marketplace navigation">
-      ${items.map(([id, icon, label]) => `
+    <nav class="z-bottom-nav" aria-label="Main navigation">
+
+      ${items.map(item => `
         <button
+          type="button"
           class="z-nav-item ${
-            homeState.activeTab === id ? "active" : ""
+            homeState.activeTab === item.id ? "active" : ""
           }"
-          data-nav="${id}"
-          aria-current="${homeState.activeTab === id ? "page" : "false"}"
+          data-nav="${item.id}"
         >
+
           <span class="z-nav-icon">
-            ${zIcon(icon)}
+
+            ${zIcon(item.icon)}
 
             ${
-              id === "cart"
-                ? `<span class="z-cart-badge" data-cart-count ${
-                    getCartCount() === 0 ? "hidden" : ""
-                  }>${getCartCount() > 99 ? "99+" : getCartCount()}</span>`
+              item.id === "cart"
+                ? `<span class="z-cart-badge" data-cart-count hidden>0</span>`
                 : ""
             }
+
           </span>
 
-          <span>${safe(label)}</span>
+          <span>${item.label}</span>
+
         </button>
       `).join("")}
+
     </nav>
   `;
 }
 
-/* NAVIGATION EVENTS */
+// --------------------------------------------
+// 23. NAVIGATION EVENTS
+// --------------------------------------------
 
 function bindNavigation() {
   document.querySelectorAll("[data-nav]").forEach(button => {
-    button.onclick = () => {
+    button.addEventListener("click", () => {
       const page = button.dataset.nav;
 
-      if (page === "home") renderHomePage();
-      if (page === "explore") renderExplorePage();
-      if (page === "cart") renderCartPage();
-      if (page === "saved") renderSavedPage();
-      if (page === "me") renderAccountPage();
-    };
+      renderMarketplacePage(page);
+    });
   });
 }
 
-/* INFINITE SCROLL */
+// --------------------------------------------
+// 24. INFINITE SCROLL
+// --------------------------------------------
 
 function observeInfiniteScroll() {
   if (homeState.observer) {
@@ -1311,429 +1521,396 @@ function observeInfiniteScroll() {
     homeState.observer = null;
   }
 
-  const sentinel = document.getElementById("zScrollSentinel");
+  const trigger = document.getElementById("z-scroll-trigger");
 
-  if (!sentinel || !("IntersectionObserver" in window)) return;
+  if (!trigger || !("IntersectionObserver" in window)) {
+    return;
+  }
 
   homeState.observer = new IntersectionObserver(entries => {
-    if (entries[0].isIntersecting) {
-      loadProducts();
+    const entry = entries[0];
+
+    if (
+      entry.isIntersecting &&
+      !homeState.loading &&
+      homeState.hasMore &&
+      !homeState.loadError
+    ) {
+      loadProducts(false);
     }
+
   }, {
-    rootMargin: "400px"
+    root: null,
+    rootMargin: "350px",
+    threshold: 0
   });
 
-  homeState.observer.observe(sentinel);
+  homeState.observer.observe(trigger);
 }
 
-/* EXPLORE PAGE */
+// --------------------------------------------
+// 25. EXPLORE PAGE
+// --------------------------------------------
 
 function renderExplorePage() {
-  homeState.activeTab = "explore";
+  return `
+    <section class="z-home">
 
-  homeState.app.innerHTML = `
-    <div class="z-home">
       <header class="z-home-header">
+
         <div class="z-home-top">
-          <div class="z-home-brand">${homeLogo()}</div>
+          <div class="zune-logo">ⓏⓊⓃⒺ</div>
         </div>
 
-        <div class="z-search-box">
+        <label class="z-search-box">
+
           ${zIcon("search")}
+
           <input
-            id="zExploreSearch"
+            id="z-explore-search"
             type="search"
-            placeholder="${safe(tx("search"))}"
+            placeholder="${tx("search")}"
             value="${safe(homeState.search)}"
           >
-        </div>
+
+        </label>
+
       </header>
 
       <main class="z-home-content">
-        <h2 class="z-page-title">${safe(tx("exploreTitle"))}</h2>
 
-        <div class="z-section-heading">
-          <h2>${safe(tx("categories"))}</h2>
+        <h1 class="z-page-title">
+          ${tx("exploreTitle")}
+        </h1>
+
+        <div id="z-product-area">
+
+          ${
+            homeState.products.length
+              ? `
+                <div class="z-product-grid">
+                  ${homeState.products.map(productCard).join("")}
+                </div>
+              `
+              : ""
+          }
+
         </div>
 
-        <div class="z-category-list" id="zCategoryList"></div>
+        <div
+          class="z-load-status"
+          id="z-load-status"
+        ></div>
 
-        <div class="z-product-grid" id="zProductGrid"></div>
+        <div id="z-scroll-trigger"></div>
 
-        <div class="z-load-status" id="zLoadStatus"></div>
-
-        <div id="zScrollSentinel" style="height:2px"></div>
       </main>
 
-      ${renderBottomNavigation()}
-    </div>
-  `;
-
-  const search = document.getElementById("zExploreSearch");
-
-  let searchTimer;
-
-  search.oninput = () => {
-    clearTimeout(searchTimer);
-
-    searchTimer = setTimeout(() => {
-      homeState.search = search.value.trim();
-      loadProducts(true);
-    }, 400);
-  };
-
-  renderCategories();
-  updateProductArea();
-  observeInfiniteScroll();
-  loadProducts(true);
-  bindNavigation();
-}
-
-/* CART PAGE */
-
-function renderCartPage() {
-  homeState.activeTab = "cart";
-
-  const cartProducts = homeState.cart.map(item => {
-    const product = homeState.products.find(
-      entry => String(entry.id) === String(item.id)
-    );
-
-    return product ? {
-      ...product,
-      quantity: Number(item.quantity) || 1
-    } : null;
-  }).filter(Boolean);
-
-  const total = cartProducts.reduce(
-    (sum, product) => sum + Number(product.price || 0) * product.quantity,
-    0
-  );
-
-  homeState.app.innerHTML = `
-    <div class="z-home">
-      <header class="z-home-header">
-        <div class="z-home-brand">${homeLogo()}</div>
-      </header>
-
-      <main class="z-home-content">
-        <h2 class="z-page-title">${safe(tx("cartTitle"))}</h2>
-
-        ${
-          cartProducts.length
-            ? `
-              <div class="z-cart-list">
-                ${cartProducts.map(product => {
-                  const image = product.image_url ||
-                    (Array.isArray(product.image_urls)
-                      ? product.image_urls[0]
-                      : "");
-
-                  return `
-                    <article class="z-cart-item">
-                      ${
-                        image
-                          ? `<img src="${safe(image)}" alt="${safe(product.title)}" loading="lazy">`
-                          : `<div class="z-cart-item-placeholder">🛍️</div>`
-                      }
-
-                      <div class="z-cart-item-info">
-                        <h3>${safe(product.title)}</h3>
-
-                        <p>${money(product.price)}</p>
-
-                        <div class="z-quantity-controls">
-                          <button data-quantity-minus="${safe(product.id)}"
-                            aria-label="Decrease quantity">
-                            ${zIcon("minus")}
-                          </button>
-
-                          <strong>${product.quantity}</strong>
-
-                          <button data-quantity-plus="${safe(product.id)}"
-                            aria-label="Increase quantity">
-                            ${zIcon("plus")}
-                          </button>
-                        </div>
-                      </div>
-
-                      <button
-                        class="z-cart-remove"
-                        data-remove-cart="${safe(product.id)}"
-                        aria-label="${safe(tx("remove"))}"
-                      >
-                        ${zIcon("trash")}
-                      </button>
-                    </article>
-                  `;
-                }).join("")}
-              </div>
-
-              <div class="z-cart-summary">
-                <div class="z-cart-total">
-                  <span>${safe(tx("total"))}</span>
-                  <span>${money(total)}</span>
-                </div>
-
-                <button class="z-continue-shopping" id="zContinueShopping">
-                  ${safe(tx("continueShopping"))}
-                  →
-                </button>
-              </div>
-            `
-            : `
-              <div class="z-empty-state">
-                <span class="z-empty-icon">${zIcon("cart")}</span>
-                ${safe(tx("cartEmpty"))}
-                <button class="z-continue-shopping" id="zContinueShopping">
-                  ${safe(tx("continueShopping"))}
-                </button>
-              </div>
-            `
-        }
-      </main>
-
-      ${renderBottomNavigation()}
-    </div>
-  `;
-
-  document.querySelectorAll("[data-quantity-minus]").forEach(button => {
-    button.onclick = () => {
-      changeCartQuantity(button.dataset.quantityMinus, -1);
-    };
-  });
-
-  document.querySelectorAll("[data-quantity-plus]").forEach(button => {
-    button.onclick = () => {
-      changeCartQuantity(button.dataset.quantityPlus, 1);
-    };
-  });
-
-  document.querySelectorAll("[data-remove-cart]").forEach(button => {
-    button.onclick = () => {
-      removeCartItem(button.dataset.removeCart);
-    };
-  });
-
-  document.getElementById("zContinueShopping").onclick = renderExplorePage;
-
-  bindNavigation();
-}
-// ==========================================
-// ZUNE MARKETPLACE 2.0
-// HOME.JS — SEHEMU YA 3/3
-// ==========================================
-
-function renderCartPage() {
-  const cartItems = homeState.cart || [];
-
-  const items = cartItems
-    .map((item) => {
-      const product = homeState.products.find(
-        (p) => String(p.id) === String(item.productId)
-      );
-
-      return product ? { ...item, product } : null;
-    })
-    .filter(Boolean);
-
-  const total = items.reduce(
-    (sum, item) => sum + Number(item.product.price || 0) * item.quantity,
-    0
-  );
-
-  return `
-    <section class="z-page">
-      <div class="z-page-heading">
-        <div>
-          <span class="z-eyebrow">${tx("yourCart")}</span>
-          <h1>${tx("cart")}</h1>
-        </div>
-        <span class="z-cart-count">${getCartCount()}</span>
-      </div>
-
-      ${
-        items.length
-          ? `
-            <div class="z-cart-layout">
-              <div class="z-cart-items">
-                ${items
-                  .map(
-                    ({ product, quantity }) => `
-                      <article class="z-cart-item">
-                        <img
-                          src="${safe(product.image_url || "")}"
-                          alt="${safe(product.title)}"
-                          onerror="this.style.display='none'"
-                        >
-
-                        <div class="z-cart-item-info">
-                          <h3>${safe(product.title)}</h3>
-                          <strong>${money(product.price)}</strong>
-
-                          <div class="z-quantity-control">
-                            <button
-                              type="button"
-                              data-cart-minus="${safe(product.id)}"
-                              aria-label="Decrease quantity"
-                            >−</button>
-
-                            <span>${quantity}</span>
-
-                            <button
-                              type="button"
-                              data-cart-plus="${safe(product.id)}"
-                              aria-label="Increase quantity"
-                            >+</button>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          class="z-remove-cart"
-                          data-cart-remove="${safe(product.id)}"
-                          aria-label="Remove item"
-                        >×</button>
-                      </article>
-                    `
-                  )
-                  .join("")}
-              </div>
-
-              <aside class="z-cart-summary">
-                <h2>${tx("orderSummary")}</h2>
-
-                <div class="z-summary-row">
-                  <span>${tx("subtotal")}</span>
-                  <strong>${money(total)}</strong>
-                </div>
-
-                <div class="z-summary-row z-summary-total">
-                  <span>${tx("total")}</span>
-                  <strong>${money(total)}</strong>
-                </div>
-
-                <button
-                  type="button"
-                  class="z-primary-button z-checkout-button"
-                  id="z-checkout-button"
-                >
-                  ${tx("checkout")}
-                </button>
-
-                <p class="z-checkout-note">
-                  ${tx("checkoutNote")}
-                </p>
-              </aside>
-            </div>
-          `
-          : `
-            <div class="z-empty-state">
-              <div class="z-empty-icon">🛒</div>
-              <h2>${tx("emptyCart")}</h2>
-              <p>${tx("emptyCartText")}</p>
-              <button
-                type="button"
-                class="z-primary-button"
-                data-go-home
-              >
-                ${tx("continueShopping")}
-              </button>
-            </div>
-          `
-      }
     </section>
   `;
 }
 
-function bindCartPage() {
-  document.querySelectorAll("[data-cart-minus]").forEach((button) => {
+// --------------------------------------------
+// 26. EXPLORE EVENTS
+// --------------------------------------------
+
+function bindExploreEvents() {
+  const input = document.getElementById("z-explore-search");
+
+  if (input) {
+    let searchTimeout;
+
+    input.addEventListener("input", () => {
+      clearTimeout(searchTimeout);
+
+      searchTimeout = setTimeout(async () => {
+        homeState.search = input.value.trim();
+
+        homeState.selectedCategory = "";
+        homeState.products = [];
+        homeState.page = 0;
+        homeState.hasMore = true;
+
+        await loadProducts(true);
+
+      }, 450);
+    });
+  }
+
+  updateProductArea();
+  updateLoadStatus();
+}
+
+// --------------------------------------------
+// MWISHO WA SEHEMU YA 3/4
+// SEHEMU YA 4/4 ITAENDELEA HAPA CHINI
+// --------------------------------------------
+// ============================================
+// ZUNE MARKETPLACE 2.0
+// HOME.JS — SEHEMU YA 4/4
+// ============================================
+
+// --------------------------------------------
+// 27. CART PAGE
+// --------------------------------------------
+
+function renderCartPage() {
+  const items = homeState.cart.map(item => {
+    const product = homeState.products.find(
+      p => String(p.id) === String(item.productId)
+    );
+
+    return product ? {
+      ...item,
+      product
+    } : null;
+
+  }).filter(Boolean);
+
+  const total = items.reduce((sum, item) => {
+    return sum +
+      Number(item.product.price || 0) *
+      Number(item.quantity || 1);
+  }, 0);
+
+  return `
+    <section class="z-home">
+
+      <main class="z-home-content">
+
+        <h1 class="z-page-title">
+          ${tx("cartTitle")}
+        </h1>
+
+        ${
+          items.length
+            ? `
+              <div class="z-cart-list">
+
+                ${items.map(item => `
+                  <article class="z-cart-item">
+
+                    ${productImage(item.product)}
+
+                    <div class="z-cart-item-info">
+
+                      <h3>
+                        ${safe(item.product.title)}
+                      </h3>
+
+                      <strong class="z-product-price">
+                        ${money(item.product.price)}
+                      </strong>
+
+                      <div class="z-quantity-controls">
+
+                        <button
+                          type="button"
+                          data-cart-minus="${safe(item.productId)}"
+                        >
+                          −
+                        </button>
+
+                        <span>${item.quantity}</span>
+
+                        <button
+                          type="button"
+                          data-cart-plus="${safe(item.productId)}"
+                        >
+                          +
+                        </button>
+
+                      </div>
+
+                    </div>
+
+                    <button
+                      type="button"
+                      class="z-cart-remove"
+                      data-cart-remove="${safe(item.productId)}"
+                    >
+                      ${tx("remove")}
+                    </button>
+
+                  </article>
+                `).join("")}
+
+              </div>
+
+              <div class="z-cart-summary" style="margin-top:20px">
+
+                <div class="z-cart-total">
+
+                  <span>${tx("total")}</span>
+
+                  <strong>${money(total)}</strong>
+
+                </div>
+
+                <button
+                  type="button"
+                  class="z-primary-button"
+                  id="z-checkout"
+                >
+                  ${tx("checkout")}
+                </button>
+
+                <p>${tx("checkoutNote")}</p>
+
+                <button
+                  type="button"
+                  class="z-continue-shopping"
+                  data-go-home
+                >
+                  ${tx("continueShopping")}
+                </button>
+
+              </div>
+            `
+            : `
+              <div class="z-empty-state">
+
+                <div class="z-empty-icon">🛒</div>
+
+                <h2>${tx("emptyCart")}</h2>
+
+                <p>${tx("emptyCartText")}</p>
+
+                <button
+                  type="button"
+                  class="z-primary-button"
+                  data-go-home
+                >
+                  ${tx("continueShopping")}
+                </button>
+
+              </div>
+            `
+        }
+
+      </main>
+
+    </section>
+  `;
+}
+
+// --------------------------------------------
+// 28. CART EVENTS
+// --------------------------------------------
+
+function bindCartEvents() {
+  document.querySelectorAll("[data-cart-minus]").forEach(button => {
     button.addEventListener("click", () => {
       changeCartQuantity(button.dataset.cartMinus, -1);
       renderMarketplacePage("cart");
     });
   });
 
-  document.querySelectorAll("[data-cart-plus]").forEach((button) => {
+  document.querySelectorAll("[data-cart-plus]").forEach(button => {
     button.addEventListener("click", () => {
       changeCartQuantity(button.dataset.cartPlus, 1);
       renderMarketplacePage("cart");
     });
   });
 
-  document.querySelectorAll("[data-cart-remove]").forEach((button) => {
+  document.querySelectorAll("[data-cart-remove]").forEach(button => {
     button.addEventListener("click", () => {
       removeCartItem(button.dataset.cartRemove);
       renderMarketplacePage("cart");
     });
   });
 
-  document.querySelector("[data-go-home]")?.addEventListener("click", () => {
-    renderMarketplacePage("home");
+  document.querySelectorAll("[data-go-home]").forEach(button => {
+    button.addEventListener("click", () => {
+      renderMarketplacePage("home");
+    });
   });
 
-  document
-    .getElementById("z-checkout-button")
+  document.getElementById("z-checkout")
     ?.addEventListener("click", () => {
       alert(tx("checkoutComingSoon"));
     });
 }
 
-function renderSavedPage() {
-  const savedIds = homeState.saved || [];
+// --------------------------------------------
+// 29. SAVED PAGE
+// --------------------------------------------
 
-  const products = homeState.products.filter((product) =>
+function renderSavedPage() {
+  const savedIds = homeState.saved.map(String);
+
+  const products = homeState.products.filter(product =>
     savedIds.includes(String(product.id))
   );
 
   return `
-    <section class="z-page">
-      <div class="z-page-heading">
-        <div>
-          <span class="z-eyebrow">${tx("yourCollection")}</span>
-          <h1>${tx("saved")}</h1>
-        </div>
-        <span class="z-cart-count">${products.length}</span>
-      </div>
+    <section class="z-home">
 
-      ${
-        products.length
-          ? `
-            <div class="z-product-grid">
-              ${products.map(productCard).join("")}
-            </div>
-          `
-          : `
-            <div class="z-empty-state">
-              <div class="z-empty-icon">♡</div>
-              <h2>${tx("noSaved")}</h2>
-              <p>${tx("noSavedText")}</p>
-              <button
-                type="button"
-                class="z-primary-button"
-                data-go-home
-              >
-                ${tx("exploreProducts")}
-              </button>
-            </div>
-          `
-      }
+      <main class="z-home-content">
+
+        <h1 class="z-page-title">
+          ${tx("savedTitle")}
+        </h1>
+
+        ${
+          products.length
+            ? `
+              <div id="z-product-area">
+                <div class="z-product-grid">
+                  ${products.map(productCard).join("")}
+                </div>
+              </div>
+            `
+            : `
+              <div class="z-empty-state">
+
+                <div class="z-empty-icon">♡</div>
+
+                <h2>${tx("noSaved")}</h2>
+
+                <p>${tx("noSavedText")}</p>
+
+                <button
+                  type="button"
+                  class="z-primary-button"
+                  data-go-home
+                >
+                  ${tx("exploreProducts")}
+                </button>
+
+              </div>
+            `
+        }
+
+      </main>
+
     </section>
   `;
 }
 
-function bindSavedPage() {
-  updateProductArea();
+// --------------------------------------------
+// 30. SAVED EVENTS
+// --------------------------------------------
 
-  document.querySelector("[data-go-home]")?.addEventListener("click", () => {
-    renderMarketplacePage("home");
+function bindSavedEvents() {
+  document.querySelectorAll("[data-go-home]").forEach(button => {
+    button.addEventListener("click", () => {
+      renderMarketplacePage("home");
+    });
   });
+
+  updateProductArea();
 }
+
+// --------------------------------------------
+// 31. ACCOUNT PAGE
+// --------------------------------------------
 
 function renderAccountPage() {
   const user = homeState.user;
 
   const email = user?.email || "";
+
   const displayName =
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
@@ -1741,132 +1918,193 @@ function renderAccountPage() {
     "ZUNE Customer";
 
   return `
-    <section class="z-page">
-      <div class="z-page-heading">
-        <div>
-          <span class="z-eyebrow">${tx("yourProfile")}</span>
-          <h1>${tx("account")}</h1>
-        </div>
-      </div>
+    <section class="z-home">
 
-      <div class="z-account-card">
-        <div class="z-account-avatar">
-          ${safe(displayName.charAt(0).toUpperCase())}
-        </div>
+      <main class="z-home-content">
 
-        <div class="z-account-info">
+        <h1 class="z-page-title">
+          ${tx("account")}
+        </h1>
+
+        <div class="z-account-card">
+
+          <div
+            style="
+              width:75px;
+              height:75px;
+              border-radius:50%;
+              margin:0 auto 13px;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              background:var(--primary,#087a55);
+              color:white;
+              font-size:28px;
+              font-weight:900;
+            "
+          >
+            ${safe(displayName.charAt(0).toUpperCase())}
+          </div>
+
           <h2>${safe(displayName)}</h2>
-          <p>${safe(email)}</p>
+
+          <p class="z-account-email">
+            ${safe(email)}
+          </p>
+
         </div>
-      </div>
 
-      <div class="z-account-menu">
-        <button type="button" class="z-account-menu-item" data-account-saved>
-          <span>♡</span>
-          <span>${tx("saved")}</span>
-          <span>›</span>
-        </button>
+        <div style="margin-top:20px">
 
-        <button type="button" class="z-account-menu-item" data-account-cart>
-          <span>🛒</span>
-          <span>${tx("cart")}</span>
-          <span>›</span>
-        </button>
-      </div>
+          <button
+            type="button"
+            class="z-continue-shopping"
+            data-account-saved
+          >
+            ♡ ${tx("saved")}
+          </button>
 
-      <button
-        type="button"
-        class="z-logout-button"
-        id="z-logout-button"
-      >
-        ${tx("logout")}
-      </button>
+          <button
+            type="button"
+            class="z-continue-shopping"
+            data-account-cart
+          >
+            ${zIcon("cart")} ${tx("cart")}
+          </button>
+
+          <button
+            type="button"
+            class="z-logout-button"
+            id="z-logout-button"
+          >
+            ${tx("logout")}
+          </button>
+
+        </div>
+
+      </main>
+
     </section>
   `;
 }
 
-function bindAccountPage() {
-  document
-    .querySelector("[data-account-saved]")
+// --------------------------------------------
+// 32. ACCOUNT EVENTS
+// --------------------------------------------
+
+function bindAccountEvents() {
+  document.querySelector("[data-account-saved]")
     ?.addEventListener("click", () => {
       renderMarketplacePage("saved");
     });
 
-  document
-    .querySelector("[data-account-cart]")
+  document.querySelector("[data-account-cart]")
     ?.addEventListener("click", () => {
       renderMarketplacePage("cart");
     });
 
-  document
-    .getElementById("z-logout-button")
+  document.getElementById("z-logout-button")
     ?.addEventListener("click", async () => {
+
       if (typeof homeState.onLogout === "function") {
         await homeState.onLogout();
-      } else {
-        const { error } = await supabase.auth.signOut();
+        return;
+      }
 
-        if (error) {
-          alert(error.message);
-        }
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        alert(error.message);
       }
     });
 }
 
+// --------------------------------------------
+// 33. MAIN PAGE RENDERER
+// --------------------------------------------
+
 function renderMarketplacePage(page) {
   homeState.activeTab = page;
+
+  if (homeState.observer) {
+    homeState.observer.disconnect();
+    homeState.observer = null;
+  }
 
   const app = homeState.app;
 
   if (!app) return;
 
-  let content = "";
+  let content;
 
-  if (page === "home") {
-    content = renderHomePage();
-  } else if (page === "explore") {
-    content = renderExplorePage();
-  } else if (page === "cart") {
-    content = renderCartPage();
-  } else if (page === "saved") {
-    content = renderSavedPage();
-  } else if (page === "me") {
-    content = renderAccountPage();
-  } else {
-    content = renderHomePage();
+  switch (page) {
+    case "home":
+      content = renderHomePage();
+      break;
+
+    case "explore":
+      content = renderExplorePage();
+      break;
+
+    case "cart":
+      content = renderCartPage();
+      break;
+
+    case "saved":
+      content = renderSavedPage();
+      break;
+
+    case "me":
+      content = renderAccountPage();
+      break;
+
+    default:
+      homeState.activeTab = "home";
+      content = renderHomePage();
   }
 
   app.innerHTML = `
     <div class="z-marketplace">
+
       ${content}
+
       ${renderBottomNavigation()}
+
     </div>
   `;
 
   bindNavigation();
 
-  if (page === "home") {
-    observeInfiniteScroll();
-  }
+  switch (homeState.activeTab) {
+    case "home":
+      bindHomeEvents();
+      observeInfiniteScroll();
+      break;
 
-  if (page === "explore" || page === "saved") {
-    updateProductArea();
-  }
+    case "explore":
+      bindExploreEvents();
+      observeInfiniteScroll();
+      break;
 
-  if (page === "cart") {
-    bindCartPage();
-  }
+    case "cart":
+      bindCartEvents();
+      break;
 
-  if (page === "saved") {
-    bindSavedPage();
-  }
+    case "saved":
+      bindSavedEvents();
+      break;
 
-  if (page === "me") {
-    bindAccountPage();
+    case "me":
+      bindAccountEvents();
+      break;
   }
 
   updateCartBadges();
 }
+
+// --------------------------------------------
+// 34. INITIALIZE MARKETPLACE
+// --------------------------------------------
 
 export async function renderMarketplaceHome({
   app,
@@ -1874,7 +2112,7 @@ export async function renderMarketplaceHome({
   onLogout
 }) {
   if (!app) {
-    console.error("ZUNE: Marketplace app container haijapatikana.");
+    console.error("ZUNE: App container haijapatikana.");
     return;
   }
 
@@ -1884,14 +2122,22 @@ export async function renderMarketplaceHome({
 
   addHomeStyles();
 
-  try {
-    await Promise.all([
-      loadCategories(),
-      loadProducts(true)
-    ]);
-  } catch (error) {
-    console.error("ZUNE Marketplace initialization error:", error);
-  }
-
+  // Onyesha ukurasa wa Home mara moja.
   renderMarketplacePage("home");
+
+  // Pakia categories na bidhaa.
+  await Promise.all([
+    loadCategories(),
+    loadProducts(true)
+  ]);
+
+  // Sasisha ukurasa baada ya data kupatikana.
+  if (homeState.activeTab === "home") {
+    renderMarketplacePage("home");
+  }
 }
+
+// ============================================
+// MWISHO WA HOME.JS
+// ZUNE MARKETPLACE 2.0
+// ============================================
