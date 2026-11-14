@@ -27,7 +27,6 @@ const TEXT = {
     loadError: "Imeshindikana kupakia baadhi ya bidhaa. Tafadhali jaribu tena.",
     unavailable: "Bidhaa hii haipatikani kwa sasa.",
     retry: "Jaribu tena",
-    retry: "Jaribu tena",
     unit: "Bei ya bidhaa",
     lineTotal: "Jumla"
   },
@@ -134,7 +133,7 @@ export function renderCartPage({ cart = [], products = [], language = "sw", load
           <span class="z-cart-heading-icon" aria-hidden="true">🛒</span>
         </header>
         ${loading ? `<p class="z-cart-status" role="status">${t("loading")}</p>` : ""}
-        ${error ? `<p class="z-cart-status error" role="alert">${t("loadError")}</p>` : ""}
+        ${error ? `<div class="z-cart-status error" role="alert"><span>${t("loadError")}</span> <button type="button" data-cart-retry>${t("retry")}</button></div>` : ""}
         <div class="z-cart-layout">
           <section class="z-cart-items" aria-label="${t("title")}">
             ${rows.map(row => {
