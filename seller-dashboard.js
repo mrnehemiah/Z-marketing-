@@ -17,7 +17,7 @@ const sections = [
   ["assistant","✧","ZUNE AI","ZUNE AI"]
 ];
 
-const state = { section:"overview", language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], orders:[], store:null, badgeRequest:null, profile:null, loading:false, busy:false, error:"" };
+const state = { section:"overview", language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, loading:false, busy:false, error:"" };
 const tr = (sw,en) => state.language==="sw"?sw:en;
 const esc = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = value => new Intl.NumberFormat("sw-TZ",{style:"currency",currency:"TZS",maximumFractionDigits:0}).format(Number(value)||0);
@@ -84,13 +84,28 @@ function renderProducts(){
  <div class="zsd-alert">${tr("Uwekaji wa bidhaa mpya utafunguliwa baada ya ukaguzi wa usalama wa maudhui (picha, jina na maelezo) kuunganishwa. Kwa sasa hatuweki bidhaa hewani bila moderation gate.","New product publishing will be enabled after the content safety moderation gate (images, title and description) is connected. We will not publish unmoderated listings.")}</div></section>
  <section class="zsd-card"><h2>${tr("Picha nyingi za bidhaa","Multiple product photos")}</h2><p class="zsd-muted">${tr("Mfumo unaunga mkono picha zaidi ya 10, kuchagua Gallery/Storage ya simu, preview, kupanga mpangilio na kuchagua picha kuu. Picha zitapunguzwa ukubwa kabla ya kupakiwa kwenye Supabase Storage.","The uploader will support more than 10 photos, phone Gallery/Storage selection, preview, reordering and a main image. Images will be compressed before upload to Supabase Storage.")}</p><input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled aria-label="Product images"><p class="zsd-muted">${tr("Kipengele cha kupakia kitasogezwa baada ya moderation backend kuwekwa ili bidhaa zisichapishwe kabla ya ukaguzi.","Image upload will be activated after the moderation backend is ready, preventing listings from going live before review.")}</p></section>`;
 }
+function renderOrders(){
+ return `<section class="zsd-card"><h2>${tr("Oda za wateja","Customer orders")}</h2><p class="zsd-muted">${tr("Oda zinazoonyesha bidhaa zilizouzwa na duka lako.","Orders containing items sold by your store.")}</p>
+ ${state.orders.length?`<div style="overflow:auto"><table class="zsd-table"><thead><tr><th>${tr("Oda","Order")}</th><th>${tr("Tarehe","Date")}</th><th>${tr("Hali","Status")}</th><th>${tr("Jumla ya oda","Order total")}</th></tr></thead><tbody>${state.orders.map(o=>`<tr><td>${esc(String(o.id).slice(0,8))}</td><td>${o.created_at?new Date(o.created_at).toLocaleDateString():"—"}</td><td>${esc(o.status||"—")}</td><td>${money(o.total_price)}</td></tr>`).join("")}</tbody></table></div>`:`<div class="zsd-empty">${tr("Bado hakuna oda za duka lako.","There are no orders for your store yet.")}</div>`}
+ </section>`;
+}
+function renderFinance(){
+ const balance=Number(state.wallet?.balance)||0;
+ return `<section class="zsd-stats"><div class="zsd-stat"><small>${tr("Salio la wallet","Wallet balance")}</small><strong style="font-size:17px">${money(balance)}</strong></div><div class="zsd-stat"><small>${tr("Miamala","Ledger entries")}</small><strong>${state.ledger.length}</strong></div></section>
+ <section class="zsd-card"><h2>${tr("Historia ya miamala","Transaction history")}</h2>${state.ledger.length?`<div style="overflow:auto"><table class="zsd-table"><thead><tr><th>${tr("Tarehe","Date")}</th><th>${tr("Maelezo","Description")}</th><th>${tr("Kiasi","Amount")}</th></tr></thead><tbody>${state.ledger.map(x=>`<tr><td>${new Date(x.created_at).toLocaleDateString()}</td><td>${esc(x.reason||x.entry_type||"—")}</td><td>${money(x.amount)}</td></tr>`).join("")}</tbody></table></div>`:`<div class="zsd-empty">${tr("Bado hakuna miamala ya wallet.","No wallet transactions yet.")}</div>`}</section>
+ <p class="zsd-muted">${tr("Ada za ZUNE, fedha zinazosubiri na utoaji wa fedha vitaonyeshwa baada ya sera za malipo na withdrawal kuunganishwa.","ZUNE fees, pending payouts and withdrawals will appear once payment and withdrawal workflows are connected.")}</p>`;
+}
+function renderStore(){
+ const s=state.store;
+ return `<section class="zsd-card"><h2>${tr("Taarifa za duka","Store information")}</h2>${s?`<p><strong>${esc(s.store_name)}</strong></p><p class="zsd-muted">${tr("Hali ya uthibitisho wa duka","Store verification")}: ${esc(s.verification_status||"pending")}</p>`:`<div class="zsd-empty">${tr("Taarifa za duka hazijapatikana bado.","Store details are not available yet.")}</div>`}<div class="zsd-alert">${tr("Uhariri wa jina, nembo, cover, saa za kazi na sera utafunguliwa baada ya sehemu hizo za duka kuongezwa kwenye database.","Editing store name, logo, cover, business hours and policies will be enabled after those store fields are added to the database.")}</div></section>`;
+}
 function renderPlaceholder(){
  const names=sections.find(s=>s[0]===state.section);
  return `<section class="zsd-card"><h2>${tr(names[2],names[3])}</h2><p class="zsd-muted">${tr("Sehemu hii imeongezwa kwenye muundo wa dashboard. Itaunganishwa na jedwali na ruhusa sahihi za Supabase kabla ya kuanza kutumia data halisi.","This section is included in the dashboard structure. It will be connected to the correct Supabase tables and permissions before handling live data.")}</p><div class="zsd-empty">${tr("Inaandaliwa — hakuna data ya majaribio iliyowekwa.","In preparation — no sample data has been inserted.")}</div></section>`;
 }
 function renderPanel(){
  const panel=document.getElementById("zsd-panel"); if(!panel)return;
- panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"?renderProducts():renderPlaceholder();
+ panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"?renderProducts():state.section==="orders"?renderOrders():state.section==="finance"?renderFinance():state.section==="store"?renderStore():renderPlaceholder();
  panel.querySelectorAll("[data-zsd-section]").forEach(b=>b.addEventListener("click",()=>{state.section=b.dataset.zsdSection;renderPanel();bindActiveNav();}));
  panel.querySelector("#zsd-verification-form")?.addEventListener("submit",submitVerification);
 }
@@ -114,14 +129,14 @@ async function submitVerification(event){
 }
 async function loadData(user){
  state.loading=true;
- const [profile,products,items,store,badge]=await Promise.all([
+ const [profile,products,items,store,badge,wallet,ledger]=await Promise.all([
   supabase.from("profiles").select("id,full_name,is_verified,role").eq("id",user.id).maybeSingle(),
   supabase.from("products").select("id,title,price,stock_quantity,created_at").eq("vendor_id",user.id).order("created_at",{ascending:false}).limit(50),
-  supabase.from("order_items").select("order_id,product_id,price,quantity,created_at").eq("seller_id",user.id).limit(100),
+  supabase.from("order_items").select("order_id,product_id,product_name,price,quantity,created_at").eq("seller_id",user.id).limit(100),
   supabase.from("stores").select("id,store_name,verification_status").eq("owner_id",user.id).maybeSingle(),
   supabase.from("verified_badge_requests").select("id,status,rejection_reason,created_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(1).maybeSingle()
  ]);
- state.profile=profile.data||null;state.products=products.data||[];state.store=store.data||null;state.badgeRequest=badge.data||null;
+ state.profile=profile.data||null;state.products=products.data||[];state.orderItems=items.data||[];state.store=store.data||null;state.badgeRequest=badge.data||null;state.wallet=wallet.data||null;state.ledger=ledger.data||[];
  const orderIds=[...new Set((items.data||[]).map(x=>x.order_id).filter(Boolean))];
  if(orderIds.length){const {data}=await supabase.from("orders").select("id,status,total_price,created_at").in("id",orderIds);state.orders=data||[];}else state.orders=[];
  state.loading=false;
