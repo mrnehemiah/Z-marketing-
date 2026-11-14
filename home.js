@@ -41,6 +41,11 @@ const homeState = {
   user: null,
   app: null,
   onLogout: null,
+  accountProfile: null,
+  sellerApplication: null,
+  accountLoading: false,
+  accountLoadedFor: null,
+  accountError: "",
 
   observer: null,
   requestId: 0
@@ -681,6 +686,17 @@ function addHomeStyles() {
       font-weight: 800;
       cursor: pointer;
     }
+
+    .z-seller-panel { margin-top:18px; padding:18px; border:1px solid var(--border,#e4ebe7); border-radius:17px; background:var(--surface,#fff); }
+    .z-seller-panel h2 { margin:0 0 8px; font-size:17px; }
+    .z-seller-panel p { color:var(--text-muted,#71817a); line-height:1.5; font-size:13px; }
+    .z-seller-status { padding:12px; border-radius:11px; background:var(--background,#f5f7f6); margin:12px 0; }
+    .z-seller-status strong { display:block; margin-bottom:5px; }
+    .z-seller-form { display:grid; gap:12px; margin-top:14px; }
+    .z-seller-form label { display:grid; gap:6px; font-size:12px; font-weight:700; }
+    .z-seller-form input,.z-seller-form textarea { width:100%; min-height:44px; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border,#e4ebe7); border-radius:10px; background:var(--background,#f5f7f6); color:var(--text,#17231e); font:inherit; }
+    .z-seller-form button:disabled { opacity:.6; cursor:wait; }
+    .z-account-message { margin:10px 0; color:var(--text-muted,#71817a); font-size:13px; }
 
     .z-cart-list {
       display: grid;
@@ -1906,120 +1922,111 @@ function bindSavedEvents() {
 // 31. ACCOUNT PAGE
 // --------------------------------------------
 
+function renderSellerApplicationForm() {
+  const sw = language() === "sw";
+  const label = (a,b) => sw ? a : b;
+  return `<form class="z-seller-form" id="z-seller-application-form">
+    <label>${label("Jina la duka *","Store name *")}<input name="store_name" required maxlength="120"></label>
+    <label>${label("Jina kamili la mmiliki *","Owner's full name *")}<input name="owner_name" required maxlength="120"></label>
+    <label>${label("Namba ya simu *","Phone number *")}<input name="phone" type="tel" required maxlength="30"></label>
+    <label>${label("Nchi *","Country *")}<input name="country" required maxlength="80" value="Tanzania"></label>
+    <label>${label("Jiji *","City *")}<input name="city" required maxlength="100"></label>
+    <label>${label("Aina ya biashara","Business category")}<input name="category" maxlength="100"></label>
+    <label>${label("Mkoa","Region")}<input name="region" maxlength="100"></label>
+    <label>${label("Wilaya","District")}<input name="district" maxlength="100"></label>
+    <label>${label("Anwani ya biashara","Business address")}<textarea name="address" rows="2" maxlength="500"></textarea></label>
+    <label>${label("Namba ya TIN (hiari)","TIN number (optional)")}<input name="tin_number" maxlength="80"></label>
+    <button type="submit" class="z-primary-button" id="z-seller-submit">${label("Tuma maombi","Submit application")}</button>
+    <p class="z-account-message" id="z-seller-form-message" aria-live="polite"></p>
+  </form>`;
+}
+
 function renderAccountPage() {
   const user = homeState.user;
-
+  const sw = language() === "sw";
+  const label = (a,b) => sw ? a : b;
   const email = user?.email || "";
-
-  const displayName =
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    email.split("@")[0] ||
-    "ZUNE Customer";
-
-  return `
-    <section class="z-home">
-
-      <main class="z-home-content">
-
-        <h1 class="z-page-title">
-          ${tx("account")}
-        </h1>
-
-        <div class="z-account-card">
-
-          <div
-            style="
-              width:75px;
-              height:75px;
-              border-radius:50%;
-              margin:0 auto 13px;
-              display:flex;
-              align-items:center;
-              justify-content:center;
-              background:var(--primary,#087a55);
-              color:white;
-              font-size:28px;
-              font-weight:900;
-            "
-          >
-            ${safe(displayName.charAt(0).toUpperCase())}
-          </div>
-
-          <h2>${safe(displayName)}</h2>
-
-          <p class="z-account-email">
-            ${safe(email)}
-          </p>
-
-        </div>
-
-        <div style="margin-top:20px">
-
-          <button
-            type="button"
-            class="z-continue-shopping"
-            data-account-saved
-          >
-            ♡ ${tx("saved")}
-          </button>
-
-          <button
-            type="button"
-            class="z-continue-shopping"
-            data-account-cart
-          >
-            ${zIcon("cart")} ${tx("cart")}
-          </button>
-
-          <button
-            type="button"
-            class="z-logout-button"
-            id="z-logout-button"
-          >
-            ${tx("logout")}
-          </button>
-
-        </div>
-
-      </main>
-
-    </section>
-  `;
+  const name = homeState.accountProfile?.full_name || user?.user_metadata?.full_name || user?.user_metadata?.name || email.split("@")[0] || "ZUNE Customer";
+  const role = homeState.accountProfile?.role || "buyer";
+  const application = homeState.sellerApplication;
+  let sellerContent = "";
+  if (role === "vendor") {
+    sellerContent = `<section class="z-seller-panel"><h2>${label("Akaunti ya Muuzaji","Seller Account")}</h2><p>${label("Maombi yako yameidhinishwa. Akaunti yako sasa ni ya muuzaji.","Your application is approved. Your account is now a seller account.")}</p><div class="z-seller-status"><strong>${label("Umeidhinishwa","Approved")}</strong>${label("Seller Dashboard itaunganishwa kwenye hatua inayofuata.","Seller Dashboard will be connected in the next step.")}</div></section>`;
+  } else if (application) {
+    const status = String(application.status || "pending").toLowerCase();
+    let title = label("Maombi yametumwa","Application submitted");
+    let detail = label("Maombi yako yanasubiri kupitia Admin Mkuu.","Your application is awaiting Admin Mkuu review.");
+    if (status === "approved") { title = label("Maombi yameidhinishwa","Application approved"); detail = label("Akaunti yako inasubiri kusasishwa kuwa muuzaji.","Your account is awaiting seller-role update."); }
+    if (status === "rejected") { title = label("Maombi yamekataliwa","Application rejected"); detail = application.admin_note || label("Wasiliana na msaada kwa maelezo zaidi.","Contact support for more information."); }
+    if (["more_info_required","needs_information","more_information"].includes(status)) { title = label("Tunahitaji maelezo zaidi","More information required"); detail = application.admin_note || label("Tafadhali wasiliana na msaada.","Please contact support."); }
+    sellerContent = `<section class="z-seller-panel"><h2>${label("Maombi ya kuwa muuzaji","Seller application")}</h2><div class="z-seller-status"><strong>${title}</strong><span>${safe(detail)}</span><p>${label("Hali","Status")}: ${safe(status)}</p></div>${status === "rejected" ? renderSellerApplicationForm() : ""}</section>`;
+  } else {
+    sellerContent = `<section class="z-seller-panel"><h2>${label("Kuwa muuzaji ZUNE","Become a ZUNE seller")}</h2><p>${label("Jaza taarifa za biashara yako. Admin Mkuu atapitia maombi yako.","Submit your business details. Admin Mkuu will review your application.")}</p>${renderSellerApplicationForm()}</section>`;
+  }
+  return `<section class="z-home"><main class="z-home-content"><h1 class="z-page-title">${tx("account")}</h1>
+    <div class="z-account-card"><div style="width:75px;height:75px;border-radius:50%;margin:0 auto 13px;display:flex;align-items:center;justify-content:center;background:var(--primary);color:white;font-size:28px;font-weight:900">${safe(name.charAt(0).toUpperCase())}</div><h2>${safe(name)}</h2><p class="z-account-email">${safe(email)}</p><p class="z-account-message">${role === "vendor" ? label("Akaunti ya Muuzaji","Seller Account") : label("Akaunti ya Mteja","Customer Account")}</p></div>
+    ${homeState.accountLoading ? `<p class="z-account-message">${label("Inapakia taarifa za akaunti...","Loading account details...")}</p>` : ""}
+    ${homeState.accountError ? `<p class="z-account-message" role="alert">${safe(homeState.accountError)}</p>` : ""}
+    ${sellerContent}<div style="margin-top:20px"><button type="button" class="z-continue-shopping" data-account-saved>♡ ${tx("saved")}</button><button type="button" class="z-continue-shopping" data-account-cart>${zIcon("cart")} ${tx("cart")}</button><button type="button" class="z-logout-button" id="z-logout-button">${tx("logout")}</button></div>
+  </main></section>`;
 }
 
-// --------------------------------------------
-// 32. ACCOUNT EVENTS
-// --------------------------------------------
+async function loadAccountDetails() {
+  const user = homeState.user;
+  if (!user?.id || homeState.accountLoadedFor === user.id || homeState.accountLoading) return;
+  homeState.accountLoading = true;
+  homeState.accountError = "";
+  try {
+    const [profile, application] = await Promise.all([
+      supabase.from("profiles").select("id,full_name,role,is_verified").eq("id",user.id).maybeSingle(),
+      supabase.from("seller_applications").select("id,store_name,status,admin_note,created_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(1).maybeSingle()
+    ]);
+    if (profile.error) throw profile.error;
+    if (application.error) throw application.error;
+    homeState.accountProfile = profile.data || null;
+    homeState.sellerApplication = application.data || null;
+    homeState.accountLoadedFor = user.id;
+  } catch (error) {
+    console.error("ZUNE account load error:",error);
+    homeState.accountError = language() === "sw" ? "Imeshindikana kupakia taarifa za akaunti." : "Unable to load account details.";
+  } finally {
+    homeState.accountLoading = false;
+    if (homeState.activeTab === "me") renderMarketplacePage("me");
+  }
+}
 
 function bindAccountEvents() {
-  document.querySelector("[data-account-saved]")
-    ?.addEventListener("click", () => {
-      renderMarketplacePage("saved");
-    });
-
-  document.querySelector("[data-account-cart]")
-    ?.addEventListener("click", () => {
-      renderMarketplacePage("cart");
-    });
-
-  document.getElementById("z-logout-button")
-    ?.addEventListener("click", async () => {
-
-      if (typeof homeState.onLogout === "function") {
-        await homeState.onLogout();
-        return;
-      }
-
-      const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        alert(error.message);
-      }
-    });
+  document.querySelector("[data-account-saved]")?.addEventListener("click",()=>renderMarketplacePage("saved"));
+  document.querySelector("[data-account-cart]")?.addEventListener("click",()=>renderMarketplacePage("cart"));
+  document.getElementById("z-logout-button")?.addEventListener("click",async()=>{
+    if (typeof homeState.onLogout === "function") { await homeState.onLogout(); return; }
+    const {error} = await supabase.auth.signOut(); if (error) alert(error.message);
+  });
+  document.getElementById("z-seller-application-form")?.addEventListener("submit",async event=>{
+    event.preventDefault();
+    const user = homeState.user;
+    const form = event.currentTarget;
+    const message = document.getElementById("z-seller-form-message");
+    const submit = document.getElementById("z-seller-submit");
+    if (!user?.id) { if(message) message.textContent = language()==="sw" ? "Ingia kwanza ili kutuma maombi." : "Please sign in before applying."; return; }
+    const data = new FormData(form);
+    const store = String(data.get("store_name")||"").trim();
+    const payload = {user_id:user.id,store_name:store,business_name:store,owner_name:String(data.get("owner_name")||"").trim(),phone:String(data.get("phone")||"").trim(),country:String(data.get("country")||"").trim(),city:String(data.get("city")||"").trim(),email:user.email||null,category:String(data.get("category")||"").trim()||null,region:String(data.get("region")||"").trim()||null,district:String(data.get("district")||"").trim()||null,address:String(data.get("address")||"").trim()||null,tin_number:String(data.get("tin_number")||"").trim()||null,status:"pending"};
+    if(submit) submit.disabled = true;
+    if(message) message.textContent = language()==="sw" ? "Inatuma maombi..." : "Submitting application...";
+    try {
+      const {data:inserted,error} = await supabase.from("seller_applications").insert(payload).select("id,store_name,status,admin_note,created_at").single();
+      if(error) throw error;
+      homeState.sellerApplication = inserted; homeState.accountLoadedFor = user.id; renderMarketplacePage("me");
+    } catch(error) {
+      console.error("ZUNE seller application error:",error);
+      if(message) message.textContent = error.message || (language()==="sw" ? "Imeshindikana kutuma maombi. Jaribu tena." : "Could not submit application. Please try again.");
+      if(submit) submit.disabled = false;
+    }
+  });
+  if(homeState.accountLoadedFor !== homeState.user?.id && !homeState.accountLoading) loadAccountDetails();
 }
 
-// --------------------------------------------
 // 33. MAIN PAGE RENDERER
 // --------------------------------------------
 
