@@ -702,7 +702,7 @@ function addHomeStyles() {
     .z-account-section-heading { margin-bottom:13px; } .z-account-section-heading h2 { margin:0; }
     .z-account-seller { border-color:color-mix(in srgb,var(--primary) 28%,var(--border)); }
     .z-account-shortcuts { display:grid; gap:9px; }
-    .z-account-shortcut,.z-account-menu-row { width:100%; min-height:63px; display:flex; align-items:center; gap:11px; padding:10px; border:1px solid var(--border); border-radius:13px; background:var(--background); color:var(--text); text-align:left; } .z-account-shortcut { cursor:pointer; }
+    .z-account-shortcut,.z-account-menu-row { width:100%; min-height:63px; display:flex; align-items:center; gap:11px; padding:10px; border:1px solid var(--border); border-radius:13px; background:var(--background); color:var(--text); text-align:left; } .z-account-shortcut,.z-account-menu-row { cursor:pointer; }
     .z-account-shortcut > span:nth-child(2),.z-account-menu-row > span:nth-child(2) { min-width:0; flex:1; }
     .z-account-shortcut strong,.z-account-shortcut small,.z-account-menu-row strong,.z-account-menu-row small { display:block; } .z-account-shortcut strong,.z-account-menu-row strong { font-size:12px; } .z-account-shortcut small,.z-account-menu-row small { margin-top:4px; color:var(--text-muted); font-size:10px; }
     .z-account-shortcut > b,.z-account-menu-row > b { color:var(--text-muted); font-size:21px; font-weight:400; }
