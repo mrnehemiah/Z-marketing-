@@ -49,6 +49,7 @@ const homeState = {
   onLogout: null,
   accountProfile: null,
   sellerApplication: null,
+  customerVerificationRequest: null,
   accountLoading: false,
   accountLoadedFor: null,
   accountError: "",
@@ -762,6 +763,10 @@ function addHomeStyles() {
     .z-seller-form input,.z-seller-form textarea { width:100%; min-height:44px; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border,#e4ebe7); border-radius:10px; background:var(--background,#f5f7f6); color:var(--text,#17231e); font:inherit; }
     .z-seller-form button:disabled { opacity:.6; cursor:wait; }
     .z-account-message { margin:10px 0; color:var(--text-muted,#71817a); font-size:13px; }
+    .z-account-verification { border-color:color-mix(in srgb,var(--verified-account) 24%,var(--border)); }
+    .z-account-verification .z-seller-status { margin:12px 0; }
+    .z-account-verification .z-seller-form { margin-top:13px; }
+    .z-account-verification .z-primary-button { min-height:44px; }
 
     @media (min-width: 700px) {
       .z-product-grid {
@@ -1907,6 +1912,24 @@ function renderAccountPage() {
   } else {
     sellerContent = `<section class="z-account-seller z-account-section"><span class="z-account-eyebrow">${label("BIASHARA YANGU","MY BUSINESS")}</span><h2>${label("Fungua duka lako ZUNE","Open your ZUNE store")}</h2><p>${label("Omba kuwa Seller na uanze kuuza bidhaa zako kwenye Marketplace.","Apply to become a Seller and start selling on ZUNE Marketplace.")}</p>${renderSellerApplicationForm()}</section>`;
   }
+  let customerVerificationContent = "";
+  if (role === "buyer") {
+    const request = homeState.customerVerificationRequest;
+    const requestStatus = String(request?.status || "").toLowerCase();
+    const customerVerified = homeState.accountProfile?.is_verified === true;
+    let statusMarkup = "";
+    if (customerVerified) {
+      statusMarkup = `<div class="z-seller-status approved"><strong>✓ Verified Account</strong><span>${label("Akaunti yako ya mteja imethibitishwa.","Your customer account is verified.")}</span></div>`;
+    } else if (requestStatus === "pending") {
+      statusMarkup = `<div class="z-seller-status pending"><strong>${label("Ombi linasubiri ukaguzi","Request pending review")}</strong><span>${label("Admin Mkuu atakagua ombi lako.","Admin Mkuu will review your request.")}</span></div>`;
+    } else if (requestStatus === "rejected") {
+      statusMarkup = `<div class="z-seller-status rejected"><strong>${label("Ombi limekataliwa","Request rejected")}</strong><span>${safe(request.rejection_reason || label("Unaweza kutuma ombi jipya.","You may submit a new request."))}</span></div>`;
+    } else if (["more_info_required","needs_information","more_information"].includes(requestStatus)) {
+      statusMarkup = `<div class="z-seller-status review"><strong>${label("Taarifa zaidi zinahitajika","More information required")}</strong><span>${safe(request.rejection_reason || label("Sasisha taarifa zako kisha tuma tena.","Update your details and submit again."))}</span></div>`;
+    }
+    customerVerificationContent = `<section class="z-account-seller z-account-section z-account-verification"><span class="z-account-eyebrow">${label("CUSTOMER VERIFICATION","CUSTOMER VERIFICATION")}</span><h2>${label("Uthibitisho wa mteja","Customer verification")}</h2><p>${label("Omba Verified Account. Beji ya orange itaonekana baada ya Admin Mkuu kuidhinisha ombi lako.","Request Verified Account. The orange badge appears after Admin Mkuu approves your request.")}</p>${statusMarkup}${customerVerified || requestStatus === "pending" ? "" : `<form id="z-customer-verification-form" class="z-seller-form"><label>${label("Jina lako kamili","Your full name")}<input name="full_name" maxlength="140" required value="${safe(name)}"></label><p class="z-account-message">${label("Kwa sasa tunahitaji taarifa za msingi tu. Usitume nyaraka binafsi hapa.","Only basic details are required for now. Do not submit private documents here.")}</p><button type="submit" class="z-primary-button" id="z-customer-verification-submit">${label("Omba Verified Account","Apply for Verified Account")}</button><p class="z-account-message" id="z-customer-verification-message" role="status"></p></form>`}</section>`;
+  }
+
   return `<section class="z-home z-account-page"><main class="z-home-content">
     <div class="z-account-heading"><div><span class="z-account-eyebrow">${label("NAFASI YAKO","YOUR SPACE")}</span><h1 class="z-page-title">${label("Akaunti yangu","My account")}</h1></div><span class="z-account-heading-mark">ⓏⓊⓃⒺ</span></div>
     <section class="z-account-hero">${homeState.accountProfile?.avatar_url ? `<img class="z-account-avatar" src="${safe(homeState.accountProfile.avatar_url)}" alt="Profile photo">` : `<div class="z-account-avatar">${safe(initials || "Z")}</div>`}<div class="z-account-identity"><span class="z-account-eyebrow">${label("KARIBU TENA","WELCOME BACK")}</span><h2>${safe(name)}</h2><p>${safe(email)}</p>${homeState.accountProfile?.is_verified ? `<span class="z-account-verified"><svg viewBox="-30 -30 60 60" role="img" aria-label="Verified Account"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Verified Account</span></span>` : ""}</div><span class="z-account-role ${isSeller ? "vendor" : ""}">${isSeller ? label("MUUZAJI","SELLER") : label("MTEJA","CUSTOMER")}</span></section>
@@ -1917,6 +1940,7 @@ function renderAccountPage() {
       <button type="button" class="z-account-shortcut" data-account-saved><span class="shortcut-icon saved">♡</span><span><strong>${label("Zilizohifadhiwa","Saved items")}</strong><small>${label("Bidhaa ulizopenda","Your favourites")}</small></span><b>›</b></button>
       <button type="button" class="z-account-shortcut" data-account-cart><span class="shortcut-icon">🛒</span><span><strong>${label("Kikapu changu","My cart")}</strong><small>${label("Bidhaa ulizochagua","Items you selected")}</small></span><b>›</b></button>
     </div></section>
+    ${customerVerificationContent}
     ${sellerContent}
     ${renderThemeSettings()}
     <section class="z-account-section"><div class="z-account-section-heading"><div><span class="z-account-eyebrow">${label("AKAUNTI NA USALAMA","ACCOUNT & SECURITY")}</span><h2>${label("Mipangilio ya akaunti","Account settings")}</h2></div></div>
@@ -1934,14 +1958,17 @@ async function loadAccountDetails() {
   homeState.accountLoading = true;
   homeState.accountError = "";
   try {
-    const [profile, application] = await Promise.all([
+    const [profile, application, verification] = await Promise.all([
       supabase.from("profiles").select("id,full_name,role,is_verified,avatar_url").eq("id",user.id).maybeSingle(),
-      supabase.from("seller_applications").select("id,store_name,status,admin_note,created_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(1).maybeSingle()
+      supabase.from("seller_applications").select("id,store_name,status,admin_note,created_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(1).maybeSingle(),
+      supabase.from("verified_badge_requests").select("id,status,rejection_reason,created_at").eq("user_id",user.id).eq("verification_type","customer").order("created_at",{ascending:false}).limit(1).maybeSingle()
     ]);
     if (profile.error) throw profile.error;
     if (application.error) throw application.error;
+    if (verification.error) throw verification.error;
     homeState.accountProfile = profile.data || null;
     homeState.sellerApplication = application.data || null;
+    homeState.customerVerificationRequest = verification.data || null;
     homeState.accountLoadedFor = user.id;
   } catch (error) {
     console.error("ZUNE account load error:",error);
@@ -1975,6 +2002,36 @@ function bindAccountEvents() {
   document.getElementById("z-logout-button")?.addEventListener("click",async()=>{
     if (typeof homeState.onLogout === "function") { await homeState.onLogout(); return; }
     const {error} = await supabase.auth.signOut(); if (error) alert(error.message);
+  });
+  document.getElementById("z-customer-verification-form")?.addEventListener("submit",async event=>{
+    event.preventDefault();
+    const user = homeState.user;
+    const form = event.currentTarget;
+    const message = document.getElementById("z-customer-verification-message");
+    const submit = document.getElementById("z-customer-verification-submit");
+    const full_name = String(new FormData(form).get("full_name") || "").trim();
+    if (!user?.id || homeState.accountProfile?.role !== "buyer") {
+      if (message) message.textContent = language()==="sw" ? "Verification hii inapatikana kwa akaunti za Customer pekee." : "This verification is only available to customer accounts.";
+      return;
+    }
+    if (full_name.length < 3) {
+      if (message) message.textContent = language()==="sw" ? "Weka jina lako kamili." : "Enter your full name.";
+      return;
+    }
+    if (submit) { submit.disabled = true; submit.textContent = language()==="sw" ? "Inatuma ombi..." : "Submitting..."; }
+    if (message) message.textContent = "";
+    try {
+      const { data, error } = await supabase.from("verified_badge_requests").insert({
+        user_id: user.id, full_name, business_name: null, verification_type: "customer", status: "pending"
+      }).select("id,status,rejection_reason,created_at").single();
+      if (error) throw error;
+      homeState.customerVerificationRequest = data;
+      renderMarketplacePage("me");
+    } catch (error) {
+      console.error("ZUNE customer verification:", error);
+      if (message) message.textContent = error.message || (language()==="sw" ? "Imeshindikana kutuma ombi. Jaribu tena." : "Could not submit request. Please try again.");
+      if (submit) { submit.disabled = false; submit.textContent = language()==="sw" ? "Omba Verified Account" : "Apply for Verified Account"; }
+    }
   });
   document.getElementById("z-seller-application-form")?.addEventListener("submit",async event=>{
     event.preventDefault();
