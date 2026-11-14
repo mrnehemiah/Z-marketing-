@@ -1,3 +1,18 @@
+.z-delivery-panel{margin:0 0 16px;padding:17px;border:1px solid var(--border);border-radius:18px;background:var(--surface);box-shadow:var(--shadow)}
+.z-delivery-panel-heading{display:flex;align-items:center;gap:11px;margin-bottom:15px}
+.z-delivery-icon{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border-radius:13px;background:var(--background);font-size:20px}
+.z-delivery-panel-heading h2{margin:0 0 4px;color:var(--text);font-size:15px}
+.z-delivery-panel-heading p{color:var(--text-muted);font-size:11px;line-height:1.5}
+.z-delivery-fields{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.z-delivery-field{display:grid;gap:6px;min-width:0;color:var(--text-muted);font-size:11px;font-weight:700}
+.z-delivery-field input,.z-delivery-field textarea{width:100%;min-width:0;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--background);color:var(--text);font-size:13px;outline:none}
+.z-delivery-field input:focus,.z-delivery-field textarea:focus{border-color:var(--primary)}
+.z-delivery-field textarea{resize:vertical}
+.z-delivery-saved{margin-top:10px;color:var(--text-muted);font-size:10px}
+.z-cart-delivery-row{margin-top:12px;align-items:flex-start}
+.z-cart-delivery-row strong{max-width:55%;color:var(--text-muted);font-size:10px;text-align:right}
+.z-cart-total-disclaimer{margin-top:7px;color:var(--text-muted);font-size:10px;line-height:1.5}
+@media(min-width:600px){.z-delivery-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.z-delivery-field-wide{grid-column:1/-1}}
 /* ZUNE Marketplace — Cart page styles. Uses global theme variables. */
 .z-cart-content{max-width:1040px;padding-top:22px;padding-bottom:120px}
 .z-cart-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:5px 0 22px}
@@ -18,7 +33,7 @@
 .z-quantity-controls span{min-width:14px;text-align:center;color:var(--text);font-size:12px;font-weight:800}
 .z-cart-item-end{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;align-self:stretch;gap:8px}
 .z-cart-line-total{color:var(--text);font-size:12px;white-space:nowrap}
-.z-cart-remove{border:0;background:transparent;color:#D65D52;padding:6px 0;font-size:11px;font-weight:800;white-space:nowrap}
+.z-cart-remove{border:0;background:transparent;color:var(--danger);padding:6px 0;font-size:11px;font-weight:800;white-space:nowrap}
 .z-cart-item-unavailable{border-style:dashed}
 .z-cart-item-unavailable .z-cart-item-info p{color:var(--text-muted);font-size:10px}
 .z-cart-summary{position:relative;padding:18px;border:1px solid var(--border);border-radius:18px;background:var(--surface);box-shadow:var(--shadow)}
