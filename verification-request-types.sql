@@ -27,11 +27,11 @@ begin
   from public.profiles
   where id = new.user_id;
 
-  if new.verification_type = 'customer' and v_role <> 'buyer' then
+  if new.verification_type = 'customer' and v_role is distinct from 'buyer' then
     raise exception 'Customer verification requests are only available to customer accounts.';
   end if;
 
-  if new.verification_type = 'seller' and v_role <> 'vendor' then
+  if new.verification_type = 'seller' and v_role is distinct from 'vendor' then
     raise exception 'Seller verification requests are only available to seller accounts.';
   end if;
 
