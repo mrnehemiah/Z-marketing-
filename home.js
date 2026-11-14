@@ -2181,7 +2181,7 @@ function renderAccountPage() {
     } else if (["more_info_required","needs_information","more_information"].includes(requestStatus)) {
       statusMarkup = `<div class="z-seller-status review"><strong>${label("Taarifa zaidi zinahitajika","More information required")}</strong><span>${safe(request.rejection_reason || label("Sasisha taarifa zako kisha tuma tena.","Update your details and submit again."))}</span></div>`;
     }
-    customerVerificationContent = `<section class="z-account-seller z-account-section z-account-verification"><span class="z-account-eyebrow">${label("CUSTOMER VERIFICATION","CUSTOMER VERIFICATION")}</span><h2>${label("Uthibitisho wa mteja","Customer verification")}</h2><p>${label("Omba Verified Account. Beji ya orange itaonekana baada ya Admin Mkuu kuidhinisha ombi lako.","Request Verified Account. The orange badge appears after Admin Mkuu approves your request.")}</p>${statusMarkup}${customerVerified || requestStatus === "pending" ? "" : `<form id="z-customer-verification-form" class="z-seller-form"><label>${label("Jina lako kamili","Your full name")}<input name="full_name" maxlength="140" required value="${safe(name)}"></label><label>${label("Picha ya kitambulisho (mbele)","Identity document image (front)")}<input name="identity_document" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label><p class="z-account-message">${label("JPG, PNG, WEBP au PDF. Ukubwa usizidi MB 10. Picha itaonekana kwa Admin Mkuu pekee.","JPG, PNG, WEBP or PDF. Maximum 10 MB. Only Admin Mkuu can view this document.")}</p><button type="submit" class="z-primary-button" id="z-customer-verification-submit">${label("Omba Verified Account","Apply for Verified Account")}</button><p class="z-account-message" id="z-customer-verification-message" role="status"></p></form>`}</section>`;
+    customerVerificationContent = `<section class="z-account-seller z-account-section z-account-verification"><span class="z-account-eyebrow">${label("CUSTOMER VERIFICATION","CUSTOMER VERIFICATION")}</span><h2>${label("Uthibitisho wa mteja","Customer verification")}</h2><p>${label("Omba Verified Account. Beji ya orange itaonekana baada ya Admin Mkuu kuidhinisha ombi lako.","Request Verified Account. The orange badge appears after Admin Mkuu approves your request.")}</p>${statusMarkup}${customerVerified || (requestStatus === "pending" && request?.document_path) ? "" : `<form id="z-customer-verification-form" class="z-seller-form"><label>${label("Jina lako kamili","Your full name")}<input name="full_name" maxlength="140" required value="${safe(name)}"></label><label>${label("Picha ya kitambulisho (mbele)","Identity document image (front)")}<input name="identity_document" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label><p class="z-account-message">${label("JPG, PNG, WEBP au PDF. Ukubwa usizidi MB 10. Picha itaonekana kwa Admin Mkuu pekee.","JPG, PNG, WEBP or PDF. Maximum 10 MB. Only Admin Mkuu can view this document.")}</p><button type="submit" class="z-primary-button" id="z-customer-verification-submit">${label("Omba Verified Account","Apply for Verified Account")}</button><p class="z-account-message" id="z-customer-verification-message" role="status"></p></form>`}</section>`;
   }
 
   return `<section class="z-home z-account-page"><main class="z-home-content">
@@ -2282,6 +2282,13 @@ function bindAccountEvents() {
       const documentPath = user.id + "/customer/" + Date.now() + "-" + Math.random().toString(36).slice(2) + "." + extension;
       const upload = await supabase.storage.from("zune-verification-documents").upload(documentPath, documentFile, {contentType:documentFile.type,upsert:false});
       if (upload.error) throw upload.error;
+      if (homeState.customerVerificationRequest?.status === "pending" && !homeState.customerVerificationRequest.document_path) {
+        const {data,error}=await supabase.rpc("zune_attach_verification_document",{p_request_id:homeState.customerVerificationRequest.id,p_document_path:documentPath});
+        if(error)throw error;
+        homeState.customerVerificationRequest=data;
+        renderMarketplacePage("me");
+        return;
+      }
       const { data, error } = await supabase.from("verified_badge_requests").insert({
         user_id: user.id, full_name, business_name: null, verification_type: "customer", document_path: documentPath, status: "pending"
       }).select("id,status,rejection_reason,document_path,created_at").single();
