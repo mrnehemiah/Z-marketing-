@@ -1,8 +1,3 @@
-/* =========================================
-   ZUNE MARKETPLACE 2.0
-   CART MODULE
-   Shared by the SPA and standalone cart.html
-========================================= */
 
 import { supabase } from "./supabase.js";
 
