@@ -1989,6 +1989,8 @@ async function loadAccountDetails() {
   } catch (error) {
     console.error("ZUNE account load error:",error);
     homeState.accountError = language() === "sw" ? "Imeshindikana kupakia taarifa za akaunti." : "Unable to load account details.";
+    // Zuia ukurasa kujirudia kuomba data bila mwisho hitilafu ikitokea.
+    homeState.accountLoadedFor = user.id;
   } finally {
     homeState.accountLoading = false;
     if (homeState.activeTab === "me") renderMarketplacePage("me");
