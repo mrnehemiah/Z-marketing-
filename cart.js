@@ -7,6 +7,7 @@
 import { supabase } from "./supabase.js";
 
 const CART_KEY = "zune_cart";
+const DELIVERY_KEY = "zune_delivery_details";
 
 const TEXT = {
   sw: {
@@ -28,7 +29,7 @@ const TEXT = {
     unavailable: "Bidhaa hii haipatikani kwa sasa.",
     retry: "Jaribu tena",
     unit: "Bei ya bidhaa",
-    lineTotal: "Jumla"
+    lineTotal: "Jumla", delivery: "Taarifa za kupokea mzigo", deliveryIntro: "Jaza taarifa zitakazotumika kuwasilisha oda yako.", recipient: "Jina kamili la mpokeaji", phone: "Namba ya simu", region: "Mkoa", district: "Wilaya", ward: "Kata", street: "Mtaa / eneo / jengo", directions: "Maelekezo ya ziada (hiari)", deliveryFee: "Ada ya usafirishaji", feePending: "Itathibitishwa kulingana na eneo", orderSummary: "Muhtasari wa oda", itemsTotal: "Jumla ya bidhaa", totalPending: "Jumla ya mwisho itajumuisha delivery"
   },
   en: {
     title: "Your shopping cart",
@@ -49,7 +50,7 @@ const TEXT = {
     unavailable: "This product is currently unavailable.",
     retry: "Try again",
     unit: "Unit price",
-    lineTotal: "Line total"
+    lineTotal: "Line total", delivery: "Delivery information", deliveryIntro: "Enter the details needed to deliver your order.", recipient: "Recipient full name", phone: "Phone number", region: "Region", district: "District", ward: "Ward", street: "Street / area / building", directions: "Additional directions (optional)", deliveryFee: "Delivery fee", feePending: "To be confirmed for your location", orderSummary: "Order summary", itemsTotal: "Items total", totalPending: "Final total will include delivery"
   }
 };
 
@@ -71,6 +72,9 @@ function money(value, language) {
   const amount = Number(value || 0);
   return new Intl.NumberFormat(language === "en" ? "en-TZ" : "sw-TZ").format(amount) + " TSh";
 }
+
+export function readDeliveryDetails() { try { return JSON.parse(localStorage.getItem(DELIVERY_KEY) || "{}") || {}; } catch (error) { return {}; } }
+export function saveDeliveryDetails(details) { const clean = {}; ["recipient","phone","region","district","ward","street","directions"].forEach(key => clean[key] = String(details?.[key] || "").trim()); localStorage.setItem(DELIVERY_KEY, JSON.stringify(clean)); return clean; }
 
 export function readCart() {
   try {
@@ -107,6 +111,8 @@ export function renderCartPage({ cart = [], products = [], language = "sw", load
   const availableRows = rows.filter(row => row.product);
   const subtotal = availableRows.reduce((sum, row) => sum + Number(row.product.price || 0) * Math.max(1, Number(row.quantity) || 1), 0);
   const count = (cart || []).reduce((sum, row) => sum + Math.max(0, Number(row.quantity) || 0), 0);
+  const delivery = readDeliveryDetails();
+  const field = key => `<label class="z-delivery-field"><span>${t(key)} *</span><input type="${key === "phone" ? "tel" : "text"}" data-delivery-field="${key}" value="${escapeHTML(delivery[key] || "")}" required></label>`;
 
   if (!cart.length) {
     return `
@@ -134,6 +140,12 @@ export function renderCartPage({ cart = [], products = [], language = "sw", load
         </header>
         ${loading ? `<p class="z-cart-status" role="status">${t("loading")}</p>` : ""}
         ${error ? `<p class="z-cart-status error" role="alert">${t("loadError")}</p>` : ""}
+        <section class="z-delivery-panel">
+          <div class="z-delivery-panel-heading"><span class="z-delivery-icon">📍</span><div><h2>${t("delivery")}</h2><p>${t("deliveryIntro")}</p></div></div>
+          <div class="z-delivery-fields">${["recipient","phone","region","district","ward","street"].map(field).join("")}
+            <label class="z-delivery-field z-delivery-field-wide"><span>${t("directions")}</span><textarea data-delivery-field="directions" rows="2">${escapeHTML(delivery.directions || "")}</textarea></label>
+          </div><p class="z-delivery-saved" aria-live="polite">✓ ${language === "en" ? "Saved on this device as you type." : "Taarifa zinahifadhiwa unapoandika."}</p>
+        </section>
         <div class="z-cart-layout">
           <section class="z-cart-items" aria-label="${t("title")}">
             ${rows.map(row => {
@@ -166,9 +178,10 @@ export function renderCartPage({ cart = [], products = [], language = "sw", load
             }).join("")}
           </section>
           <aside class="z-cart-summary">
-            <h2>${t("summary")}</h2>
-            <div class="z-cart-summary-row"><span>${t("subtotal")}</span><strong>${money(subtotal, language)}</strong></div>
-            <div class="z-cart-summary-total"><span>${t("total")}</span><strong>${money(subtotal, language)}</strong></div>
+            <h2>${t("orderSummary")}</h2>
+            <div class="z-cart-summary-row"><span>${t("itemsTotal")}</span><strong>${money(subtotal, language)}</strong></div>
+            <div class="z-cart-summary-row z-cart-delivery-row"><span>${t("deliveryFee")}</span><strong>${t("feePending")}</strong></div>
+            <div class="z-cart-summary-total"><span>${t("total")}</span><strong>${money(subtotal, language)}*</strong></div><p class="z-cart-total-disclaimer">${t("totalPending")}</p>
             <button type="button" class="z-primary-button z-cart-checkout" data-cart-checkout>${t("checkout")}</button>
             <p class="z-cart-checkout-note">${t("checkoutNote")}</p>
             <button type="button" class="z-continue-shopping" data-cart-continue>${t("continue")}</button>
@@ -179,6 +192,7 @@ export function renderCartPage({ cart = [], products = [], language = "sw", load
 }
 
 export function bindCartEvents(root = document, handlers = {}) {
+  root.querySelectorAll("[data-delivery-field]").forEach(input => input.addEventListener("input", () => { const details = readDeliveryDetails(); details[input.dataset.deliveryField] = input.value; saveDeliveryDetails(details); }));
   root.querySelectorAll("[data-cart-minus]").forEach(button => button.addEventListener("click", () => handlers.onQuantityChange?.(button.dataset.cartMinus, -1)));
   root.querySelectorAll("[data-cart-plus]").forEach(button => button.addEventListener("click", () => handlers.onQuantityChange?.(button.dataset.cartPlus, 1)));
   root.querySelectorAll("[data-cart-remove]").forEach(button => button.addEventListener("click", () => handlers.onRemove?.(button.dataset.cartRemove)));
