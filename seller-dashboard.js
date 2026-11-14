@@ -24,15 +24,21 @@ const money = value => new Intl.NumberFormat("sw-TZ",{style:"currency",currency:
 
 function styles(){ /* Dashboard styles are loaded from seller-dashboard.css. */ }
 
+function verifiedAccountMark(){
+ return `<span class="zsd-verified-mark" title="Verified Account"><svg viewBox="-30 -30 60 60" role="img" aria-label="Verified Account"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Verified Account</span></span>`;
+}
 function shell(){
  const nav=sections.map(([id,icon,sw,en])=>`<button type="button" data-zsd-section="${id}" class="${state.section===id?"active":""}"><span class="zsd-nav-icon">${icon}</span>${tr(sw,en)}</button>`).join("");
+ const name=state.profile?.full_name||window.__zuneSellerUser?.email||tr("Muuzaji","Seller");
+ const initial=String(name).trim().charAt(0).toUpperCase()||"Z";
+ const verified=state.profile?.is_verified===true?verifiedAccountMark():"";
+ const storeVerified=["verified","approved"].includes(String(state.store?.verification_status||"").toLowerCase());
  return `<div class="zsd"><div class="zsd-wrap">
- <header class="zsd-top"><div class="zsd-brand">ⓏⓊⓃⒺ <span style="font-size:11px;letter-spacing:0">SELLER</span></div><div class="zsd-top-actions"><button class="zsd-btn" id="zsd-language">${state.language==="sw"?"SW / EN":"EN / SW"}</button><button class="zsd-btn" id="zsd-back">← ${tr("Soko","Marketplace")}</button></div></header>
- <div class="zsd-head"><h1>${tr("Seller Dashboard","Seller Dashboard")}</h1><p>${tr("Simamia duka, bidhaa na biashara yako sehemu moja.","Manage your store, products and business in one place.")}</p></div>
+ <header class="zsd-top"><div class="zsd-brand">ⓏⓊⓃⒺ <span>SELLER CENTER</span></div><div class="zsd-top-actions"><button class="zsd-btn" id="zsd-language">${state.language==="sw"?"SW / EN":"EN / SW"}</button><button class="zsd-btn" id="zsd-back">← ${tr("Soko","Marketplace")}</button></div></header>
+ <div class="zsd-head"><div><div class="zsd-section-kicker">${tr("KITUO CHA BIASHARA","BUSINESS CENTER")}</div><h1>${tr("Dashboard ya Muuzaji","Seller Dashboard")}</h1><p>${tr("Simamia duka, bidhaa na biashara yako sehemu moja.","Manage your store, products and business in one place.")}</p></div><div class="zsd-head-meta"><div class="zsd-user-chip"><span class="zsd-user-avatar">${esc(initial)}</span><span class="zsd-user-copy"><b>${esc(name)}</b><small>${verified|| (storeVerified?'<span class="zsd-store-mark"><i class="zsd-store-dot"></i> Verified Store</span>':tr("Akaunti ya Seller","Seller account"))}</small></span></div></div></div>
  <div class="zsd-layout"><nav class="zsd-nav">${nav}</nav><main class="zsd-content"><nav class="zsd-mobile-nav">${nav}</nav><div id="zsd-panel"></div></main></div>
  </div></div>`;
 }
-
 function renderOverview(){
  const total=state.products.length, pending=state.orders.filter(o=>["pending","new","processing"].includes(String(o.status).toLowerCase())).length;
  return `<div class="zsd-stats">
@@ -49,11 +55,14 @@ function renderProductList(items){
 }
 function renderVerification(){
  const req=state.badgeRequest,verified=!!state.profile?.is_verified;
- let status="";
- if(verified)status='<span class="zsd-pill" style="background:rgba(230,145,35,.14);color:#c87510">✓ Verified Account</span>';
- else if(req?.status==="pending")status='<span class="zsd-pill">Inasubiri Admin Mkuu / Pending</span>';
- else if(req?.status==="rejected")status='<span class="zsd-pill" style="background:rgba(190,50,50,.12);color:#bd3d3d">Limekataliwa / Rejected</span>';
- return `<section class="zsd-card"><div class="zsd-row"><h2>Profile Badge — Simple Verification</h2>${status}</div><p class="zsd-muted">${tr("Omba beji ya Verified Account. Admin Mkuu atakagua ombi lako; beji ya machungwa itaonekana baada ya kuidhinishwa. Verified Store ni beji tofauti ya duka.","Request the Verified Account badge. Admin Mkuu reviews your request; the orange badge appears only after approval. Verified Store is a separate store badge.")}</p><a class="zsd-btn primary" href="./verification.html">${verified?tr("Angalia verification","View verification"):tr("Omba / Angalia verification","Request / View verification")} →</a></section>`;
+ const storeStatus=String(state.store?.verification_status||"").toLowerCase();
+ const storeVerified=["verified","approved"].includes(storeStatus);
+ let accountStatus="";
+ if(verified)accountStatus=verifiedAccountMark();
+ else if(req?.status==="pending")accountStatus='<span class="zsd-pill orange">'+tr("Inasubiri Admin Mkuu","Pending Admin review")+'</span>';
+ else if(req?.status==="rejected")accountStatus='<span class="zsd-pill" style="background:color-mix(in srgb,#bd3d3d 12%,transparent);color:#bd3d3d">'+tr("Limekataliwa","Rejected")+'</span>';
+ const storeBadge=storeVerified?'<span class="zsd-store-mark"><i class="zsd-store-dot"></i> Verified Store</span>':'<span class="zsd-pill blue">'+tr("Haijathibitishwa","Not verified")+'</span>';
+ return `<section class="zsd-card"><div class="zsd-section-kicker">${tr("UTAMBULISHO NA UTHIBITISHO","IDENTITY & VERIFICATION")}</div><div class="zsd-verification-head"><div class="zsd-verification-title"><h2>${tr("Uthibitisho wa akaunti","Account verification")}</h2>${accountStatus}</div></div><p class="zsd-muted">${tr("Verified Account ni beji ya wasifu wako. Inaonekana tu baada ya Admin Mkuu kuidhinisha ombi lako.","Verified Account is your profile badge. It appears only after Admin Mkuu approves your request.")}</p><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:17px;padding-top:15px;border-top:1px solid var(--zsd-line)"><div><strong style="font-size:13px;display:block;margin-bottom:5px">Verified Store</strong><span class="zsd-muted">${tr("Uthibitisho wa duka ni tofauti na wa akaunti.","Store verification is separate from account verification.")}</span></div>${storeBadge}</div><div style="margin-top:17px"><a class="zsd-btn primary" href="./verification.html">${verified?tr("Angalia uthibitisho","View verification"):tr("Omba / Angalia uthibitisho","Request / View verification")} →</a></div></section>`;
 }
 function renderProducts(){
  return `<section class="zsd-card"><div class="zsd-row"><h2>${tr("Usimamizi wa bidhaa","Product management")}</h2><span class="zsd-pill blue">${state.products.length}</span></div><p class="zsd-muted">${tr("Bidhaa zilizopo kwenye akaunti yako ya muuzaji.","Products currently linked to your seller account.")}</p>${state.products.length?renderProductList(state.products):`<div class="zsd-empty">${tr("Hakuna bidhaa bado.","No products yet.")}</div>`}
@@ -161,13 +170,13 @@ async function loadData(user){
 export async function renderSellerDashboard({app,user,onBack}){
  if(!app||!user?.id)return;
  window.__zuneSellerUser=user;
- styles();state.section="overview";state.language=localStorage.getItem("zune_language")==="en"?"en":"sw";
+ styles();state.section="overview";state.language=localStorage.getItem("zune_language")==="en"?"en":"sw";document.documentElement.setAttribute("data-theme",localStorage.getItem("zune_theme")||"emerald");
  app.innerHTML=shell();
  window.__zuneSellerBack=onBack||(()=>{});
  bindShell();
  const panel=document.getElementById("zsd-panel");if(panel)panel.innerHTML=`<div class="zsd-empty">${tr("Inapakia dashboard...","Loading dashboard...")}</div>`;
  try{await loadData(user);}catch(error){console.error("ZUNE seller dashboard load:",error);state.error=error.message;}
- renderPanel();
+ app.innerHTML=shell();bindShell();renderPanel();
 }
 function bindShell(){
  document.getElementById("zsd-back")?.addEventListener("click",()=>{if(typeof window.__zuneSellerBack==="function")window.__zuneSellerBack();});
