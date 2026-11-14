@@ -17,7 +17,7 @@ const sections = [
   ["assistant","✧","ZUNE AI","ZUNE AI"]
 ];
 
-const state = { section:"overview", language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, loading:false, busy:false, error:"" };
+const state = { section:"overview", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, loading:false, busy:false, error:"" };
 const tr = (sw,en) => state.language==="sw"?sw:en;
 const esc = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = value => new Intl.NumberFormat("sw-TZ",{style:"currency",currency:"TZS",maximumFractionDigits:0}).format(Number(value)||0);
@@ -65,9 +65,17 @@ function renderVerification(){
  return `<section class="zsd-card"><div class="zsd-section-kicker">${tr("UTAMBULISHO NA UTHIBITISHO","IDENTITY & VERIFICATION")}</div><div class="zsd-verification-head"><div class="zsd-verification-title"><h2>${tr("Uthibitisho wa akaunti","Account verification")}</h2>${accountStatus}</div></div><p class="zsd-muted">${tr("Verified Account ni beji ya wasifu wako. Inaonekana tu baada ya Admin Mkuu kuidhinisha ombi lako.","Verified Account is your profile badge. It appears only after Admin Mkuu approves your request.")}</p><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:17px;padding-top:15px;border-top:1px solid var(--zsd-line)"><div><strong style="font-size:13px;display:block;margin-bottom:5px">Verified Store</strong><span class="zsd-muted">${tr("Uthibitisho wa duka ni tofauti na wa akaunti.","Store verification is separate from account verification.")}</span></div>${storeBadge}</div><div style="margin-top:17px"><a class="zsd-btn primary" href="./verification.html">${verified?tr("Angalia uthibitisho","View verification"):tr("Omba / Angalia uthibitisho","Request / View verification")} →</a></div></section>`;
 }
 function renderProducts(){
- return `<section class="zsd-card"><div class="zsd-row"><h2>${tr("Usimamizi wa bidhaa","Product management")}</h2><span class="zsd-pill blue">${state.products.length}</span></div><p class="zsd-muted">${tr("Bidhaa zilizopo kwenye akaunti yako ya muuzaji.","Products currently linked to your seller account.")}</p>${state.products.length?renderProductList(state.products):`<div class="zsd-empty">${tr("Hakuna bidhaa bado.","No products yet.")}</div>`}
- <div class="zsd-alert">${tr("Uwekaji wa bidhaa mpya utafunguliwa baada ya ukaguzi wa usalama wa maudhui (picha, jina na maelezo) kuunganishwa. Kwa sasa hatuweki bidhaa hewani bila moderation gate.","New product publishing will be enabled after the content safety moderation gate (images, title and description) is connected. We will not publish unmoderated listings.")}</div></section>
- <section class="zsd-card"><h2>${tr("Picha nyingi za bidhaa","Multiple product photos")}</h2><p class="zsd-muted">${tr("Chagua picha nyingi kutoka Gallery/Storage ya simu au tumia kamera. Hakuna kikomo cha picha 10. Picha zitapunguzwa ukubwa na unaweza kupanga au kuchagua picha kuu.","Select multiple photos from your phone Gallery/Storage or use the camera. There is no 10-photo limit. Photos are compressed and can be reordered or set as the main image.")}</p><div class="zsd-row" style="justify-content:flex-start;flex-wrap:wrap"><label class="zsd-btn" for="zsd-gallery-input">＋ ${tr("Chagua Gallery / Storage","Choose Gallery / Storage")}</label><input id="zsd-gallery-input" type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none"><label class="zsd-btn" for="zsd-camera-input">◎ ${tr("Piga picha","Take photo")}</label><input id="zsd-camera-input" type="file" accept="image/*" capture="environment" style="display:none"></div><div id="zsd-photo-grid" class="zsd-photo-grid" style="margin-top:13px"></div><p class="zsd-muted" id="zsd-photo-count">${tr("Bado hujachagua picha.","No photos selected yet.")}</p><div class="zsd-alert">${tr("Picha zinaweza kuchaguliwa na kupangwa sasa. Upakiaji wa mwisho kwenye Storage na uchapishaji wa bidhaa utawezeshwa baada ya moderation ya picha na maelezo kuunganishwa; hatuweki bidhaa hewani bila ukaguzi wa usalama.","You can select and arrange photos now. Final Storage upload and product publishing will be enabled after image and text moderation is connected; listings will not go live without safety checks.")}</div></section>`;
+ return `<section class="zsd-card"><div class="zsd-row"><h2>${tr("Bidhaa zako","Your products")}</h2><span class="zsd-pill blue">${state.products.length}</span></div><p class="zsd-muted">${tr("Bidhaa zilizochapishwa kwenye duka lako.","Products published in your store.")}</p>${state.products.length?renderProductList(state.products):`<div class="zsd-empty">${tr("Bado hujaweka bidhaa.","You have not listed products yet.")}</div>`}</section>
+ <section class="zsd-card"><div class="zsd-section-kicker">${tr("ONGEZA BIDHAA","ADD PRODUCT")}</div><h2>${tr("Chapisha bidhaa mpya","Publish a new product")}</h2><p class="zsd-muted">${tr("Jaza taarifa zote na chagua picha. Mfumo utakagua picha, jina na maelezo kabla ya kupakia picha kwenye Storage au kuchapisha bidhaa.","Complete the details and choose photos. The system checks images, title and description before uploading to Storage or publishing.")}</p>
+ <form id="zsd-product-form" class="zsd-form">
+  <label class="zsd-full">${tr("Jina la bidhaa","Product title")}<input name="title" maxlength="160" minlength="3" required placeholder="${tr("Mfano: Viatu vya michezo","Example: Sports shoes")}"></label>
+  <label class="zsd-full">${tr("Maelezo ya bidhaa","Product description")}<textarea name="description" maxlength="5000" required placeholder="${tr("Eleza bidhaa kwa usahihi...","Describe the product accurately...")}"></textarea></label>
+  <label>${tr("Bei (TSh)","Price (TSh)")}<input name="price" type="number" min="1" step="1" required></label>
+  <label>${tr("Idadi ya stock","Stock quantity")}<input name="stock_quantity" type="number" min="0" step="1" value="1" required></label>
+  <label class="zsd-full">${tr("Kundi la bidhaa","Product category")}<input name="category" maxlength="120" value="Vingine" required></label>
+  <div class="zsd-full"><div class="zsd-row" style="justify-content:flex-start;flex-wrap:wrap"><label class="zsd-btn" for="zsd-gallery-input">＋ ${tr("Chagua Gallery / Storage","Choose Gallery / Storage")}</label><input id="zsd-gallery-input" type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none"><label class="zsd-btn" for="zsd-camera-input">◎ ${tr("Piga picha","Take photo")}</label><input id="zsd-camera-input" type="file" accept="image/*" capture="environment" style="display:none"></div><div id="zsd-photo-grid" class="zsd-photo-grid" style="margin-top:13px"></div><p class="zsd-muted" id="zsd-photo-count">${tr("Bado hujachagua picha.","No photos selected yet.")}</p></div>
+  <div class="zsd-full"><div id="zsd-publish-message" class="zsd-alert" role="status">${tr("Picha zitapakiwa baada tu ya moderation kuruhusu. Ikiwa ukaguzi haupatikani, uchapishaji utasimama.","Photos are uploaded only after moderation approves. If moderation is unavailable, publishing stops.")}</div><button class="zsd-btn primary" id="zsd-publish-button" type="submit" style="width:100%">${tr("Kagua na Chapisha bidhaa","Review and Publish product")}</button></div>
+ </form></section>`;
 }
 function renderOrders(){
  return `<section class="zsd-card"><h2>${tr("Oda za wateja","Customer orders")}</h2><p class="zsd-muted">${tr("Oda zinazoonyesha bidhaa zilizouzwa na duka lako.","Orders containing items sold by your store.")}</p>
@@ -122,6 +130,73 @@ function renderPhotoSelection(){
  grid.querySelectorAll("[data-photo-remove]").forEach(button=>button.addEventListener("click",()=>{const i=Number(button.dataset.photoRemove);URL.revokeObjectURL(state.photos[i].preview);state.photos.splice(i,1);renderPhotoSelection();}));
 }
 
+
+async function fileAsDataUrl(file){
+ return await new Promise((resolve,reject)=>{
+  const reader=new FileReader();
+  reader.onload=()=>resolve(String(reader.result||""));
+  reader.onerror=()=>reject(new Error("Imeshindikana kusoma picha."));
+  reader.readAsDataURL(file);
+ });
+}
+async function publishSellerProduct(event){
+ event.preventDefault();
+ if(state.publishing)return;
+ const form=event.currentTarget;
+ const message=form.querySelector("#zsd-publish-message");
+ const button=form.querySelector("#zsd-publish-button");
+ const values=new FormData(form);
+ const title=String(values.get("title")||"").trim();
+ const description=String(values.get("description")||"").trim();
+ const price=Number(values.get("price"));
+ const stock=Number(values.get("stock_quantity"));
+ const category=String(values.get("category")||"Vingine").trim();
+ if(title.length<3||!description||!Number.isFinite(price)||price<=0||!Number.isInteger(stock)||stock<0){
+  message.textContent=tr("Tafadhali hakiki taarifa za bidhaa.","Please check the product details.");return;
+ }
+ if(!state.photos.length){message.textContent=tr("Chagua angalau picha moja ya bidhaa.","Choose at least one product photo.");return;}
+ if(state.photos.length>20){message.textContent=tr("Chagua picha zisizozidi 20 kwa bidhaa moja.","Choose no more than 20 photos for one product.");return;}
+ state.publishing=true;button.disabled=true;button.textContent=tr("Inakagua picha na maelezo...","Moderating images and details...");
+ message.textContent=tr("Ukaguzi wa usalama unaendelea. Picha hazijapakiwa bado.","Safety review is running. Photos have not been uploaded yet.");
+ try{
+  const images=await Promise.all(state.photos.map(async photo=>({
+   name:photo.file.name,
+   mimeType:photo.file.type,
+   dataUrl:await fileAsDataUrl(photo.file)
+  })));
+  const {data,error}=await supabase.functions.invoke("zune-product-moderation",{
+   body:{title,description,price,stock_quantity:stock,category,images}
+  });
+  let result=data;
+  if(error){
+   try{if(error.context instanceof Response)result=await error.context.clone().json();}catch(_){}
+   throw new Error(result?.error||error.message||tr("Moderation imeshindikana. Bidhaa haijachapishwa.","Moderation failed. Product was not published."));
+  }
+  if(result?.status==="review"){
+   message.textContent=result.message||tr("Bidhaa imesimamishwa kwa ukaguzi wa ziada. Haijapakiwa wala kuchapishwa.","Product held for additional review. It was not uploaded or published.");
+   return;
+  }
+  if(result?.status==="blocked"){
+   message.textContent=result.error||tr("Bidhaa imezuiwa na moderation. Haijapakiwa wala kuchapishwa.","Product blocked by moderation. It was not uploaded or published.");
+   return;
+  }
+  if(result?.status!=="published")throw new Error(result?.error||tr("Jibu la moderation halijathibitishwa.","Moderation response could not be verified."));
+  state.photos.forEach(photo=>URL.revokeObjectURL(photo.preview));
+  state.photos=[];
+  form.reset();
+  await loadData(window.__zuneSellerUser);
+  renderPanel();
+  const nextMessage=document.getElementById("zsd-publish-message");
+  if(nextMessage)nextMessage.textContent=tr("Bidhaa imekaguliwa, picha zimehifadhiwa na bidhaa imechapishwa sokoni.","Product passed moderation, photos were stored and the product is now published.");
+ }catch(error){
+  console.error("ZUNE product moderation/publish:",error);
+  message.textContent=error.message||tr("Imeshindikana kuchapisha bidhaa. Hakuna bidhaa iliyowekwa hewani.","Could not publish product. No product was made live.");
+ }finally{
+  state.publishing=false;
+  const currentButton=document.getElementById("zsd-publish-button");
+  if(currentButton){currentButton.disabled=false;currentButton.textContent=tr("Kagua na Chapisha bidhaa","Review and Publish product");}
+ }
+}
 function renderPlaceholder(){
  const names=sections.find(s=>s[0]===state.section);
  return `<section class="zsd-card"><h2>${tr(names[2],names[3])}</h2><p class="zsd-muted">${tr("Sehemu hii imeongezwa kwenye muundo wa dashboard. Itaunganishwa na jedwali na ruhusa sahihi za Supabase kabla ya kuanza kutumia data halisi.","This section is included in the dashboard structure. It will be connected to the correct Supabase tables and permissions before handling live data.")}</p><div class="zsd-empty">${tr("Inaandaliwa — hakuna data ya majaribio iliyowekwa.","In preparation — no sample data has been inserted.")}</div></section>`;
@@ -133,7 +208,7 @@ function renderPanel(){
  panel.querySelector("#zsd-verification-form")?.addEventListener("submit",submitVerification);
  panel.querySelector("#zsd-gallery-input")?.addEventListener("change",event=>{if(event.target.files?.length)addSellerPhotos(event.target.files);event.target.value="";});
  panel.querySelector("#zsd-camera-input")?.addEventListener("change",event=>{if(event.target.files?.length)addSellerPhotos(event.target.files);event.target.value="";});
- if(state.section==="products")renderPhotoSelection();
+ if(state.section==="products"){renderPhotoSelection();panel.querySelector("#zsd-product-form")?.addEventListener("submit",publishSellerProduct);}
 }
 function bindActiveNav(){
  document.querySelectorAll("[data-zsd-section]").forEach(b=>b.classList.toggle("active",b.dataset.zsdSection===state.section));
@@ -157,7 +232,7 @@ async function loadData(user){
  state.loading=true;
  const [profile,products,items,store,badge,wallet,ledger]=await Promise.all([
   supabase.from("profiles").select("id,full_name,is_verified,role").eq("id",user.id).maybeSingle(),
-  supabase.from("products").select("id,title,price,stock_quantity,created_at").eq("vendor_id",user.id).order("created_at",{ascending:false}).limit(50),
+  supabase.from("products").select("id,title,price,stock_quantity,created_at,moderation_status").eq("vendor_id",user.id).order("created_at",{ascending:false}).limit(50),
   supabase.from("order_items").select("order_id,product_id,product_name,price,quantity,created_at").eq("seller_id",user.id).limit(100),
   supabase.from("stores").select("id,store_name,verification_status").eq("owner_id",user.id).maybeSingle(),
   supabase.from("verified_badge_requests").select("id,status,rejection_reason,created_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(1).maybeSingle()
