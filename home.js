@@ -2186,7 +2186,7 @@ function renderAccountPage() {
 
   return `<section class="z-home z-account-page"><main class="z-home-content">
     <div class="z-account-heading"><div><span class="z-account-eyebrow">${label("NAFASI YAKO","YOUR SPACE")}</span><h1 class="z-page-title">${label("Akaunti yangu","My account")}</h1></div><span class="z-account-heading-mark">ⓏⓊⓃⒺ</span></div>
-    <section class="z-account-hero">${homeState.accountProfile?.avatar_url ? `<img class="z-account-avatar" src="${safe(homeState.accountProfile.avatar_url)}" alt="Profile photo">` : `<div class="z-account-avatar">${safe(initials || "Z")}</div>`}<div class="z-account-identity"><span class="z-account-eyebrow">${label("KARIBU TENA","WELCOME BACK")}</span><h2>${safe(name)}</h2><p>${safe(email)}</p>${role === "buyer" && homeState.accountProfile?.is_verified ? `<span class="z-account-verified"><svg viewBox="-30 -30 60 60" role="img" aria-label="Verified Account"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Verified Account</span></span>` : ""}</div><span class="z-account-role ${isSeller ? "vendor" : ""}">${isSeller ? label("MUUZAJI","SELLER") : label("MTEJA","CUSTOMER")}</span></section>
+    <section class="z-account-hero">${homeState.accountProfile?.avatar_display_url ? `<img class="z-account-avatar" src="${safe(homeState.accountProfile.avatar_display_url)}" alt="Profile photo">` : `<div class="z-account-avatar">${safe(initials || "Z")}</div>`}<div class="z-account-identity"><span class="z-account-eyebrow">${label("KARIBU TENA","WELCOME BACK")}</span><h2>${safe(name)}</h2><p>${safe(email)}</p>${role === "buyer" && homeState.accountProfile?.is_verified ? `<span class="z-account-verified"><svg viewBox="-30 -30 60 60" role="img" aria-label="Verified Account"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Verified Account</span></span>` : ""}</div><span class="z-account-role ${isSeller ? "vendor" : ""}">${isSeller ? label("MUUZAJI","SELLER") : label("MTEJA","CUSTOMER")}</span></section>
     ${homeState.accountLoading ? `<p class="z-account-message">${label("Inapakia taarifa za akaunti...","Loading account details...")}</p>` : ""}
     ${homeState.accountError ? `<p class="z-account-message" role="alert">${safe(homeState.accountError)}</p>` : ""}
     <section class="z-account-section"><div class="z-account-section-heading"><div><span class="z-account-eyebrow">${label("SHUGHULI ZA MANUNUZI","SHOPPING ACTIVITY")}</span><h2>${label("Manunuzi yangu","My shopping")}</h2></div></div><div class="z-account-shortcuts">
@@ -2213,7 +2213,7 @@ async function loadAccountDetails() {
   homeState.accountError = "";
   try {
     const [profile, application, verification] = await Promise.all([
-      supabase.from("profiles").select("id,full_name,role,is_verified,avatar_url").eq("id",user.id).maybeSingle(),
+      supabase.from("profiles").select("id,full_name,role,is_verified,avatar_path").eq("id",user.id).maybeSingle(),
       supabase.from("seller_applications").select("id,store_name,status,admin_note,created_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(1).maybeSingle(),
       supabase.from("verified_badge_requests").select("id,status,rejection_reason,document_path,created_at").eq("user_id",user.id).eq("verification_type","customer").order("created_at",{ascending:false}).limit(1).maybeSingle()
     ]);
@@ -2221,6 +2221,7 @@ async function loadAccountDetails() {
     if (application.error) throw application.error;
     if (verification.error) throw verification.error;
     homeState.accountProfile = profile.data || null;
+    if (homeState.accountProfile?.avatar_path) { const {data:avatarBlob,error:avatarError}=await supabase.storage.from("zune-avatars").download(homeState.accountProfile.avatar_path); if (!avatarError && avatarBlob) homeState.accountProfile.avatar_display_url=URL.createObjectURL(avatarBlob); }
     homeState.sellerApplication = application.data || null;
     homeState.customerVerificationRequest = verification.data || null;
     homeState.accountLoadedFor = user.id;
