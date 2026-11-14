@@ -5,33 +5,29 @@ import { supabase } from "./supabase.js";
    ZUNE NOTIFICATION BELL
 ===================================== */
 
-const MOUNT_ID = "zune-notification-bell";
-
 let currentUser = null;
 let realtimeChannel = null;
-
-const mount = document.getElementById(MOUNT_ID);
-
-if (mount) {
-  initializeBell();
-}
+let authListener = null;
+let observer = null;
+let bellMount = null;
+let unreadCount = 0;
 
 /* =====================================
    STYLES
 ===================================== */
 
-function addBellStyles() {
+function addStyles() {
   if (document.getElementById("zune-bell-styles")) return;
 
   const style = document.createElement("style");
-
   style.id = "zune-bell-styles";
 
   style.textContent = `
-    #${MOUNT_ID} {
+    .zune-bell-mount {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
     }
 
     .zune-bell-link {
@@ -46,7 +42,7 @@ function addBellStyles() {
       background: var(--bg-secondary, #f5f7f6);
       color: var(--text-primary, #17231e);
       text-decoration: none;
-      font-size: 21px;
+      font-size: 20px;
       cursor: pointer;
     }
 
@@ -60,10 +56,10 @@ function addBellStyles() {
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 2px solid var(--bg-primary, #ffffff);
+      border: 2px solid var(--bg-primary, #fff);
       border-radius: 20px;
       background: #e54848;
-      color: #ffffff;
+      color: #fff;
       font-size: 9px;
       font-weight: 800;
     }
@@ -77,33 +73,56 @@ function addBellStyles() {
 }
 
 /* =====================================
-   CREATE BELL
+   FIND HOME HEADER
+===================================== */
+
+function findHomeActions() {
+  const actions = document.querySelector(".z-home-actions");
+
+  if (!actions || !currentUser) return;
+
+  if (!bellMount || !bellMount.isConnected) {
+    bellMount = document.createElement("div");
+    bellMount.className = "zune-bell-mount";
+    bellMount.id = "zune-notification-bell";
+  }
+
+  if (!actions.contains(bellMount)) {
+    actions.appendChild(bellMount);
+  }
+
+  renderBell();
+}
+
+/* =====================================
+   RENDER BELL
 ===================================== */
 
 function renderBell() {
-  addBellStyles();
+  if (!bellMount || !currentUser) return;
 
-  mount.innerHTML = "";
+  addStyles();
+
+  bellMount.innerHTML = "";
 
   const link = document.createElement("a");
-
   link.href = "./notifications.html";
   link.className = "zune-bell-link";
   link.setAttribute("aria-label", "Notifications");
-  link.setAttribute("title", "Notifications");
+  link.title = "Notifications";
 
   const icon = document.createElement("span");
   icon.textContent = "🔔";
 
-  const count = document.createElement("span");
+  const badge = document.createElement("span");
+  badge.className = "zune-bell-count";
+  badge.hidden = unreadCount === 0;
+  badge.textContent = unreadCount > 99
+    ? "99+"
+    : String(unreadCount);
 
-  count.className = "zune-bell-count";
-  count.id = "zune-bell-unread-count";
-  count.hidden = true;
-  count.textContent = "0";
-
-  link.append(icon, count);
-  mount.appendChild(link);
+  link.append(icon, badge);
+  bellMount.appendChild(link);
 }
 
 /* =====================================
@@ -113,47 +132,39 @@ function renderBell() {
 async function loadUnreadCount() {
   if (!currentUser) return;
 
+  const userId = currentUser.id;
+
   const { count, error } = await supabase
     .from("notifications")
     .select("id", {
       count: "exact",
       head: true
     })
-    .eq("user_id", currentUser.id)
+    .eq("user_id", userId)
     .eq("is_read", false);
 
   if (error) {
-    console.error("ZUNE bell error:", error);
+    console.error("ZUNE notification bell:", error);
     return;
   }
 
-  updateBellCount(count || 0);
-}
+  if (currentUser?.id !== userId) return;
 
-/* =====================================
-   UPDATE BADGE
-===================================== */
+  unreadCount = count || 0;
 
-function updateBellCount(total) {
-  const badge = document.getElementById(
-    "zune-bell-unread-count"
-  );
-
-  if (!badge) return;
-
-  badge.textContent = total > 99 ? "99+" : String(total);
-  badge.hidden = total === 0;
+  renderBell();
 }
 
 /* =====================================
    REALTIME
 ===================================== */
 
-function subscribeToNotifications() {
+function subscribeRealtime() {
   if (!currentUser) return;
 
   if (realtimeChannel) {
     supabase.removeChannel(realtimeChannel);
+    realtimeChannel = null;
   }
 
   realtimeChannel = supabase
@@ -170,50 +181,87 @@ function subscribeToNotifications() {
         loadUnreadCount();
       }
     )
-    .subscribe((status) => {
-      console.log("ZUNE bell realtime:", status);
-    });
+    .subscribe();
+}
+
+/* =====================================
+   SIGN IN / SIGN OUT
+===================================== */
+
+async function setUser(user) {
+  if (currentUser?.id === user?.id) return;
+
+  if (realtimeChannel) {
+    await supabase.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
+
+  currentUser = user || null;
+  unreadCount = 0;
+  bellMount = null;
+
+  if (!currentUser) return;
+
+  findHomeActions();
+
+  await loadUnreadCount();
+
+  subscribeRealtime();
+}
+
+/* =====================================
+   WATCH HOME HEADER
+===================================== */
+
+function watchHomeHeader() {
+  if (observer) observer.disconnect();
+
+  observer = new MutationObserver(() => {
+    if (currentUser) {
+      findHomeActions();
+    }
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
 }
 
 /* =====================================
    INITIALIZE
 ===================================== */
 
-async function initializeBell() {
+async function initialize() {
+  watchHomeHeader();
+
   const { data, error } = await supabase.auth.getUser();
 
-  if (error || !data.user) {
-    mount.innerHTML = "";
+  if (error) {
+    console.error("ZUNE authentication:", error);
     return;
   }
 
-  currentUser = data.user;
+  await setUser(data.user);
 
-  renderBell();
+  if (!authListener) {
+    authListener = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === "SIGNED_OUT") {
+          setUser(null);
+          return;
+        }
 
-  await loadUnreadCount();
-
-  subscribeToNotifications();
-
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (event === "SIGNED_OUT" || !session?.user) {
-      if (realtimeChannel) {
-        supabase.removeChannel(realtimeChannel);
-        realtimeChannel = null;
+        if (
+          event === "SIGNED_IN" ||
+          event === "TOKEN_REFRESHED" ||
+          event === "USER_UPDATED"
+        ) {
+          setUser(session?.user || null);
+        }
       }
-
-      currentUser = null;
-      mount.innerHTML = "";
-      return;
-    }
-
-    if (event === "SIGNED_IN") {
-      currentUser = session.user;
-      renderBell();
-      loadUnreadCount();
-      subscribeToNotifications();
-    }
-  });
+    );
+  }
 }
 
 /* =====================================
@@ -221,8 +269,16 @@ async function initializeBell() {
 ===================================== */
 
 window.addEventListener("pagehide", () => {
+  if (observer) observer.disconnect();
+
   if (realtimeChannel) {
     supabase.removeChannel(realtimeChannel);
     realtimeChannel = null;
   }
 });
+
+/* =====================================
+   START
+===================================== */
+
+initialize();
