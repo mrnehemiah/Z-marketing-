@@ -1,8 +1,10 @@
-
 import { supabase } from "./supabase.js";
 
-const CART_KEY = "zune_cart";
-const DELIVERY_KEY = "zune_delivery_details";
+const CART_KEY   = "zune_cart";
+const LANG_KEY   = "zune_language";
+const THEME_KEY  = "zune_theme";
+const MAX_QTY    = 99;
+const QUERY_CHUNK = 100; // kikomo cha .in() cha Supabase
 
 const TEXT = {
   sw: {
@@ -24,7 +26,9 @@ const TEXT = {
     unavailable: "Bidhaa hii haipatikani kwa sasa.",
     retry: "Jaribu tena",
     unit: "Bei ya bidhaa",
-    lineTotal: "Jumla", delivery: "Taarifa za kupokea mzigo", deliveryIntro: "Jaza taarifa zitakazotumika kuwasilisha oda yako.", recipient: "Jina kamili la mpokeaji", phone: "Namba ya simu", region: "Mkoa", district: "Wilaya", ward: "Kata", street: "Mtaa / eneo / jengo", directions: "Maelekezo ya ziada (hiari)", deliveryFee: "Ada ya usafirishaji", feePending: "Itathibitishwa kulingana na eneo", orderSummary: "Muhtasari wa oda", itemsTotal: "Jumla ya bidhaa", totalPending: "Jumla ya mwisho itajumuisha delivery"
+    lineTotal: "Jumla",
+    increaseQty: "Ongeza idadi",
+    decreaseQty: "Punguza idadi"
   },
   en: {
     title: "Your shopping cart",
@@ -45,7 +49,9 @@ const TEXT = {
     unavailable: "This product is currently unavailable.",
     retry: "Try again",
     unit: "Unit price",
-    lineTotal: "Line total", delivery: "Delivery information", deliveryIntro: "Enter the details needed to deliver your order.", recipient: "Recipient full name", phone: "Phone number", region: "Region", district: "District", ward: "Ward", street: "Street / area / building", directions: "Additional directions (optional)", deliveryFee: "Delivery fee", feePending: "To be confirmed for your location", orderSummary: "Order summary", itemsTotal: "Items total", totalPending: "Final total will include delivery"
+    lineTotal: "Line total",
+    increaseQty: "Increase quantity",
+    decreaseQty: "Decrease quantity"
   }
 };
 
@@ -54,28 +60,38 @@ function text(language, key) {
 }
 
 function escapeHTML(value) {
-  return String(value ?? "").replace(/[&<>"']/g, character => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
-  })[character]);
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+  })[c]);
 }
+
+/* ---------- Pesa: formatter cache + rounding ---------- */
+const moneyFormatters = new Map();
 
 function money(value, language) {
-  const amount = Number(value || 0);
-  return new Intl.NumberFormat(language === "en" ? "en-TZ" : "sw-TZ").format(amount) + " TSh";
+  const locale = language === "en" ? "en-TZ" : "sw-TZ";
+  let fmt = moneyFormatters.get(locale);
+  if (!fmt) {
+    fmt = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
+    moneyFormatters.set(locale, fmt);
+  }
+  return fmt.format(Math.round(Number(value) || 0)) + " TSh";
 }
 
-export function readDeliveryDetails() { try { return JSON.parse(localStorage.getItem(DELIVERY_KEY) || "{}") || {}; } catch (error) { return {}; } }
-export function saveDeliveryDetails(details) { const clean = {}; ["recipient","phone","region","district","ward","street","directions"].forEach(key => clean[key] = String(details?.[key] || "").trim()); localStorage.setItem(DELIVERY_KEY, JSON.stringify(clean)); return clean; }
+/* ---------- Storage ---------- */
+function normalizeItem(item) {
+  if (!item || item.productId == null) return null;
+  const raw = Number(item.quantity);
+  const quantity = Math.min(MAX_QTY, Math.max(0, Math.floor(Number.isFinite(raw) ? raw : 1)));
+  return { productId: item.productId, quantity };
+}
 
 export function readCart() {
   try {
     const raw = localStorage.getItem(CART_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.filter(item => item && item.productId != null) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(normalizeItem).filter(item => item && item.quantity > 0);
   } catch (error) {
     console.warn("ZUNE cart storage read failed:", error);
     return [];
@@ -83,7 +99,19 @@ export function readCart() {
 }
 
 export function writeCart(cart) {
-  localStorage.setItem(CART_KEY, JSON.stringify(Array.isArray(cart) ? cart : []));
+  const normalized = (Array.isArray(cart) ? cart : [])
+    .map(normalizeItem)
+    .filter(item => item && item.quantity > 0);
+  try {
+    localStorage.setItem(CART_KEY, JSON.stringify(normalized));
+  } catch (error) {
+    console.warn("ZUNE cart storage write failed:", error);
+  }
+  syncCartCountBadges(normalized);
+  return normalized;
+}
+
+export function syncCartCountBadges(cart = readCart()) {
   const count = (cart || []).reduce((sum, item) => sum + Math.max(0, Number(item.quantity) || 0), 0);
   document.querySelectorAll("[data-cart-count]").forEach(badge => {
     badge.textContent = count > 99 ? "99+" : String(count);
@@ -91,23 +119,49 @@ export function writeCart(cart) {
   });
 }
 
+/* ---------- Data ---------- */
 export async function loadCartProducts(cart = readCart()) {
-  const ids = [...new Set((cart || []).map(item => String(item.productId)).filter(Boolean))];
+  const ids = [...new Set((cart || []).map(i => String(i.productId)).filter(Boolean))];
   if (!ids.length) return [];
-  const { data, error } = await supabase.from("products").select("*").in("id", ids);
-  if (error) throw error;
-  return data || [];
+
+  const chunks = [];
+  for (let i = 0; i < ids.length; i += QUERY_CHUNK) chunks.push(ids.slice(i, i + QUERY_CHUNK));
+
+  const settled = await Promise.allSettled(
+    chunks.map(chunk => supabase.from("products").select("*").in("id", chunk))
+  );
+
+  const products = [];
+  const errors = [];
+  for (const result of settled) {
+    if (result.status === "rejected") { errors.push(result.reason); continue; }
+    const { data, error } = result.value;
+    if (error) { errors.push(error); continue; }
+    if (data) products.push(...data);
+  }
+
+  if (!products.length && errors.length) throw errors[0];
+  if (errors.length) console.warn("ZUNE cart: baadhi ya bidhaa hazikupakiwa", errors);
+  return products;
 }
 
+function computeTotals(cart, products) {
+  const byId = new Map((products || []).map(p => [String(p.id), p]));
+  const rows = (cart || []).map(item => {
+    const product = byId.get(String(item.productId)) || null;
+    const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
+    return { productId: item.productId, quantity, product,
+      lineTotal: product ? Number(product.price || 0) * quantity : 0 };
+  });
+  const subtotal = rows.reduce((sum, r) => sum + r.lineTotal, 0);
+  const count = rows.reduce((sum, r) => sum + r.quantity, 0);
+  return { rows, subtotal, count };
+}
+
+/* ---------- Rendering ---------- */
 export function renderCartPage({ cart = [], products = [], language = "sw", loading = false, error = false } = {}) {
   const t = key => text(language, key);
-  const byId = new Map((products || []).map(product => [String(product.id), product]));
-  const rows = (cart || []).map(item => ({ ...item, product: byId.get(String(item.productId)) || null }));
-  const availableRows = rows.filter(row => row.product);
-  const subtotal = availableRows.reduce((sum, row) => sum + Number(row.product.price || 0) * Math.max(1, Number(row.quantity) || 1), 0);
-  const count = (cart || []).reduce((sum, row) => sum + Math.max(0, Number(row.quantity) || 0), 0);
-  const delivery = readDeliveryDetails();
-  const field = key => `<label class="z-delivery-field"><span>${t(key)} *</span><input type="${key === "phone" ? "tel" : "text"}" data-delivery-field="${key}" value="${escapeHTML(delivery[key] || "")}" required></label>`;
+  const { rows, subtotal, count } = computeTotals(cart, products);
 
   if (!cart.length) {
     return `
@@ -134,49 +188,45 @@ export function renderCartPage({ cart = [], products = [], language = "sw", load
           <span class="z-cart-heading-icon" aria-hidden="true">🛒</span>
         </header>
         ${loading ? `<p class="z-cart-status" role="status">${t("loading")}</p>` : ""}
-        ${error ? `<p class="z-cart-status error" role="alert">${t("loadError")}</p>` : ""}
-        <section class="z-delivery-panel">
-          <div class="z-delivery-panel-heading"><span class="z-delivery-icon">📍</span><div><h2>${t("delivery")}</h2><p>${t("deliveryIntro")}</p></div></div>
-          <div class="z-delivery-fields">${["recipient","phone","region","district","ward","street"].map(field).join("")}
-            <label class="z-delivery-field z-delivery-field-wide"><span>${t("directions")}</span><textarea data-delivery-field="directions" rows="2">${escapeHTML(delivery.directions || "")}</textarea></label>
-          </div><p class="z-delivery-saved" aria-live="polite">✓ ${language === "en" ? "Saved on this device as you type." : "Taarifa zinahifadhiwa unapoandika."}</p>
-        </section>
+        ${error ? `<p class="z-cart-status error" role="alert">${t("loadError")}</p>
+                   <button type="button" class="z-secondary-button" data-cart-retry>${t("retry")}</button>` : ""}
         <div class="z-cart-layout">
           <section class="z-cart-items" aria-label="${t("title")}">
             ${rows.map(row => {
               const product = row.product;
-              const quantity = Math.max(1, Number(row.quantity) || 1);
+              const quantity = row.quantity;
               if (!product) return `
-                <article class="z-cart-item z-cart-item-unavailable">
+                <article class="z-cart-item z-cart-item-unavailable" data-cart-row="${escapeHTML(row.productId)}">
                   <div class="z-cart-item-placeholder" aria-hidden="true">📦</div>
                   <div class="z-cart-item-info"><h3>${t("unavailable")}</h3><p>${escapeHTML(row.productId)}</p></div>
                   <button type="button" class="z-cart-remove" data-cart-remove="${escapeHTML(row.productId)}">${t("remove")}</button>
                 </article>`;
               const image = product.image_url || "";
               return `
-                <article class="z-cart-item">
-                  ${image ? `<img class="z-cart-product-image" src="${escapeHTML(image)}" alt="${escapeHTML(product.title || "Product")}" loading="lazy">` : `<div class="z-cart-item-placeholder" aria-hidden="true">📦</div>`}
+                <article class="z-cart-item" data-cart-row="${escapeHTML(row.productId)}">
+                  ${image
+                    ? `<img class="z-cart-product-image" src="${escapeHTML(image)}" alt="${escapeHTML(product.title || "Product")}" loading="lazy">`
+                    : `<div class="z-cart-item-placeholder" aria-hidden="true">📦</div>`}
                   <div class="z-cart-item-info">
                     <h3>${escapeHTML(product.title || (language === "en" ? "Product" : "Bidhaa"))}</h3>
                     <strong class="z-cart-unit-price">${money(product.price, language)}</strong>
-                    <div class="z-quantity-controls" aria-label="${t("quantity")}">
-                      <button type="button" data-cart-minus="${escapeHTML(row.productId)}" aria-label="Decrease quantity">−</button>
-                      <span>${quantity}</span>
-                      <button type="button" data-cart-plus="${escapeHTML(row.productId)}" aria-label="Increase quantity">+</button>
+                    <div class="z-quantity-controls" role="group" aria-label="${t("quantity")}">
+                      <button type="button" data-cart-minus="${escapeHTML(row.productId)}" aria-label="${t("decreaseQty")}" ${quantity <= 1 ? "disabled" : ""}>−</button>
+                      <span aria-live="polite">${quantity}</span>
+                      <button type="button" data-cart-plus="${escapeHTML(row.productId)}" aria-label="${t("increaseQty")}" ${quantity >= MAX_QTY ? "disabled" : ""}>+</button>
                     </div>
                   </div>
                   <div class="z-cart-item-end">
-                    <strong class="z-cart-line-total">${money(Number(product.price || 0) * quantity, language)}</strong>
+                    <strong class="z-cart-line-total">${money(row.lineTotal, language)}</strong>
                     <button type="button" class="z-cart-remove" data-cart-remove="${escapeHTML(row.productId)}">${t("remove")}</button>
                   </div>
                 </article>`;
             }).join("")}
           </section>
           <aside class="z-cart-summary">
-            <h2>${t("orderSummary")}</h2>
-            <div class="z-cart-summary-row"><span>${t("itemsTotal")}</span><strong>${money(subtotal, language)}</strong></div>
-            <div class="z-cart-summary-row z-cart-delivery-row"><span>${t("deliveryFee")}</span><strong>${t("feePending")}</strong></div>
-            <div class="z-cart-summary-total"><span>${t("total")}</span><strong>${money(subtotal, language)}*</strong></div><p class="z-cart-total-disclaimer">${t("totalPending")}</p>
+            <h2>${t("summary")}</h2>
+            <div class="z-cart-summary-row"><span>${t("subtotal")}</span><strong data-cart-subtotal>${money(subtotal, language)}</strong></div>
+            <div class="z-cart-summary-total"><span>${t("total")}</span><strong data-cart-total>${money(subtotal, language)}</strong></div>
             <button type="button" class="z-primary-button z-cart-checkout" data-cart-checkout>${t("checkout")}</button>
             <p class="z-cart-checkout-note">${t("checkoutNote")}</p>
             <button type="button" class="z-continue-shopping" data-cart-continue>${t("continue")}</button>
@@ -186,56 +236,211 @@ export function renderCartPage({ cart = [], products = [], language = "sw", load
     </section>`;
 }
 
+/* ---------- Events (delegation + idempotent) ---------- */
+const boundRoots = new WeakMap();
+
 export function bindCartEvents(root = document, handlers = {}) {
-  root.querySelectorAll("[data-delivery-field]").forEach(input => input.addEventListener("input", () => { const details = readDeliveryDetails(); details[input.dataset.deliveryField] = input.value; saveDeliveryDetails(details); }));
-  root.querySelectorAll("[data-cart-minus]").forEach(button => button.addEventListener("click", () => handlers.onQuantityChange?.(button.dataset.cartMinus, -1)));
-  root.querySelectorAll("[data-cart-plus]").forEach(button => button.addEventListener("click", () => handlers.onQuantityChange?.(button.dataset.cartPlus, 1)));
-  root.querySelectorAll("[data-cart-remove]").forEach(button => button.addEventListener("click", () => handlers.onRemove?.(button.dataset.cartRemove)));
-  root.querySelectorAll("[data-cart-continue]").forEach(button => button.addEventListener("click", () => handlers.onContinueShopping?.()));
-  root.querySelector("[data-cart-checkout]")?.addEventListener("click", () => handlers.onCheckout?.());
+  // Epuka kuunganisha listener mara mbili
+  const prev = boundRoots.get(root);
+  if (prev) prev();
+
+  const onClick = event => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const minus = target.closest("[data-cart-minus]");
+    if (minus && !minus.disabled) return handlers.onQuantityChange?.(minus.dataset.cartMinus, -1);
+
+    const plus = target.closest("[data-cart-plus]");
+    if (plus && !plus.disabled) return handlers.onQuantityChange?.(plus.dataset.cartPlus, 1);
+
+    const remove = target.closest("[data-cart-remove]");
+    if (remove) return handlers.onRemove?.(remove.dataset.cartRemove);
+
+    if (target.closest("[data-cart-continue]")) return handlers.onContinueShopping?.();
+    if (target.closest("[data-cart-checkout]")) return handlers.onCheckout?.();
+    if (target.closest("[data-cart-retry]"))    return handlers.onRetry?.();
+  };
+
+  root.addEventListener("click", onClick);
+  const unbind = () => {
+    root.removeEventListener("click", onClick);
+    if (boundRoots.get(root) === unbind) boundRoots.delete(root);
+  };
+  boundRoots.set(root, unbind);
+  return unbind;
 }
+
+/* ---------- Standalone mount ---------- */
+const mountedRoots = new WeakMap();
 
 export async function mountStandaloneCart(root) {
   if (!root) return;
-  const language = localStorage.getItem("zune_language") === "en" ? "en" : "sw";
-  const theme = localStorage.getItem("zune_theme") || "emerald";
-  document.documentElement.dataset.theme = theme;
-  let cart = readCart();
 
-  const render = async () => {
-    cart = readCart();
-    root.innerHTML = renderCartPage({ cart, products: [], language, loading: cart.length > 0 });
-    if (!cart.length) {
-      bind();
-      return;
-    }
-    try {
-      const products = await loadCartProducts(cart);
-      if (JSON.stringify(readCart()) !== JSON.stringify(cart)) return render();
-      root.innerHTML = renderCartPage({ cart, products, language });
-    } catch (error) {
-      console.error("ZUNE standalone cart error:", error);
-      root.innerHTML = renderCartPage({ cart, products: [], language, error: true });
-    }
-    bind();
+  // Cleanup mount ya awali (kama ipo) – muhimu kwa SPA
+  const prev = mountedRoots.get(root);
+  if (prev) prev();
+
+  const language = localStorage.getItem(LANG_KEY) === "en" ? "en" : "sw";
+  const theme = localStorage.getItem(THEME_KEY) || "emerald";
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.lang = language;
+
+  let cart = readCart();
+  const productsById = new Map();
+  let renderToken = 0;
+
+  syncCartCountBadges(cart);
+
+  /* --- Rendering helpers --- */
+  const renderFull = ({ loading = false, error = false } = {}) => {
+    root.innerHTML = renderCartPage({
+      cart,
+      products: [...productsById.values()],
+      language,
+      loading,
+      error
+    });
   };
 
-  const bind = () => bindCartEvents(root, {
+  const patchQuantity = (productId, quantity, product) => {
+    const row = root.querySelector(`[data-cart-row="${CSS.escape(String(productId))}"]`);
+    if (!row) return false;
+
+    const span = row.querySelector(".z-quantity-controls span");
+    if (span) span.textContent = String(quantity);
+
+    const minus = row.querySelector("[data-cart-minus]");
+    const plus  = row.querySelector("[data-cart-plus]");
+    if (minus) minus.disabled = quantity <= 1;
+    if (plus)  plus.disabled  = quantity >= MAX_QTY;
+
+    const lineTotal = row.querySelector(".z-cart-line-total");
+    if (lineTotal) lineTotal.textContent = money(Number(product.price || 0) * quantity, language);
+    return true;
+  };
+
+  const patchSummary = () => {
+    const { subtotal, count } = computeTotals(cart, [...productsById.values()]);
+    const sub = root.querySelector("[data-cart-subtotal]");
+    const tot = root.querySelector("[data-cart-total]");
+    if (sub) sub.textContent = money(subtotal, language);
+    if (tot) tot.textContent = money(subtotal, language);
+
+    const heading = root.querySelector(".z-cart-heading p");
+    if (heading) heading.textContent = `${count} ${text(language, "items")}`;
+  };
+
+  const allProductsLoaded = () =>
+    cart.every(item => productsById.has(String(item.productId)));
+
+  const ensureProductsLoaded = async () => {
+    const missing = cart
+      .map(i => String(i.productId))
+      .filter(id => !productsById.has(id));
+    if (!missing.length) return;
+
+    const missingSet = new Set(missing);
+    const partial = cart.filter(i => missingSet.has(String(i.productId)));
+    const loaded = await loadCartProducts(partial); // inaweza kutupa
+    for (const p of loaded) productsById.set(String(p.id), p);
+  };
+
+  /* --- Refresh (full render) --- */
+  const refresh = async () => {
+    const token = ++renderToken;
+    cart = readCart();
+
+    if (!cart.length) {
+      productsById.clear();
+      renderFull();
+      return;
+    }
+
+    const hasMissing = !allProductsLoaded();
+    renderFull({ loading: hasMissing });
+
+    if (hasMissing) {
+      try {
+        await ensureProductsLoaded();
+        if (token !== renderToken) return; // refresh mpya imechukua nafasi
+
+        const scrollY = window.scrollY;
+        renderFull();
+        window.scrollTo(0, scrollY);
+      } catch (error) {
+        if (token !== renderToken) return;
+        console.error("ZUNE cart load error:", error);
+        renderFull({ error: true });
+      }
+    }
+  };
+
+  /* --- Bind events --- */
+  bindCartEvents(root, {
     onQuantityChange: (id, delta) => {
-      cart = readCart();
-      const item = cart.find(row => String(row.productId) === String(id));
-      if (item) item.quantity = Math.max(0, Number(item.quantity || 1) + delta);
-      cart = cart.filter(row => Number(row.quantity) > 0);
-      writeCart(cart);
-      render();
+      const item = cart.find(r => String(r.productId) === String(id));
+      if (!item) return;
+
+      const next = Math.min(MAX_QTY, Math.max(1, Number(item.quantity || 1) + delta));
+      if (next === item.quantity) return;
+
+      item.quantity = next;
+      cart = writeCart(cart);
+
+      if (allProductsLoaded()) {
+        const product = productsById.get(String(id));
+        if (patchQuantity(id, next, product)) {
+          patchSummary();
+        } else {
+          renderFull(); // fallback
+        }
+      } else {
+        refresh(); // bidhaa bado zinapakia – usifanye patch
+      }
     },
+
     onRemove: id => {
-      writeCart(readCart().filter(row => String(row.productId) !== String(id)));
-      render();
+      cart = writeCart(cart.filter(r => String(r.productId) !== String(id)));
+
+      if (!cart.length) {
+        productsById.clear();
+        renderFull();
+        return;
+      }
+
+      if (allProductsLoaded()) {
+        const row = root.querySelector(`[data-cart-row="${CSS.escape(String(id))}"]`);
+        if (row) {
+          row.remove();
+          patchSummary();
+        } else {
+          renderFull();
+        }
+      } else {
+        refresh();
+      }
     },
+
     onContinueShopping: () => window.location.assign("./index.html"),
-    onCheckout: () => alert(language === "en" ? "Checkout will be available soon." : "Mfumo wa malipo utaunganishwa baadaye.")
+    onCheckout: () => alert(language === "en"
+      ? "Checkout will be available soon."
+      : "Mfumo wa malipo utaunganishwa baadaye."),
+    onRetry: () => refresh()
   });
 
-  await render();
+  /* --- Cross-tab sync --- */
+  const onStorage = event => {
+    if (event.key === CART_KEY) refresh();
+  };
+  window.addEventListener("storage", onStorage);
+
+  /* --- Cleanup registration --- */
+  mountedRoots.set(root, () => {
+    window.removeEventListener("storage", onStorage);
+    boundRoots.get(root)?.();
+    mountedRoots.delete(root);
+  });
+
+  await refresh();
 }
