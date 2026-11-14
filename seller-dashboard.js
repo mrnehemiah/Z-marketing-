@@ -74,7 +74,7 @@ function renderProducts(){
   <label>${tr("Idadi ya stock","Stock quantity")}<input name="stock_quantity" type="number" min="0" step="1" value="1" required></label>
   <label class="zsd-full">${tr("Kundi la bidhaa","Product category")}<input name="category" maxlength="120" value="Vingine" required></label>
   <div class="zsd-full"><div class="zsd-row" style="justify-content:flex-start;flex-wrap:wrap"><label class="zsd-btn" for="zsd-gallery-input">＋ ${tr("Chagua Gallery / Storage","Choose Gallery / Storage")}</label><input id="zsd-gallery-input" type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none"><label class="zsd-btn" for="zsd-camera-input">◎ ${tr("Piga picha","Take photo")}</label><input id="zsd-camera-input" type="file" accept="image/*" capture="environment" style="display:none"></div><div id="zsd-photo-grid" class="zsd-photo-grid" style="margin-top:13px"></div><p class="zsd-muted" id="zsd-photo-count">${tr("Bado hujachagua picha.","No photos selected yet.")}</p></div>
-  <div class="zsd-full"><div id="zsd-publish-message" class="zsd-alert" role="status">${tr("Picha zitapakiwa baada tu ya moderation kuruhusu. Ikiwa ukaguzi haupatikani, uchapishaji utasimama.","Photos are uploaded only after moderation approves. If moderation is unavailable, publishing stops.")}</div><button class="zsd-btn primary" id="zsd-publish-button" type="submit" style="width:100%">${tr("Kagua na Chapisha bidhaa","Review and Publish product")}</button></div>
+  <div class="zsd-full"><div id="zsd-publish-message" class="zsd-alert" role="status">${tr("Bidhaa itachapishwa sokoni mara tu unapobonyeza Chapisha.","Your product will be published as soon as you press Publish.")}</div><button class="zsd-btn primary" id="zsd-publish-button" type="submit" style="width:100%">${tr("Chapisha bidhaa","Publish product")}</button></div>
  </form></section>`;
 }
 function renderOrders(){
@@ -156,8 +156,8 @@ async function publishSellerProduct(event){
  }
  if(!state.photos.length){message.textContent=tr("Chagua angalau picha moja ya bidhaa.","Choose at least one product photo.");return;}
  if(state.photos.length>20){message.textContent=tr("Chagua picha zisizozidi 20 kwa bidhaa moja.","Choose no more than 20 photos for one product.");return;}
- state.publishing=true;button.disabled=true;button.textContent=tr("Inakagua picha na maelezo...","Moderating images and details...");
- message.textContent=tr("Ukaguzi wa usalama unaendelea. Picha hazijapakiwa bado.","Safety review is running. Photos have not been uploaded yet.");
+ state.publishing=true;button.disabled=true;button.textContent=tr("Inachapisha bidhaa...","Publishing product...");
+ message.textContent=tr("Bidhaa inapakiwa na kuchapishwa sokoni.","Your product is being uploaded and published.");
  try{
   const images=await Promise.all(state.photos.map(async photo=>({
    name:photo.file.name,
@@ -170,26 +170,18 @@ async function publishSellerProduct(event){
   let result=data;
   if(error){
    try{if(error.context instanceof Response)result=await error.context.clone().json();}catch(_){}
-   throw new Error(result?.error||error.message||tr("Moderation imeshindikana. Bidhaa haijachapishwa.","Moderation failed. Product was not published."));
+   throw new Error(result?.error||error.message||tr("Imeshindikana kuchapisha bidhaa.","Product publishing failed."));
   }
-  if(result?.status==="review"){
-   message.textContent=result.message||tr("Bidhaa imesimamishwa kwa ukaguzi wa ziada. Haijapakiwa wala kuchapishwa.","Product held for additional review. It was not uploaded or published.");
-   return;
-  }
-  if(result?.status==="blocked"){
-   message.textContent=result.error||tr("Bidhaa imezuiwa na moderation. Haijapakiwa wala kuchapishwa.","Product blocked by moderation. It was not uploaded or published.");
-   return;
-  }
-  if(result?.status!=="published")throw new Error(result?.error||tr("Jibu la moderation halijathibitishwa.","Moderation response could not be verified."));
+  if(result?.status!=="published")throw new Error(result?.error||tr("Bidhaa haikuchapishwa.","Product was not published."));
   state.photos.forEach(photo=>URL.revokeObjectURL(photo.preview));
   state.photos=[];
   form.reset();
   await loadData(window.__zuneSellerUser);
   renderPanel();
   const nextMessage=document.getElementById("zsd-publish-message");
-  if(nextMessage)nextMessage.textContent=tr("Bidhaa imekaguliwa, picha zimehifadhiwa na bidhaa imechapishwa sokoni.","Product passed moderation, photos were stored and the product is now published.");
+  if(nextMessage)nextMessage.textContent=tr("Bidhaa imechapishwa sokoni kikamilifu.","Your product has been published successfully.");
  }catch(error){
-  console.error("ZUNE product moderation/publish:",error);
+  console.error("ZUNE product publishing:",error);
   message.textContent=error.message||tr("Imeshindikana kuchapisha bidhaa. Hakuna bidhaa iliyowekwa hewani.","Could not publish product. No product was made live.");
  }finally{
   state.publishing=false;
