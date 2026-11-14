@@ -30,6 +30,8 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
+    const contentLength = Number(req.headers.get("content-length") || 0);
+    if (contentLength > 30 * 1024 * 1024) return json({ error: "Ombi la picha limezidi ukubwa unaoruhusiwa." }, 413);
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.replace(/^Bearer\s+/i, "");
     if (!token) return json({ error: "Ingia kwenye akaunti yako kwanza." }, 401);
@@ -80,7 +82,7 @@ Deno.serve(async (req: Request) => {
 
     const moderationInput: any[] = [{
       type: "text",
-      text: "Marketplace product listing. Review the product title, description and category for sexual or sexually explicit content, sexual services, exploitation, and other unsafe marketplace content. Product title: " + title + "\nDescription: " + description + "\nCategory: " + category
+      text: "Product title: " + title + "\nDescription: " + description + "\nCategory: " + category
     }];
     for (const photo of decoded) {
       let binary = "";
