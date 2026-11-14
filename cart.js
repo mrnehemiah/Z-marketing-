@@ -27,6 +27,7 @@ const TEXT = {
     loadError: "Imeshindikana kupakia baadhi ya bidhaa. Tafadhali jaribu tena.",
     unavailable: "Bidhaa hii haipatikani kwa sasa.",
     retry: "Jaribu tena",
+    retry: "Jaribu tena",
     unit: "Bei ya bidhaa",
     lineTotal: "Jumla"
   },
@@ -184,6 +185,7 @@ export function bindCartEvents(root = document, handlers = {}) {
   root.querySelectorAll("[data-cart-remove]").forEach(button => button.addEventListener("click", () => handlers.onRemove?.(button.dataset.cartRemove)));
   root.querySelectorAll("[data-cart-continue]").forEach(button => button.addEventListener("click", () => handlers.onContinueShopping?.()));
   root.querySelector("[data-cart-checkout]")?.addEventListener("click", () => handlers.onCheckout?.());
+  root.querySelector("[data-cart-retry]")?.addEventListener("click", () => handlers.onRetry?.());
 }
 
 export async function mountStandaloneCart(root) {
@@ -196,6 +198,7 @@ export async function mountStandaloneCart(root) {
   const render = async () => {
     cart = readCart();
     root.innerHTML = renderCartPage({ cart, products: [], language, loading: cart.length > 0 });
+    bind();
     if (!cart.length) {
       bind();
       return;
@@ -225,7 +228,8 @@ export async function mountStandaloneCart(root) {
       render();
     },
     onContinueShopping: () => window.location.assign("./index.html"),
-    onCheckout: () => alert(language === "en" ? "Checkout will be available soon." : "Mfumo wa malipo utaunganishwa baadaye.")
+    onCheckout: () => alert(language === "en" ? "Checkout will be available soon." : "Mfumo wa malipo utaunganishwa baadaye."),
+    onRetry: () => render()
   });
 
   await render();
