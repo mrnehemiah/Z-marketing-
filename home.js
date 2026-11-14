@@ -1967,7 +1967,8 @@ function renderSellerApplicationForm() {
     <label>${label("Mkoa","Region")}<input name="region" maxlength="100"></label>
     <label>${label("Wilaya","District")}<input name="district" maxlength="100"></label>
     <label>${label("Anwani ya biashara","Business address")}<textarea name="address" rows="2" maxlength="500"></textarea></label>
-    <label>${label("Namba ya TIN (hiari)","TIN number (optional)")}<input name="tin_number" maxlength="80"></label>
+    <label>${label("Namba ya TIN (si lazima)","TIN number (optional)")}<input name="tin_number" maxlength="80" autocomplete="off" placeholder="${label("Unaweza kuacha wazi","You may leave this blank")}"></label>
+    <p class="z-account-message">${label("TIN si sharti. Unaweza kutuma maombi ya kuwa Seller hata kama huna TIN.","TIN is not required. You can submit your Seller application even if you do not have a TIN.")}</p>
     <button type="submit" class="z-primary-button" id="z-seller-submit">${label("Tuma maombi","Submit application")}</button>
     <p class="z-account-message" id="z-seller-form-message" aria-live="polite"></p>
   </form>`;
