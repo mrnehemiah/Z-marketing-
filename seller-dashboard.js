@@ -131,17 +131,14 @@ export async function renderSellerDashboard({app,user,onBack}){
  window.__zuneSellerUser=user;
  styles();state.section="overview";state.language=localStorage.getItem("zune_language")==="en"?"en":"sw";
  app.innerHTML=shell();
- app.querySelector("#zsd-back")?.addEventListener("click",onBack||(()=>{}));
- app.querySelector("#zsd-language")?.addEventListener("click",()=>{
-  state.language=state.language==="sw"?"en":"sw";localStorage.setItem("zune_language",state.language);app.innerHTML=shell();bindShell();renderPanel();
- });
+ window.__zuneSellerBack=onBack||(()=>{});
  bindShell();
  const panel=document.getElementById("zsd-panel");if(panel)panel.innerHTML=`<div class="zsd-empty">${tr("Inapakia dashboard...","Loading dashboard...")}</div>`;
  try{await loadData(user);}catch(error){console.error("ZUNE seller dashboard load:",error);state.error=error.message;}
  renderPanel();
 }
 function bindShell(){
- document.getElementById("zsd-back")?.addEventListener("click",()=>{});
+ document.getElementById("zsd-back")?.addEventListener("click",()=>{if(typeof window.__zuneSellerBack==="function")window.__zuneSellerBack();});
  document.getElementById("zsd-language")?.addEventListener("click",()=>{
   state.language=state.language==="sw"?"en":"sw";localStorage.setItem("zune_language",state.language);
   const app=document.getElementById("app");if(app)renderSellerDashboard({app,user:window.__zuneSellerUser,onBack:window.__zuneSellerBack});
