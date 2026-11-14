@@ -2213,6 +2213,10 @@ function bindAccountEvents() {
 
 function renderMarketplacePage(page) {
   homeState.activeTab = page;
+  if (page !== "home" && homeState.carouselTimer) {
+    clearInterval(homeState.carouselTimer);
+    homeState.carouselTimer = null;
+  }
 
   if (homeState.observer) {
     homeState.observer.disconnect();
