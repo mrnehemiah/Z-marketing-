@@ -54,15 +54,25 @@ function renderProductList(items){
  return `<div class="zsd-products">${items.map(p=>`<article class="zsd-product"><strong>${esc(p.title)}</strong><p class="zsd-muted">${money(p.price)} · ${tr("Stock","Stock")}: ${Number(p.stock_quantity)||0}</p></article>`).join("")}</div>`;
 }
 function renderVerification(){
- const req=state.badgeRequest,verified=!!state.profile?.is_verified;
+ const req=state.badgeRequest;
  const storeStatus=String(state.store?.verification_status||"").toLowerCase();
  const storeVerified=["verified","approved"].includes(storeStatus);
- let accountStatus="";
- if(verified)accountStatus=verifiedAccountMark();
- else if(req?.status==="pending")accountStatus='<span class="zsd-pill orange">'+tr("Inasubiri Admin Mkuu","Pending Admin review")+'</span>';
- else if(req?.status==="rejected")accountStatus='<span class="zsd-pill" style="background:color-mix(in srgb,#bd3d3d 12%,transparent);color:#bd3d3d">'+tr("Limekataliwa","Rejected")+'</span>';
- const storeBadge=storeVerified?'<span class="zsd-store-mark"><i class="zsd-store-dot"></i> Verified Store</span>':'<span class="zsd-pill blue">'+tr("Haijathibitishwa","Not verified")+'</span>';
- return `<section class="zsd-card"><div class="zsd-section-kicker">${tr("UTAMBULISHO NA UTHIBITISHO","IDENTITY & VERIFICATION")}</div><div class="zsd-verification-head"><div class="zsd-verification-title"><h2>${tr("Uthibitisho wa akaunti","Account verification")}</h2>${accountStatus}</div></div><p class="zsd-muted">${tr("Verified Account ni beji ya wasifu wako. Inaonekana tu baada ya Admin Mkuu kuidhinisha ombi lako.","Verified Account is your profile badge. It appears only after Admin Mkuu approves your request.")}</p><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:17px;padding-top:15px;border-top:1px solid var(--zsd-line)"><div><strong style="font-size:13px;display:block;margin-bottom:5px">Verified Store</strong><span class="zsd-muted">${tr("Uthibitisho wa duka ni tofauti na wa akaunti.","Store verification is separate from account verification.")}</span></div>${storeBadge}</div><div style="margin-top:17px"><a class="zsd-btn primary" href="./verification.html">${verified?tr("Angalia uthibitisho","View verification"):tr("Omba / Angalia uthibitisho","Request / View verification")} →</a></div></section>`;
+ const requestStatus=String(req?.status||"").toLowerCase();
+ let statusMarkup="";
+ if(storeVerified){
+  statusMarkup='<span class="zsd-store-mark"><i class="zsd-store-dot"></i> Verified Store</span>';
+ }else if(requestStatus==="pending"){
+  statusMarkup='<span class="zsd-pill blue">'+tr("Inasubiri Admin Mkuu","Pending Admin review")+'</span>';
+ }else if(requestStatus==="rejected"){
+  statusMarkup='<span class="zsd-pill" style="background:color-mix(in srgb,#bd3d3d 12%,transparent);color:#bd3d3d">'+tr("Ombi limekataliwa","Request rejected")+'</span>';
+ }else if(["more_info_required","needs_information","more_information"].includes(requestStatus)){
+  statusMarkup='<span class="zsd-pill orange">'+tr("Taarifa zaidi zinahitajika","More information required")+'</span>';
+ }else{
+  statusMarkup='<span class="zsd-pill blue">'+tr("Haijathibitishwa","Not verified")+'</span>';
+ }
+ const reason=req?.rejection_reason?'<p class="zsd-muted">'+esc(req.rejection_reason)+'</p>':"";
+ const showForm=!storeVerified&&requestStatus!=="pending";
+ return `<section class="zsd-card"><div class="zsd-section-kicker">${tr("UTHIBITISHO WA DUKA","STORE VERIFICATION")}</div><div class="zsd-verification-head"><div class="zsd-verification-title"><h2>Verified Store</h2>${statusMarkup}</div></div><p class="zsd-muted">${tr("Omba beji ya Verified Store. Beji ya blue itaonekana baada ya Admin Mkuu kukagua na kuidhinisha taarifa za duka lako. Hii ni tofauti na Verified Account ya Customer.","Apply for the Verified Store badge. The blue badge appears after Admin Mkuu reviews and approves your store details. This is separate from the Customer Verified Account badge.")}</p>${reason}${showForm?`<form id="zsd-verification-form" class="zsd-form" style="margin-top:15px"><label>${tr("Jina kamili la mmiliki","Owner full name")}<input name="full_name" maxlength="140" required value="${esc(state.profile?.full_name||"")}"></label><label>${tr("Jina la duka","Store name")}<input name="business_name" maxlength="140" required value="${esc(state.store?.store_name||"")}"></label><div class="zsd-full"><p class="zsd-muted">${tr("Kwa sasa tunahitaji taarifa za msingi tu. Usipakie nyaraka binafsi mpaka sehemu salama ya nyaraka itakapowekwa.","Only basic details are required for now. Do not upload private documents until a secure document upload is available.")}</p><div id="zsd-verify-message" class="zsd-alert" role="status"></div><button class="zsd-btn primary" type="submit" style="width:100%">${tr("Omba Verified Store","Apply for Verified Store")}</button></div></form>`:""}<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--zsd-line)"><strong style="font-size:12px;display:block;margin-bottom:5px">${tr("Verified Account ya Customer","Customer Verified Account")}</strong><span class="zsd-muted">${tr("Uthibitisho wa Customer unaombwa kwenye ukurasa wa Account, si hapa.","Customer verification is requested from the Account page, not here.")}</span></div></section>`;
 }
 function renderProducts(){
  return `<section class="zsd-card"><div class="zsd-row"><h2>${tr("Bidhaa zako","Your products")}</h2><span class="zsd-pill blue">${state.products.length}</span></div><p class="zsd-muted">${tr("Bidhaa zilizochapishwa kwenye duka lako.","Products published in your store.")}</p>${state.products.length?renderProductList(state.products):`<div class="zsd-empty">${tr("Bado hujaweka bidhaa.","You have not listed products yet.")}</div>`}</section>
@@ -211,10 +221,10 @@ async function submitVerification(event){
  if(state.busy)return;
  const values=new FormData(form);
  const fullName=String(values.get("full_name")||"").trim(), business=String(values.get("business_name")||"").trim();
- if(!fullName){message.textContent=tr("Jaza jina lako kamili.","Enter your full name.");return;}
+ if(!fullName||!business){message.textContent=tr("Jaza jina lako kamili na jina la duka.","Enter your full name and store name.");return;}
  state.busy=true;button.disabled=true;message.textContent=tr("Inatuma ombi...","Submitting request...");
  try{
-  const {data,error}=await supabase.from("verified_badge_requests").insert({user_id:window.__zuneSellerUser.id,full_name:fullName,business_name:business||null,status:"pending"}).select("id,status,rejection_reason,created_at").single();
+  const {data,error}=await supabase.from("verified_badge_requests").insert({user_id:window.__zuneSellerUser.id,full_name:fullName,business_name:business,verification_type:"seller",status:"pending"}).select("id,status,rejection_reason,created_at").single();
   if(error)throw error;
   state.badgeRequest=data;renderPanel();
  }catch(error){console.error("ZUNE verification request:",error);message.textContent=error.message||tr("Imeshindikana kutuma ombi.","Could not submit request.");button.disabled=false;}
@@ -227,7 +237,7 @@ async function loadData(user){
   supabase.from("products").select("id,title,price,stock_quantity,created_at,moderation_status").eq("vendor_id",user.id).order("created_at",{ascending:false}).limit(50),
   supabase.from("order_items").select("order_id,product_id,product_name,price,quantity,created_at").eq("seller_id",user.id).limit(100),
   supabase.from("stores").select("id,store_name,verification_status").eq("owner_id",user.id).maybeSingle(),
-  supabase.from("verified_badge_requests").select("id,status,rejection_reason,created_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(1).maybeSingle()
+  supabase.from("verified_badge_requests").select("id,status,rejection_reason,created_at").eq("user_id",user.id).eq("verification_type","seller").order("created_at",{ascending:false}).limit(1).maybeSingle()
  ]);
  state.profile=profile.data||null;state.products=products.data||[];state.orderItems=items.data||[];state.store=store.data||null;state.badgeRequest=badge.data||null;state.wallet=wallet.data||null;state.ledger=ledger.data||[];
  const orderIds=[...new Set((items.data||[]).map(x=>x.order_id).filter(Boolean))];
