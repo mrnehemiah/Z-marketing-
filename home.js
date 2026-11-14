@@ -60,6 +60,7 @@ const homeText = {
   sw: {
     search: "Tafuta bidhaa...",
     categories: "Makundi ya bidhaa",
+    allCategories: "Makundi yote",
     all: "Zote",
     latest: "Bidhaa mpya",
 
@@ -121,6 +122,7 @@ const homeText = {
   en: {
     search: "Search products...",
     categories: "Product categories",
+    allCategories: "All categories",
     all: "All",
     latest: "Latest products",
 
@@ -441,6 +443,59 @@ function addHomeStyles() {
 
     .z-category-list::-webkit-scrollbar {
       display: none;
+    }
+
+    .z-categories-link {
+      border: 0;
+      padding: 7px 10px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+      color: var(--primary);
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .z-categories-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 11px;
+    }
+
+    .z-category-tile {
+      min-height: 94px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      color: var(--text);
+      text-align: left;
+      font-weight: 800;
+    }
+
+    .z-category-tile-icon {
+      width: 42px;
+      height: 42px;
+      flex: 0 0 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 13px;
+      background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+      color: var(--primary);
+      font-size: 21px;
+    }
+
+    .z-category-tile-name {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-size: 12px;
+    }
+
+    @media (min-width: 560px) {
+      .z-categories-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
 
     .z-category {
@@ -1358,6 +1413,7 @@ function renderHomePage() {
 
           <div class="z-section-heading">
             <h2>${tx("categories")}</h2>
+            <button type="button" class="z-categories-link" data-open-categories>${tx("allCategories")} →</button>
           </div>
 
           <div id="z-category-area">
@@ -1473,6 +1529,11 @@ function bindHomeEvents() {
   document.querySelector("[data-open-cart]")
     ?.addEventListener("click", () => {
       renderMarketplacePage("cart");
+    });
+
+  document.querySelector("[data-open-categories]")
+    ?.addEventListener("click", () => {
+      renderMarketplacePage("categories");
     });
 
   updateProductArea();
@@ -1662,6 +1723,48 @@ function renderExplorePage() {
 
     </section>
   `;
+}
+
+function renderCategoriesPage() {
+  const categories = homeState.categories || [];
+  return `
+    <section class="z-home">
+      <main class="z-home-content">
+        <div class="z-section-heading">
+          <h1 class="z-page-title">${tx("categories")}</h1>
+          <button type="button" class="z-categories-link" data-back-home>← ${tx("home")}</button>
+        </div>
+        <div class="z-categories-grid">
+          <button type="button" class="z-category-tile" data-category-page="">
+            <span class="z-category-tile-icon">▦</span>
+            <span class="z-category-tile-name">${tx("all")}</span>
+          </button>
+          ${categories.map(category => `
+            <button type="button" class="z-category-tile" data-category-page="${safe(category.id)}">
+              <span class="z-category-tile-icon">▤</span>
+              <span class="z-category-tile-name">${safe(category.name)}</span>
+            </button>
+          `).join("")}
+        </div>
+        ${categories.length ? "" : `<div class="z-empty-state" style="margin-top:14px">${tx("empty")}</div>`}
+      </main>
+    </section>
+  `;
+}
+
+function bindCategoriesPage() {
+  document.querySelectorAll("[data-category-page]").forEach(button => {
+    button.addEventListener("click", async () => {
+      homeState.selectedCategory = button.dataset.categoryPage || "";
+      homeState.search = "";
+      homeState.page = 0;
+      homeState.products = [];
+      homeState.hasMore = true;
+      renderMarketplacePage("home");
+      await loadProducts(true);
+    });
+  });
+  document.querySelector("[data-back-home]")?.addEventListener("click", () => renderMarketplacePage("home"));
 }
 
 // --------------------------------------------
@@ -2160,6 +2263,10 @@ function renderMarketplacePage(page) {
       content = renderExplorePage();
       break;
 
+    case "categories":
+      content = renderCategoriesPage();
+      break;
+
     case "cart":
       content = renderCartPage();
       break;
@@ -2198,6 +2305,10 @@ function renderMarketplacePage(page) {
     case "explore":
       bindExploreEvents();
       observeInfiniteScroll();
+      break;
+
+    case "categories":
+      bindCategoriesPage();
       break;
 
     case "cart":
