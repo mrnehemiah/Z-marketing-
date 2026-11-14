@@ -689,8 +689,7 @@ function addHomeStyles() {
       margin: 4px 0 17px;
     }
 
-    .z-account-card,
-    .z-cart-summary {
+    .z-account-card {
       padding: 20px;
       border-radius: 18px;
       border: 1px solid var(--border, #e4ebe7);
@@ -1728,7 +1727,8 @@ function bindCartEvents() {
       renderMarketplacePage("cart");
     },
     onContinueShopping: () => renderMarketplacePage("home"),
-    onCheckout: () => alert(tx("checkoutComingSoon"))
+    onCheckout: () => alert(tx("checkoutComingSoon")),
+    onRetry: () => { homeState.cartProductsKey = ""; homeState.cartProductsError = false; renderMarketplacePage("cart"); }
   });
 
   const key = homeState.cart.map(item => String(item.productId)).sort().join("|");
