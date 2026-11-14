@@ -74,7 +74,7 @@ function renderProducts(){
   <label>${tr("Idadi ya stock","Stock quantity")}<input name="stock_quantity" type="number" min="0" step="1" value="1" required></label>
   <label class="zsd-full">${tr("Kundi la bidhaa","Product category")}<input name="category" maxlength="120" value="Vingine" required></label>
   <div class="zsd-full"><div class="zsd-row" style="justify-content:flex-start;flex-wrap:wrap"><label class="zsd-btn" for="zsd-gallery-input">＋ ${tr("Chagua Gallery / Storage","Choose Gallery / Storage")}</label><input id="zsd-gallery-input" type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none"><label class="zsd-btn" for="zsd-camera-input">◎ ${tr("Piga picha","Take photo")}</label><input id="zsd-camera-input" type="file" accept="image/*" capture="environment" style="display:none"></div><div id="zsd-photo-grid" class="zsd-photo-grid" style="margin-top:13px"></div><p class="zsd-muted" id="zsd-photo-count">${tr("Bado hujachagua picha.","No photos selected yet.")}</p></div>
-  <div class="zsd-full"><div id="zsd-publish-message" class="zsd-alert" role="status">${tr("Picha zitapakiwa baada tu ya moderation kuruhusu. Ikiwa ukaguzi haupatikani, uchapishaji utasimama.","Photos are uploaded only after moderation approves. If moderation is unavailable, publishing stops.")}</div><button class="zsd-btn primary" id="zsd-publish-button" type="submit" style="width:100%">${tr("Chapisha bidhaa","Publish product")}</button></div>
+  <div class="zsd-full"><div id="zsd-publish-message" class="zsd-alert" role="status">${tr("Bidhaa itachapishwa sokoni mara tu unapobonyeza Chapisha.","Your product will be published as soon as you press Publish.")}</div><button class="zsd-btn primary" id="zsd-publish-button" type="submit" style="width:100%">${tr("Chapisha bidhaa","Publish product")}</button></div>
  </form></section>`;
 }
 function renderOrders(){
@@ -170,7 +170,7 @@ async function publishSellerProduct(event){
   let result=data;
   if(error){
    try{if(error.context instanceof Response)result=await error.context.clone().json();}catch(_){}
-   throw new Error(result?.error||error.message||tr("Moderation imeshindikana. Bidhaa haijachapishwa.","Moderation failed. Product was not published."));
+   throw new Error(result?.error||error.message||tr("Imeshindikana kuchapisha bidhaa.","Product publishing failed."));
   }
   if(result?.status!=="published")throw new Error(result?.error||tr("Bidhaa haikuchapishwa.","Product was not published."));
   state.photos.forEach(photo=>URL.revokeObjectURL(photo.preview));
@@ -181,7 +181,7 @@ async function publishSellerProduct(event){
   const nextMessage=document.getElementById("zsd-publish-message");
   if(nextMessage)nextMessage.textContent=tr("Bidhaa imechapishwa sokoni kikamilifu.","Your product has been published successfully.");
  }catch(error){
-  console.error("ZUNE product moderation/publish:",error);
+  console.error("ZUNE product publishing:",error);
   message.textContent=error.message||tr("Imeshindikana kuchapisha bidhaa. Hakuna bidhaa iliyowekwa hewani.","Could not publish product. No product was made live.");
  }finally{
   state.publishing=false;
