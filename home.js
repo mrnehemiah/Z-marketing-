@@ -1891,7 +1891,7 @@ function renderAccountPage() {
   const role = homeState.accountProfile?.role || "buyer";
   const isSeller = role === "vendor";
   const application = homeState.sellerApplication;
-  const initials = name.trim().split(/\\s+/).slice(0,2).map(part => part.charAt(0)).join("").toUpperCase();
+  const initials = name.trim().split(/\s+/).slice(0,2).map(part => part.charAt(0)).join("").toUpperCase();
   let sellerContent = "";
   if (isSeller) {
     sellerContent = `<section class="z-account-seller z-account-section"><span class="z-account-eyebrow">${label("BIASHARA YANGU","MY BUSINESS")}</span><h2>${label("Duka lako liko tayari","Your store is ready")}</h2><p>${label("Maombi yako yameidhinishwa.","Your application is approved.")}</p><div class="z-seller-status approved"><strong>✓ ${label("Umeidhinishwa","Approved")}</strong><span>${label("Sasa unaweza kusimamia duka lako kupitia dashboard.","Manage your store from the dashboard.")}</span></div><button type="button" class="z-primary-button" data-open-seller-dashboard>${label("Fungua Seller Dashboard","Open Seller Dashboard")} →</button></section>`;
