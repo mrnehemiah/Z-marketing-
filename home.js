@@ -2046,7 +2046,7 @@ function renderAccountPage() {
       <button type="button" class="z-account-shortcut" data-account-cart><span class="shortcut-icon">🛒</span><span><strong>${label("Kikapu changu","My cart")}</strong><small>${label("Bidhaa ulizochagua","Items you selected")}</small></span><b>›</b></button>
     </div></section>
     ${renderThemeSettings()}
-    <section class="z-account-section"><span class="z-account-eyebrow">${label("USALAMA","SECURITY")}</span><h2>${label("Mipangilio ya akaunti","Account preferences")}</h2><div class="z-account-menu-row"><span class="shortcut-icon">⚙</span><span><strong>${label("Taarifa binafsi","Personal information")}</strong><small>${label("Jina na mawasiliano","Name and contact details")}</small></span><b>›</b></div><div class="z-account-menu-row"><span class="shortcut-icon">?</span><span><strong>${label("Msaada na mawasiliano","Help & support")}</strong><small>${label("Pata msaada kutoka ZUNE","Get help from ZUNE")}</small></span><b>›</b></div></section>
+    <section class="z-account-section"><span class="z-account-eyebrow">${label("USALAMA","SECURITY")}</span><h2>${label("Mipangilio ya akaunti","Account preferences")}</h2><button type="button" class="z-account-menu-row" data-open-settings="personal"><span class="shortcut-icon">⚙</span><span><strong>${label("Taarifa binafsi","Personal information")}</strong><small>${label("Jina, mawasiliano na mipangilio yote","Name, contact details and all settings")}</small></span><b>›</b></button><button type="button" class="z-account-menu-row" data-open-settings="contact"><span class="shortcut-icon">?</span><span><strong>${label("Msaada na mawasiliano","Help & support")}</strong><small>${label("Pata msaada kutoka ZUNE","Get help from ZUNE")}</small></span><b>›</b></button></section>
     <button type="button" class="z-account-logout" id="z-logout-button">↪ ${tx("logout")}</button><p class="z-account-version">ⓏⓊⓃⒺ MARKETPLACE · 2.0</p>
   </main></section>`;
 }
@@ -2090,6 +2090,7 @@ function bindAccountEvents() {
     });
   });
   document.querySelector("[data-open-seller-dashboard]")?.addEventListener("click",()=>window.location.assign("./seller-dashboard.html"));
+  document.querySelectorAll("[data-open-settings]").forEach(button=>button.addEventListener("click",()=>window.location.assign("./settings.html?section="+encodeURIComponent(button.dataset.openSettings||"personal"))));
   document.querySelector("[data-account-orders]")?.addEventListener("click",()=>alert(language()==="sw" ? "Sehemu ya oda itaunganishwa baada ya kujengwa." : "Orders will be connected when that section is built."));
   document.querySelector("[data-account-saved]")?.addEventListener("click",()=>renderMarketplacePage("saved"));
   document.querySelector("[data-account-cart]")?.addEventListener("click",()=>renderMarketplacePage("cart"));
