@@ -4,6 +4,7 @@
 // ============================================
 
 import { supabase } from "./supabase.js";
+import { renderSellerDashboard } from "./seller-dashboard.js";
 
 // --------------------------------------------
 // 1. SETTINGS AND STATE
@@ -2019,7 +2020,7 @@ function renderAccountPage() {
   const initials = name.trim().split(/\\s+/).slice(0,2).map(part => part.charAt(0)).join("").toUpperCase();
   let sellerContent = "";
   if (role === "vendor") {
-    sellerContent = `<section class="z-account-seller z-account-section"><span class="z-account-eyebrow">SELLER ACCOUNT</span><h2>${label("Duka lako liko tayari","Your store is ready")}</h2><p>${label("Maombi yako yameidhinishwa.","Your application is approved.")}</p><div class="z-seller-status approved"><strong>✓ ${label("Umeidhinishwa","Approved")}</strong><span>${label("Seller Dashboard itaunganishwa kwenye hatua inayofuata.","Seller Dashboard will be connected in the next step.")}</span></div></section>`;
+    sellerContent = `<section class="z-account-seller z-account-section"><span class="z-account-eyebrow">SELLER ACCOUNT</span><h2>${label("Duka lako liko tayari","Your store is ready")}</h2><p>${label("Maombi yako yameidhinishwa.","Your application is approved.")}</p><div class="z-seller-status approved"><strong>✓ ${label("Umeidhinishwa","Approved")}</strong><span>${label("Sasa unaweza kusimamia duka lako kupitia dashboard.","You can now manage your store from the dashboard.")}</span></div><button type="button" class="z-primary-button" data-open-seller-dashboard>${label("Fungua Seller Dashboard","Open Seller Dashboard")} →</button></section>`;
   } else if (application) {
     const status = String(application.status || "pending").toLowerCase();
     let title = label("Maombi yametumwa","Application submitted");
@@ -2087,6 +2088,7 @@ function bindAccountEvents() {
       });
     });
   });
+  document.querySelector("[data-open-seller-dashboard]")?.addEventListener("click",()=>renderMarketplacePage("seller"));
   document.querySelector("[data-account-orders]")?.addEventListener("click",()=>alert(language()==="sw" ? "Sehemu ya oda itaunganishwa baada ya kujengwa." : "Orders will be connected when that section is built."));
   document.querySelector("[data-account-saved]")?.addEventListener("click",()=>renderMarketplacePage("saved"));
   document.querySelector("[data-account-cart]")?.addEventListener("click",()=>renderMarketplacePage("cart"));
@@ -2133,6 +2135,11 @@ function renderMarketplacePage(page) {
   const app = homeState.app;
 
   if (!app) return;
+
+  if (page === "seller") {
+    renderSellerDashboard({app,user:homeState.user,onBack:()=>renderMarketplacePage("me")});
+    return;
+  }
 
   let content;
 
