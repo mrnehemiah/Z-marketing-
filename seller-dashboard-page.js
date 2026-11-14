@@ -1,5 +1,5 @@
-import { supabase } from "./supabase.js";
-import { renderSellerDashboard } from "./seller-dashboard.js";
+import { supabase } from "./supabase.js?v=20261114-3";
+import { renderSellerDashboard } from "./seller-dashboard.js?v=20261114-3";
 
 const app = document.getElementById("app");
 
