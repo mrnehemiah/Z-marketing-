@@ -112,7 +112,7 @@ async function compressSellerPhoto(file){
   const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/webp",0.82));
   if(!blob)return {file,preview:source,size:file.size};
   URL.revokeObjectURL(source);
-  const compressed=new File([blob],file.name.replace(/\\.[^.]+$/,"")+".webp",{type:"image/webp",lastModified:Date.now()});
+  const compressed=new File([blob],file.name.replace(/\.[^.]+$/,"")+".webp",{type:"image/webp",lastModified:Date.now()});
   return {file:compressed,preview:URL.createObjectURL(blob),size:blob.size};
  }catch(error){return {file,preview:source,size:file.size};}
 }
