@@ -2,7 +2,8 @@
 /* =========================================
    ZUNE MARKETPLACE 2.0
    MAIN APPLICATION
-   HTML + CSS + VANILLA JAVASCRIPT
+   LOGIN + SIGNUP + MARKETPLACE
+   SUPABASE + VANILLA JAVASCRIPT
 ========================================= */
 
 import {
@@ -14,12 +15,15 @@ import {
   logoutCustomer
 } from "./auth.js";
 
+import { renderMarketplaceHome } from "./home.js";
+
 const app = document.getElementById("app");
 
 const state = {
   language: localStorage.getItem("zune_language") || "",
   screen: "language",
   signupStep: 1,
+
   firstName: "",
   middleName: "",
   lastName: "",
@@ -27,14 +31,18 @@ const state = {
   email: "",
   password: "",
   confirmPassword: "",
+
   loginIdentity: "",
   loginPassword: "",
   showPassword: false,
+
   loading: false,
   signupSubmitted: false
 };
 
-/* TRANSLATIONS */
+/* =========================================
+   TRANSLATIONS
+========================================= */
 
 const translations = {
   sw: {
@@ -42,8 +50,10 @@ const translations = {
     languageDescription: "Karibu ZUNE. Chagua lugha unayopendelea.",
     swahili: "Kiswahili",
     english: "English",
+
     welcome: "Karibu ZUNE!",
     subtitle: "Soko lako la kisasa. Nunua na uza kwa urahisi.",
+
     login: "Ingia",
     signup: "Jisajili",
     emailOrPhone: "Barua pepe",
@@ -51,6 +61,7 @@ const translations = {
     forgot: "Umesahau nenosiri?",
     noAccount: "Huna akaunti?",
     haveAccount: "Tayari una akaunti?",
+
     firstName: "Jina la kwanza",
     middleName: "Jina la kati",
     lastName: "Jina la mwisho",
@@ -58,44 +69,56 @@ const translations = {
     email: "Barua pepe",
     createPassword: "Tengeneza nenosiri",
     confirmPassword: "Thibitisha nenosiri",
+
     continue: "Endelea",
     back: "Rudi nyuma",
     step: "Hatua",
     of: "kati ya 5",
+
     verifyTitle: "Thibitisha akaunti yako",
     verifyText: "Tutakutumia barua pepe yenye kiungo cha kuthibitisha akaunti yako.",
     finish: "Maliza usajili",
+
     required: "Tafadhali jaza sehemu zote zinazohitajika.",
     invalidPhone: "Weka namba sahihi ya simu.",
     invalidEmail: "Weka barua pepe sahihi.",
     passwordShort: "Nenosiri lazima liwe na angalau herufi 8.",
     passwordMismatch: "Nenosiri hazifanani.",
+
     loginMessage: "Muonekano wa kuingia umekamilika.",
     signupMessage: "Muundo wa usajili umekamilika.",
     forgotMessage: "Huduma ya kurejesha nenosiri.",
-    stepOneTitle: "Tujuane kwanza",
-    stepTwoTitle: "Namba yako ya simu",
-    stepThreeTitle: "Barua pepe yako",
-    stepFourTitle: "Linda akaunti yako",
-    show: "Onyesha",
-    hide: "Ficha",
-    loginError: "Imeshindikana kuingia. Hakikisha taarifa zako ni sahihi.",
-    signupError: "Usajili umeshindikana. Jaribu tena.",
-    forgotError: "Imeshindikana kutuma kiungo cha kurejesha nenosiri.",
+
     forgotPrompt: "Ingiza barua pepe yako:",
     forgotSuccess: "Kiungo cha kurejesha nenosiri kimetumwa kwenye barua pepe yako ikiwa akaunti inapatikana.",
+
     signupSuccess: "Usajili umepokelewa! Angalia barua pepe yako ili kuthibitisha akaunti.",
     signupSessionSuccess: "Akaunti yako imetengenezwa na umeingia kikamilifu.",
     loginSuccess: "Umeingia kikamilifu.",
+
     logout: "Toka kwenye akaunti",
     accountTitle: "Akaunti yako ya ZUNE",
     accountWelcome: "Karibu kwenye akaunti yako.",
+
     emailVerification: "Tafadhali fungua barua pepe yako na ubofye kiungo cha uthibitisho.",
     loginAgain: "Rudi kuingia",
     processing: "Inachakata...",
+
     passwordRequired: "Tafadhali jaza barua pepe na nenosiri.",
     emailOnly: "Kwa sasa tumia barua pepe kuingia. Kuingia kwa namba ya simu bado hakujawashwa.",
-    loginTitle: "Ingia kwenye akaunti yako"
+    loginTitle: "Ingia kwenye akaunti yako",
+
+    show: "Onyesha",
+    hide: "Ficha",
+
+    loginError: "Imeshindikana kuingia. Hakikisha taarifa zako ni sahihi.",
+    signupError: "Usajili umeshindikana. Jaribu tena.",
+    forgotError: "Imeshindikana kutuma kiungo cha kurejesha nenosiri.",
+
+    stepOneTitle: "Tujuane kwanza",
+    stepTwoTitle: "Namba yako ya simu",
+    stepThreeTitle: "Barua pepe yako",
+    stepFourTitle: "Linda akaunti yako"
   },
 
   en: {
@@ -103,8 +126,10 @@ const translations = {
     languageDescription: "Welcome to ZUNE. Select your preferred language.",
     swahili: "Kiswahili",
     english: "English",
+
     welcome: "Welcome to ZUNE!",
     subtitle: "Your modern marketplace. Buy and sell with ease.",
+
     login: "Log In",
     signup: "Sign Up",
     emailOrPhone: "Email Address",
@@ -112,6 +137,7 @@ const translations = {
     forgot: "Forgot password?",
     noAccount: "Don't have an account?",
     haveAccount: "Already have an account?",
+
     firstName: "First Name",
     middleName: "Middle Name",
     lastName: "Last Name",
@@ -119,50 +145,83 @@ const translations = {
     email: "Email Address",
     createPassword: "Create Password",
     confirmPassword: "Confirm Password",
+
     continue: "Continue",
     back: "Go Back",
     step: "Step",
     of: "of 5",
+
     verifyTitle: "Verify your account",
     verifyText: "We will send you an email with a link to verify your account.",
     finish: "Complete Sign Up",
+
     required: "Please complete all required fields.",
     invalidPhone: "Enter a valid phone number.",
     invalidEmail: "Enter a valid email address.",
     passwordShort: "Password must contain at least 8 characters.",
     passwordMismatch: "Passwords do not match.",
+
     loginMessage: "The login interface is ready.",
     signupMessage: "The signup interface is ready.",
     forgotMessage: "Password recovery.",
-    stepOneTitle: "Let's get to know you",
-    stepTwoTitle: "Your phone number",
-    stepThreeTitle: "Your email address",
-    stepFourTitle: "Secure your account",
-    show: "Show",
-    hide: "Hide",
-    loginError: "Login failed. Please check your details.",
-    signupError: "Registration failed. Please try again.",
-    forgotError: "Unable to send the password recovery link.",
+
     forgotPrompt: "Enter your email address:",
     forgotSuccess: "If an account exists, a password recovery link has been sent to your email.",
+
     signupSuccess: "Registration received! Check your email to verify your account.",
     signupSessionSuccess: "Your account has been created and you are now signed in.",
     loginSuccess: "You have successfully logged in.",
+
     logout: "Log Out",
     accountTitle: "Your ZUNE Account",
     accountWelcome: "Welcome to your account.",
+
     emailVerification: "Please open your email and click the verification link.",
     loginAgain: "Return to login",
     processing: "Processing...",
+
     passwordRequired: "Please enter your email and password.",
     emailOnly: "For now, use your email address to log in. Phone login is not enabled yet.",
-    loginTitle: "Log in to your account"
+    loginTitle: "Log in to your account",
+
+    show: "Show",
+    hide: "Hide",
+
+    loginError: "Login failed. Please check your details.",
+    signupError: "Registration failed. Please try again.",
+    forgotError: "Unable to send the password recovery link.",
+
+    stepOneTitle: "Let's get to know you",
+    stepTwoTitle: "Your phone number",
+    stepThreeTitle: "Your email address",
+    stepFourTitle: "Secure your account"
   }
 };
 
-const t = (key) => translations[state.language || "sw"][key];
+const t = key =>
+  translations[state.language || "sw"][key] || key;
 
-/* ADDITIONAL PAGE STYLES */
+/* =========================================
+   SAFE HTML
+========================================= */
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, character => {
+    const entities = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    };
+
+    return entities[character];
+  });
+}
+
+/* =========================================
+   ADDITIONAL PAGE STYLES
+========================================= */
 
 const extraStyles = document.createElement("style");
 
@@ -219,6 +278,7 @@ extraStyles.textContent = `
   color: var(--text);
   text-align: left;
   font-weight: 700;
+  cursor: pointer;
 }
 
 .language-option:hover {
@@ -237,6 +297,7 @@ extraStyles.textContent = `
   color: var(--primary);
   font-weight: 700;
   padding: 10px 0;
+  cursor: pointer;
 }
 
 .form-footer {
@@ -251,6 +312,7 @@ extraStyles.textContent = `
   background: none;
   border: none;
   font-weight: 700;
+  cursor: pointer;
 }
 
 .progress-track {
@@ -326,6 +388,7 @@ extraStyles.textContent = `
   color: var(--primary);
   border-radius: var(--radius-md);
   padding: 0 12px;
+  cursor: pointer;
 }
 
 @media (max-width: 380px) {
@@ -343,7 +406,9 @@ extraStyles.textContent = `
 
 document.head.appendChild(extraStyles);
 
-/* LOGO */
+/* =========================================
+   ZUNE LOGO
+========================================= */
 
 function logo() {
   return `
@@ -356,7 +421,9 @@ function logo() {
   `;
 }
 
-/* WAVE TRANSITION */
+/* =========================================
+   WAVE TRANSITION
+========================================= */
 
 function waveTo(callback) {
   const logoElement = document.getElementById("zuneLogo");
@@ -379,7 +446,9 @@ function waveTo(callback) {
   setTimeout(callback, reducedMotion ? 50 : 850);
 }
 
-/* LANGUAGE SCREEN */
+/* =========================================
+   LANGUAGE SCREEN
+========================================= */
 
 function renderLanguage() {
   state.screen = "language";
@@ -389,7 +458,11 @@ function renderLanguage() {
       <div class="panel">
         <div class="brand-area">
           ${logo()}
-          <h1 class="page-title">${t("chooseLanguage")}</h1>
+
+          <h1 class="page-title">
+            ${t("chooseLanguage")}
+          </h1>
+
           <p class="page-description">
             ${t("languageDescription")}
           </p>
@@ -423,7 +496,9 @@ function chooseLanguage(language) {
   waveTo(renderWelcome);
 }
 
-/* WELCOME SCREEN */
+/* =========================================
+   WELCOME SCREEN
+========================================= */
 
 function renderWelcome() {
   state.screen = "welcome";
@@ -446,18 +521,28 @@ function renderWelcome() {
         </div>
 
         <div class="welcome-actions">
-          <button class="btn btn-primary full-button" id="loginBtn">
+          <button
+            class="btn btn-primary full-button"
+            id="loginBtn"
+          >
             ${t("login")}
           </button>
 
-          <button class="btn btn-secondary full-button" id="signupBtn">
+          <button
+            class="btn btn-secondary full-button"
+            id="signupBtn"
+          >
             ${t("signup")}
           </button>
         </div>
 
         <p class="form-footer">
           <button id="changeLanguageBtn">
-            ${state.language === "sw" ? "Badilisha lugha" : "Change language"}
+            ${
+              state.language === "sw"
+                ? "Badilisha lugha"
+                : "Change language"
+            }
           </button>
         </p>
       </div>
@@ -478,7 +563,9 @@ function renderWelcome() {
   };
 }
 
-/* LOGIN SCREEN */
+/* =========================================
+   LOGIN SCREEN
+========================================= */
 
 function renderLogin(error = "") {
   state.screen = "login";
@@ -488,12 +575,16 @@ function renderLogin(error = "") {
       <div class="panel">
         <div class="brand-area">
           ${logo()}
-          <h1 class="page-title">${t("loginTitle")}</h1>
+
+          <h1 class="page-title">
+            ${t("loginTitle")}
+          </h1>
         </div>
 
         <form id="loginForm">
           <div class="form-group">
             <label>${t("emailOrPhone")}</label>
+
             <input
               class="form-control"
               type="email"
@@ -506,6 +597,7 @@ function renderLogin(error = "") {
 
           <div class="form-group">
             <label>${t("password")}</label>
+
             <div class="password-row">
               <input
                 class="form-control"
@@ -515,6 +607,7 @@ function renderLogin(error = "") {
                 value="${escapeHTML(state.loginPassword)}"
                 required
               >
+
               <button
                 type="button"
                 class="password-toggle"
@@ -525,14 +618,24 @@ function renderLogin(error = "") {
             </div>
           </div>
 
-          <button type="button" class="text-button" id="forgotBtn">
+          <button
+            type="button"
+            class="text-button"
+            id="forgotBtn"
+          >
             ${t("forgot")}
           </button>
 
-          <p class="form-error">${escapeHTML(error)}</p>
+          <p class="form-error">
+            ${escapeHTML(error)}
+          </p>
 
-          <button class="btn btn-primary full-button" id="loginSubmit"
-            type="submit">
+          <button
+            class="btn btn-primary full-button"
+            id="loginSubmit"
+            type="submit"
+            ${state.loading ? "disabled" : ""}
+          >
             ${state.loading ? t("processing") : t("login")}
           </button>
         </form>
@@ -560,7 +663,8 @@ function renderLogin(error = "") {
       state.showPassword ? t("hide") : t("show");
   };
 
-  document.getElementById("forgotBtn").onclick = handleForgotPassword;
+  document.getElementById("forgotBtn").onclick =
+    handleForgotPassword;
 
   document.getElementById("goSignup").onclick = () => {
     resetSignup();
@@ -574,13 +678,20 @@ function renderLogin(error = "") {
   document.getElementById("loginForm").onsubmit = handleLogin;
 }
 
-/* LOGIN WITH SUPABASE */
+/* =========================================
+   LOGIN WITH SUPABASE
+========================================= */
 
 async function handleLogin(event) {
   event.preventDefault();
 
-  state.loginIdentity = document.getElementById("loginIdentity").value.trim();
-  state.loginPassword = document.getElementById("loginPassword").value;
+  state.loginIdentity = document
+    .getElementById("loginIdentity")
+    .value.trim();
+
+  state.loginPassword = document
+    .getElementById("loginPassword")
+    .value;
 
   if (!state.loginIdentity || !state.loginPassword) {
     renderLogin(t("passwordRequired"));
@@ -599,7 +710,8 @@ async function handleLogin(event) {
     state.loading = false;
     state.loginPassword = "";
 
-    renderAccount();
+    await renderAccount();
+
   } catch (error) {
     state.loading = false;
 
@@ -607,7 +719,9 @@ async function handleLogin(event) {
   }
 }
 
-/* FORGOT PASSWORD */
+/* =========================================
+   FORGOT PASSWORD
+========================================= */
 
 async function handleForgotPassword() {
   const email = prompt(t("forgotPrompt"));
@@ -625,26 +739,34 @@ async function handleForgotPassword() {
     await recoverPassword(email.trim());
 
     alert(t("forgotSuccess"));
+
   } catch (error) {
     alert(error.message || t("forgotError"));
   }
 }
 
-/* SIGNUP RESET */
+/* =========================================
+   SIGNUP RESET
+========================================= */
 
 function resetSignup() {
   state.signupStep = 1;
+
   state.firstName = "";
   state.middleName = "";
   state.lastName = "";
   state.phone = "+255";
+
   state.email = "";
   state.password = "";
   state.confirmPassword = "";
+
   state.signupSubmitted = false;
 }
 
-/* SIGNUP SCREEN */
+/* =========================================
+   SIGNUP SCREEN
+========================================= */
 
 function renderSignup(error = "") {
   state.screen = "signup";
@@ -659,20 +781,32 @@ function renderSignup(error = "") {
 
       <div class="form-group">
         <label>${t("firstName")}</label>
-        <input class="form-control" id="firstName"
-          value="${escapeHTML(state.firstName)}" required>
+        <input
+          class="form-control"
+          id="firstName"
+          value="${escapeHTML(state.firstName)}"
+          required
+        >
       </div>
 
       <div class="form-group">
         <label>${t("middleName")}</label>
-        <input class="form-control" id="middleName"
-          value="${escapeHTML(state.middleName)}" required>
+        <input
+          class="form-control"
+          id="middleName"
+          value="${escapeHTML(state.middleName)}"
+          required
+        >
       </div>
 
       <div class="form-group">
         <label>${t("lastName")}</label>
-        <input class="form-control" id="lastName"
-          value="${escapeHTML(state.lastName)}" required>
+        <input
+          class="form-control"
+          id="lastName"
+          value="${escapeHTML(state.lastName)}"
+          required
+        >
       </div>
     `;
   }
@@ -683,9 +817,14 @@ function renderSignup(error = "") {
 
       <div class="form-group">
         <label>${t("phone")}</label>
-        <input class="form-control" type="tel" id="phone"
+        <input
+          class="form-control"
+          type="tel"
+          id="phone"
           value="${escapeHTML(state.phone)}"
-          placeholder="+255 7XXXXXXXX" required>
+          placeholder="+255 7XXXXXXXX"
+          required
+        >
       </div>
     `;
   }
@@ -696,9 +835,14 @@ function renderSignup(error = "") {
 
       <div class="form-group">
         <label>${t("email")}</label>
-        <input class="form-control" type="email" id="email"
+        <input
+          class="form-control"
+          type="email"
+          id="email"
           value="${escapeHTML(state.email)}"
-          autocomplete="email" required>
+          autocomplete="email"
+          required
+        >
       </div>
     `;
   }
@@ -709,20 +853,26 @@ function renderSignup(error = "") {
 
       <div class="form-group">
         <label>${t("createPassword")}</label>
-        <input class="form-control"
-          type="password" id="newPassword"
+        <input
+          class="form-control"
+          type="password"
+          id="newPassword"
           autocomplete="new-password"
           value="${escapeHTML(state.password)}"
-          required>
+          required
+        >
       </div>
 
       <div class="form-group">
         <label>${t("confirmPassword")}</label>
-        <input class="form-control"
-          type="password" id="confirmPassword"
+        <input
+          class="form-control"
+          type="password"
+          id="confirmPassword"
           autocomplete="new-password"
           value="${escapeHTML(state.confirmPassword)}"
-          required>
+          required
+        >
       </div>
     `;
   }
@@ -760,7 +910,10 @@ function renderSignup(error = "") {
       <div class="panel">
         <div class="brand-area">
           ${logo()}
-          <h1 class="page-title">${t("signup")}</h1>
+
+          <h1 class="page-title">
+            ${t("signup")}
+          </h1>
         </div>
 
         <p class="step-label">
@@ -768,29 +921,48 @@ function renderSignup(error = "") {
         </p>
 
         <div class="progress-track">
-          <div class="progress-value"
-            style="width:${step * 20}%">
-          </div>
+          <div
+            class="progress-value"
+            style="width:${step * 20}%"
+          ></div>
         </div>
 
         <form id="signupForm">
           ${content}
 
-          <p class="form-error">${escapeHTML(error)}</p>
+          <p class="form-error">
+            ${escapeHTML(error)}
+          </p>
 
           <div class="form-actions">
             ${
               step > 1 && !state.signupSubmitted
-                ? `<button type="button" class="btn btn-secondary" id="signupBack">
+                ? `
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    id="signupBack"
+                  >
                     ${t("back")}
-                  </button>`
-                : `<button type="button" class="btn btn-secondary" id="signupCancel">
+                  </button>
+                `
+                : `
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    id="signupCancel"
+                  >
                     ${t("back")}
-                  </button>`
+                  </button>
+                `
             }
 
-            <button type="submit" class="btn btn-primary" id="signupSubmit"
-              ${state.loading ? "disabled" : ""}>
+            <button
+              type="submit"
+              class="btn btn-primary"
+              id="signupSubmit"
+              ${state.loading ? "disabled" : ""}
+            >
               ${
                 state.loading
                   ? t("processing")
@@ -839,7 +1011,11 @@ function renderSignup(error = "") {
   };
 }
 
-/* SAVE FORM DATA */function saveSignupFields() {
+/* =========================================
+   SAVE SIGNUP FORM DATA
+========================================= */
+
+function saveSignupFields() {
   const fields = [
     ["firstName", "firstName"],
     ["middleName", "middleName"],
@@ -868,7 +1044,9 @@ function renderSignup(error = "") {
   }
 }
 
-/* SIGNUP VALIDATION AND NAVIGATION */
+/* =========================================
+   SIGNUP VALIDATION AND SUBMISSION
+========================================= */
 
 async function handleSignup(event) {
   event.preventDefault();
@@ -882,7 +1060,8 @@ async function handleSignup(event) {
   saveSignupFields();
 
   const step = state.signupStep;
-if (step === 1) {
+
+  if (step === 1) {
     if (
       !state.firstName ||
       !state.middleName ||
@@ -913,7 +1092,9 @@ if (step === 1) {
 
   if (step === 4) {
     const password = document.getElementById("newPassword").value;
-    const confirm = document.getElementById("confirmPassword").value;state.password = password;
+    const confirm = document.getElementById("confirmPassword").value;
+
+    state.password = password;
     state.confirmPassword = confirm;
 
     if (password.length < 8) {
@@ -942,16 +1123,19 @@ if (step === 1) {
       });
 
       state.loading = false;
+
       state.password = "";
       state.confirmPassword = "";
 
-      if (result.session) {
+      if (result?.session) {
         state.signupSubmitted = true;
-        renderAccount();
+        await renderAccount();
         return;
       }
-state.signupSubmitted = true;
+
+      state.signupSubmitted = true;
       renderSignup();
+
       return;
 
     } catch (error) {
@@ -967,63 +1151,40 @@ state.signupSubmitted = true;
   waveTo(() => renderSignup());
 }
 
-/* CUSTOMER ACCOUNT SCREEN */
+/* =========================================
+   MARKETPLACE ACCOUNT ENTRY
+========================================= */
 
-function renderAccount() {
-  state.screen = "account";
+async function renderAccount() {
+  state.screen = "marketplace";
 
-  getCurrentCustomer()
-    .then((user) => {
-      if (!user) {
-        renderWelcome();
-        return;
+  try {
+    const user = await getCurrentCustomer();
+
+    if (!user) {
+      renderWelcome();
+      return;
+    }
+
+    await renderMarketplaceHome({
+      app,
+      user,
+
+      onLogout: async () => {
+        await handleLogout();
       }
-
-      const metadata = user.user_metadata || {};
-
-      const customerName = [
-        metadata.first_name,
-        metadata.middle_name,
-        metadata.last_name
-      ].filter(Boolean).join(" ");
-
-      app.innerHTML = `
-        <section class="page">
-          <div class="panel">
-            <div class="brand-area">
-              ${logo()}
-
-              <h1 class="page-title">
-                ${t("accountTitle")}
-              </h1>
-
-              <p class="welcome-description">
-                ${t("accountWelcome")}
-              </p>
-            </div>
-   <p class="page-description">
-              ${escapeHTML(customerName || user.email || "")}
-            </p>
-
-            <p class="page-description">
-              ${escapeHTML(user.email || "")}
-            </p>
-
-            <button class="btn btn-primary full-button" id="logoutBtn">
-              ${t("logout")}
-            </button>
-          </div>
-        </section>
-      `;
-
-      document.getElementById("logoutBtn").onclick = handleLogout;
-    })
-    .catch((error) => {
-      renderLogin(error.message || t("loginError"));
     });
+
+  } catch (error) {
+    console.error("ZUNE Marketplace error:", error);
+
+    renderLogin(error.message || t("loginError"));
+  }
 }
 
-/* LOGOUT */
+/* =========================================
+   LOGOUT
+========================================= */
 
 async function handleLogout() {
   try {
@@ -1033,28 +1194,28 @@ async function handleLogout() {
     state.loginIdentity = "";
 
     waveTo(renderWelcome);
+
   } catch (error) {
-    alert(error.message || "Logout failed.");
+    console.error("ZUNE logout error:", error);
+
+    alert(
+      state.language === "sw"
+        ? "Imeshindikana kutoka kwenye akaunti."
+        : "Unable to log out."
+    );
   }
 }
 
-/* SAFE HTML VALUES */function escapeHTML(value) {
-  return String(value).replace(/[&<>"']/g, (character) => {
-    const entities = {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#039;"
-    };
-
-    return entities[character];
-  });
-}
-
-/* START APPLICATION */
+/* =========================================
+   START APPLICATION
+========================================= */
 
 async function startApp() {
+  if (!app) {
+    console.error("ZUNE: Element with id app was not found.");
+    return;
+  }
+
   if (state.language !== "sw" && state.language !== "en") {
     renderLanguage();
     return;
@@ -1064,7 +1225,7 @@ async function startApp() {
     const session = await getCustomerSession();
 
     if (session) {
-      renderAccount();
+      await renderAccount();
       return;
     }
 
@@ -1072,8 +1233,13 @@ async function startApp() {
 
   } catch (error) {
     console.error("ZUNE startup error:", error);
+
     renderWelcome();
   }
 }
+
+/* =========================================
+   RUN ZUNE APPLICATION
+========================================= */
 
 startApp();
