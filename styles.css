@@ -93,6 +93,29 @@
   --border: #F3DFE6;
 }
 
+
+[data-theme="sunset"] {
+  --primary: #D65B3C;
+  --primary-dark: #A83F2B;
+  --secondary: #F0A34A;
+  --background: #FFF5ED;
+  --surface: #FFFFFF;
+  --text: #3A241E;
+  --text-muted: #92776D;
+  --border: #F0DDD2;
+}
+
+[data-theme="minimal"] {
+  --primary: #424B57;
+  --primary-dark: #252D36;
+  --secondary: #9AA4AF;
+  --background: #F4F5F6;
+  --surface: #FFFFFF;
+  --text: #20252B;
+  --text-muted: #737C86;
+  --border: #E1E4E8;
+}
+
 /* RESET */
 
 * {
