@@ -1463,7 +1463,14 @@ function renderProductCards(products,gridClass="z-product-grid"){
 }
 function updateProductArea() {
   const area=document.getElementById("z-product-area");
-  if(area)area.innerHTML=renderProductCards(homeState.products);
+  if(area){
+    const savedIds=new Set((homeState.saved||[]).map(String));
+    const hybrid=[...homeState.products].sort((a,b)=>{
+      const score=p=>Number(savedIds.has(String(p.id)))*-2+Number(String(p.category_id||"")===String(homeState.selectedCategory||"")&&homeState.selectedCategory?2:0)+Number(p.average_rating||p.rating_average||p.rating||0)*2+Number(p.sold_count||p.sales_count||p.total_sold||0)*.25;
+      return score(b)-score(a);
+    });
+    area.innerHTML=renderProductCards(hybrid);
+  }
   const arrivals=document.getElementById("z-new-arrivals");
   if(arrivals)arrivals.innerHTML=homeState.products.length?homeState.products.slice(0,6).map(productCard).join(""):'<div class="z-empty-state">'+tx("empty")+"</div>";
   const trending=document.getElementById("z-trending-products");
@@ -1621,8 +1628,6 @@ function renderHomePage() {
 
           <div class="z-home-actions">
 
-            <button type="button" class="z-icon-button" data-open-notifications aria-label="Notifications">${zIcon("notification")}</button>
-
             <button
               type="button"
               class="z-icon-button"
@@ -1768,7 +1773,7 @@ function bindSearchEvents() {
     if(productButton){const product=homeState.products.find(p=>String(p.id)===productButton.dataset.suggestProduct);if(product)openProductDetails(product);suggestionBox.classList.remove("open");return;}
     const storeButton=event.target.closest("[data-suggest-store]");if(storeButton){suggestionBox.classList.remove("open");document.getElementById("z-featured-stores-section")?.scrollIntoView({behavior:"smooth"});}
   });
-  document.addEventListener("click",event=>{if(!event.target.closest(".z-search-box"))suggestionBox?.classList.remove("open");},{once:true});
+  input.addEventListener("keydown",event=>{if(event.key==="Escape"){suggestionBox?.classList.remove("open");input.setAttribute("aria-expanded","false");}});
 }
 
 // --------------------------------------------
@@ -1782,12 +1787,6 @@ function bindHomeEvents() {
   startCarouselAutoplay();
   document.querySelector("[data-open-categories]")?.addEventListener("click", () => renderMarketplacePage("explore"));
   document.querySelector("[data-view-all-products]")?.addEventListener("click",()=>renderMarketplacePage("explore"));
-
-  document.querySelector("[data-open-notifications]")?.addEventListener("click",()=>{
-    window.dispatchEvent(new CustomEvent("zune:open-notifications"));
-    const target=document.querySelector("[data-notifications],#notificationsPage,#notifications");
-    if(target)target.scrollIntoView({behavior:"smooth"});
-  });
 
   document.querySelector("[data-open-cart]")
     ?.addEventListener("click", () => {
