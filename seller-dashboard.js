@@ -234,8 +234,9 @@ async function saveStoreProfile(event){
   const {data,error}=await supabase.from("stores").update(payload).eq("id",s.id).eq("owner_id",user.id).select("id,owner_id,store_name,verification_status,logo_url,description,phone,email,website,region,district,address").single();
   if(error)throw error;
   state.store=data;msg.textContent=tr("Taarifa za duka zimehifadhiwa kikamilifu.","Store details saved successfully.");
+  const stripName=document.querySelector(".zsd-store-strip strong");if(stripName)stripName.textContent=data.store_name;
+  const preview=form.querySelector("#zsd-store-logo-preview");if(preview&&data.logo_url)preview.innerHTML=`<img src="${esc(data.logo_url)}" alt="Store logo">`;
   if(oldPath)await supabase.storage.from("zune-store-assets").remove([oldPath]);
-  renderPanel();
  }catch(error){
   if(uploadedPath)await supabase.storage.from("zune-store-assets").remove([uploadedPath]);
   msg.textContent=error.message||tr("Imeshindikana kuhifadhi taarifa za duka.","Could not save store profile.");
