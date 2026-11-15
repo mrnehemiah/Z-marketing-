@@ -8,3 +8,9 @@ alter table public.stores
   check (storefront_template in ('classic','editorial','hero','compact','boutique','catalog','stories','minimal','deals','showcase'));
 grant select (storefront_template) on public.stores to anon, authenticated;
 grant update (storefront_template) on public.stores to authenticated;
+
+-- Customers signed in to ZUNE must also be able to read active public stores.
+drop policy if exists stores_public_read_active_authenticated on public.stores;
+create policy stores_public_read_active_authenticated
+on public.stores for select to authenticated
+using (is_active = true);
