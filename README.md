@@ -34,9 +34,9 @@ The separate Admin repository includes:
 
 ## Current build
 
-The active continuation branch is `build/marketplace-2-foundation`.
+The active continuation branch is `build/marketplace-2-main-sync`.
 
 - Previous foundation PR: https://github.com/mrnehemiah/Z-marketing-/pull/21 (merged).
-- Current staged PR: https://github.com/mrnehemiah/Z-marketing-/pull/22 (draft; not merged).
+- Current staged PR: https://github.com/mrnehemiah/Z-marketing-/pull/23 (draft; not merged).
 
 JavaScript syntax checks and database schema/RLS checks have been performed. Browser/mobile visual QA and full end-to-end order testing remain to be completed before declaring the build production-ready.
