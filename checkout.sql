@@ -22,6 +22,10 @@ ALTER TABLE public.order_checkouts ADD COLUMN IF NOT EXISTS idempotency_key text
 CREATE UNIQUE INDEX IF NOT EXISTS order_checkouts_buyer_idempotency_uidx
  ON public.order_checkouts (buyer_id, idempotency_key)
  WHERE idempotency_key IS NOT NULL;
+ALTER TABLE public.order_checkouts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS order_checkouts_admin_read ON public.order_checkouts;
+CREATE POLICY order_checkouts_admin_read ON public.order_checkouts
+ FOR SELECT TO authenticated USING (public.zune_is_admin());
 
 DROP FUNCTION IF EXISTS public.zune_create_checkout(jsonb,jsonb,text,text);
 DROP FUNCTION IF EXISTS public.zune_create_checkout(jsonb,jsonb,text);
