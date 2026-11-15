@@ -8,9 +8,9 @@ CREATE TABLE IF NOT EXISTS public.coupon_redemptions (
  checkout_id uuid NOT NULL REFERENCES public.order_checkouts(id) ON DELETE CASCADE,
  discount_amount numeric NOT NULL CHECK(discount_amount>=0),
  created_at timestamptz NOT NULL DEFAULT now(),
- CONSTRAINT coupon_redemptions_one_per_buyer UNIQUE(coupon_id,buyer_id),
- CONSTRAINT coupon_redemptions_one_per_checkout UNIQUE(checkout_id)
+  CONSTRAINT coupon_redemptions_one_per_checkout UNIQUE(checkout_id)
 );
+ALTER TABLE public.coupon_redemptions DROP CONSTRAINT IF EXISTS coupon_redemptions_one_per_buyer;
 ALTER TABLE public.coupon_redemptions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS coupon_redemptions_buyer_read_own ON public.coupon_redemptions;
 CREATE POLICY coupon_redemptions_buyer_read_own ON public.coupon_redemptions FOR SELECT TO authenticated USING (buyer_id=auth.uid());
@@ -128,7 +128,6 @@ BEGIN
    FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Coupon si sahihi au muda wake umeisha.'; END IF;
   IF v_coupon.usage_limit IS NOT NULL AND v_coupon.usage_count>=v_coupon.usage_limit THEN RAISE EXCEPTION 'Coupon imefikia kikomo cha matumizi.'; END IF;
-  IF EXISTS(SELECT 1 FROM public.coupon_redemptions WHERE coupon_id=v_coupon.id AND buyer_id=v_buyer) THEN RAISE EXCEPTION 'Umeshafanya matumizi ya coupon hii.'; END IF;
   IF v_subtotal<coalesce(v_coupon.min_order_amount,0) THEN RAISE EXCEPTION 'Jumla ya bidhaa haijafikia kiwango cha chini cha coupon.'; END IF;
   IF lower(v_coupon.discount_type)='percentage' THEN v_discount:=v_subtotal*v_coupon.discount_value/100;
   ELSE v_discount:=v_coupon.discount_value; END IF;
@@ -258,7 +257,6 @@ BEGIN
     AND starts_at<=now() AND (expires_at IS NULL OR expires_at>now());
   IF NOT FOUND THEN RETURN jsonb_build_object('ready',false,'message','Coupon si sahihi au muda wake umeisha.'); END IF;
   IF v_coupon.usage_limit IS NOT NULL AND v_coupon.usage_count>=v_coupon.usage_limit THEN RETURN jsonb_build_object('ready',false,'message','Coupon imefikia kikomo cha matumizi.'); END IF;
-  IF EXISTS(SELECT 1 FROM public.coupon_redemptions WHERE coupon_id=v_coupon.id AND buyer_id=v_buyer) THEN RETURN jsonb_build_object('ready',false,'message','Umeshafanya matumizi ya coupon hii.'); END IF;
   IF v_subtotal<coalesce(v_coupon.min_order_amount,0) THEN RETURN jsonb_build_object('ready',false,'message','Jumla ya bidhaa haijafikia kiwango cha chini cha coupon.'); END IF;
   IF lower(v_coupon.discount_type)='percentage' THEN v_discount:=v_subtotal*v_coupon.discount_value/100;
   ELSE v_discount:=v_coupon.discount_value; END IF;
