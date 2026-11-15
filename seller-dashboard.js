@@ -23,12 +23,20 @@ const sections = [
   ["settings","⚙","Mipangilio","Settings","MSAADA NA MIPANGILIO"]
 ];
 
-const state = { section:"overview", sidebarCollapsed:false, sidebarOpen:false, salesPeriod:"7d", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], adsEvents:[], loading:false, busy:false, error:"" };
+const state = { section:"overview", sidebarCollapsed:false, sidebarOpen:false, salesPeriod:"7d", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], orderDeliveries:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], adsEvents:[], conversations:[], activeConversationId:null, chatMessages:[], notifications:[], customers:[], customersLoading:false, customersLoadedFor:null, supportTickets:[], sellerLocations:[], locationsLoadedFor:null, editingLocationId:null, withdrawalRequests:[], withdrawalsLoadedFor:null, withdrawalsLoading:false, messagesLoadedFor:null, notificationsLoadedFor:null, supportLoadedFor:null, messagesLoading:false, notificationsLoading:false, supportLoading:false, loading:false, busy:false, error:"" };
 const tr = (sw,en) => state.language==="sw"?sw:en;
 const esc = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = value => new Intl.NumberFormat("sw-TZ",{style:"currency",currency:"TZS",maximumFractionDigits:0}).format(Number(value)||0);
 
-function styles(){ /* Dashboard styles are loaded from seller-dashboard.css. */ }
+function styles(){
+ let link=document.getElementById("zune-seller-dashboard-styles");
+ if(link)return;
+ link=document.createElement("link");
+ link.id="zune-seller-dashboard-styles";
+ link.rel="stylesheet";
+ link.href="./seller-dashboard.css?v=20261115-build";
+ document.head.appendChild(link);
+}
 
 function verifiedAccountMark(){
  return `<span class="zsd-verified-mark" title="Verified Account"><svg viewBox="-30 -30 60 60" role="img" aria-label="Verified Account"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Verified Account</span></span>`;
@@ -166,9 +174,10 @@ function sellerOrderTotal(orderId){
  return lines.reduce((sum,item)=>sum+(Number(item.price)||0)*(Number(item.quantity)||0),0);
 }
 function renderOrders(){
- return `<section class="zsd-card"><h2>${tr("Oda za wateja","Customer orders")}</h2><p class="zsd-muted">${tr("Oda zinazoonyesha bidhaa zilizouzwa na duka lako.","Orders containing items sold by your store.")}</p>
- ${state.orders.length?`<div style="overflow:auto"><table class="zsd-table"><thead><tr><th>${tr("Oda","Order")}</th><th>${tr("Tarehe","Date")}</th><th>${tr("Hali","Status")}</th><th>${tr("Jumla ya bidhaa zako","Your item subtotal")}</th></tr></thead><tbody>${state.orders.map(o=>`<tr><td>${esc(String(o.id).slice(0,8))}</td><td>${o.created_at?new Date(o.created_at).toLocaleDateString():"—"}</td><td>${esc(o.status||"—")}</td><td>${money(sellerOrderTotal(o.id))}</td></tr>`).join("")}</tbody></table></div>`:`<div class="zsd-empty">${tr("Bado hakuna oda za duka lako.","There are no orders for your store yet.")}</div>`}
- </section>`;
+ const deliveries=new Map((state.orderDeliveries||[]).map(x=>[x.checkout_id,x]));
+ return `<section class="zsd-card"><h2>${tr("Oda za wateja","Customer orders")}</h2><p class="zsd-muted">${tr("Oda zinazoonyesha bidhaa zilizouzwa na duka lako pamoja na taarifa za usafirishaji zinazopatikana.","Orders containing items sold by your store, with available delivery updates.")}</p>
+ ${state.orders.length?`<div class="zsd-table-wrap"><table class="zsd-table"><thead><tr><th>${tr("Oda","Order")}</th><th>${tr("Tarehe","Date")}</th><th>${tr("Hali ya oda","Order status")}</th><th>${tr("Usafirishaji","Delivery")}</th><th>${tr("Eneo la mteja","Destination")}</th><th>${tr("Jumla ya bidhaa zako","Your item subtotal")}</th></tr></thead><tbody>${state.orders.map(o=>{const d=deliveries.get(o.checkout_id);const destination=[o.delivery_district,o.delivery_region].filter(Boolean).join(", ");return `<tr><td>${esc(String(o.id).slice(0,8).toUpperCase())}</td><td>${o.created_at?new Date(o.created_at).toLocaleDateString(state.language==="sw"?"sw-TZ":"en-TZ"):"—"}</td><td>${esc(o.status||"—")}</td><td><strong>${esc(d?.status||tr("Bado hakuna taarifa","No update yet"))}</strong><small>${d?.delivery_fee!=null?money(d.delivery_fee):""}</small></td><td>${esc(destination||"—")}</td><td>${money(sellerOrderTotal(o.id))}</td></tr>`;}).join("")}</tbody></table></div>`:`<div class="zsd-empty">${tr("Bado hakuna oda za duka lako.","There are no orders for your store yet.")}</div>`}
+ <p class="zsd-muted">${tr("Hali ya usafirishaji inaonyeshwa kwa taarifa zinazotumwa na Admin / mfumo wa delivery. Mabadiliko ya hali hayafanywi hapa.","Delivery status reflects updates from Admin / the delivery system. Status changes are not made here.")}</p></section>`;
 }
 function renderFinance(){
  const balance=Number(state.wallet?.balance)||0;
@@ -177,8 +186,35 @@ function renderFinance(){
  <p class="zsd-muted">${tr("Ada za ZUNE, fedha zinazosubiri na utoaji wa fedha vitaonyeshwa baada ya sera za malipo na withdrawal kuunganishwa.","ZUNE fees, pending payouts and withdrawals will appear once payment and withdrawal workflows are connected.")}</p>`;
 }
 function renderStore(){
- const s=state.store;
- return `<section class="zsd-card"><h2>${tr("Taarifa za duka","Store information")}</h2>${s?`<p><strong>${esc(s.store_name)}</strong></p><p class="zsd-muted">${tr("Hali ya uthibitisho wa duka","Store verification")}: ${esc(s.verification_status||"pending")}</p>`:`<div class="zsd-empty">${tr("Taarifa za duka hazijapatikana bado.","Store details are not available yet.")}</div>`}<div class="zsd-alert">${tr("Uhariri wa jina, nembo, cover, saa za kazi na sera utafunguliwa baada ya sehemu hizo za duka kuongezwa kwenye database.","Editing store name, logo, cover, business hours and policies will be enabled after those store fields are added to the database.")}</div></section>`;
+ const s=state.store, rows=state.sellerLocations||[], editing=rows.find(x=>x.id===state.editingLocationId)||null;
+ const field=(name,label,value="",required=false)=>`<label>${label}<input class="zsd-input" name="${name}" value="${esc(value)}" ${required?"required":""} maxlength="180"></label>`;
+ return `<section class="zsd-card"><h2>${tr("Wasifu wa duka","Store profile")}</h2>${s?`<p><strong>${esc(s.store_name)}</strong></p><p class="zsd-muted">${tr("Hali ya uthibitisho wa duka","Store verification")}: ${esc(s.verification_status||"pending")}</p>`:`<div class="zsd-empty">${tr("Taarifa za duka hazijapatikana bado.","Store details are not available yet.")}</div>`}<div class="zsd-alert">${tr("Jina la duka na hali ya uthibitisho hudhibitiwa na Admin Mkuu kwa sasa. Huwezi kubadilisha taarifa hizo hapa.","Store name and verification status are currently controlled by Admin Mkuu and cannot be changed here.")}</div></section>
+ <section class="zsd-card"><div class="zsd-chat-heading"><div><h2>${tr("Maeneo ya duka na usafirishaji","Store locations & delivery")}</h2><p class="zsd-muted">${tr("Ongeza au hariri maeneo ambayo duka lako linaweza kuhudumia. Haya ni maeneo ya duka, si mabadiliko ya anwani ya mteja.","Add or edit the areas your store can serve. These are store service locations, not customer delivery addresses.")}</p></div><button class="zsd-btn" id="zsd-refresh-locations" type="button">${tr("Onyesha upya","Refresh")}</button></div>
+ <form id="zsd-location-form" class="zsd-form">${field("country",tr("Nchi","Country"),editing?.country||"Tanzania",true)}${field("region",tr("Mkoa","Region"),editing?.region||"",true)}${field("district",tr("Wilaya","District"),editing?.district||"",true)}${field("ward",tr("Kata","Ward"),editing?.ward||"")}${field("address",tr("Anwani / eneo","Address / area"),editing?.address||"",true)}${field("maximum_distance_km",tr("Umbali wa juu wa huduma (km)","Maximum service distance (km)"),editing?.maximum_distance_km??"",false)}<label class="zsd-location-active"><input type="checkbox" name="is_active" ${editing?.is_active===false?"":"checked"}> ${tr("Eneo hili linatumika","This location is active")}</label><div class="zsd-full"><p id="zsd-location-message" class="zsd-muted" role="status"></p><button class="zsd-btn primary" type="submit">${editing?tr("Hifadhi mabadiliko","Save changes"):tr("Ongeza eneo","Add location")}</button> ${editing?'<button class="zsd-btn" type="button" id="zsd-cancel-location">Cancel</button>':""}</div></form>
+ <div class="zsd-location-list">${rows.map(x=>`<article class="zsd-location-item"><div><strong>${esc([x.address,x.ward,x.district,x.region,x.country].filter(Boolean).join(", "))}</strong><small>${x.maximum_distance_km?esc(x.maximum_distance_km)+" km · ":""}${x.is_active?tr("Linafanya kazi","Active"):tr("Limesitishwa","Inactive")}</small></div><div><button class="zsd-btn" type="button" data-edit-location="${esc(x.id)}">${tr("Hariri","Edit")}</button> <button class="zsd-btn" type="button" data-delete-location="${esc(x.id)}">${tr("Futa","Delete")}</button></div></article>`).join("")||`<div class="zsd-empty">${tr("Bado hujaongeza eneo la duka.","You have not added a store location yet.")}</div>`}</div></section>`;
+}
+async function loadSellerLocations(force=false){
+ const user=window.__zuneSellerUser;if(!user?.id)return;
+ if(!force&&state.locationsLoadedFor===user.id)return;
+ const {data,error}=await supabase.from("seller_locations").select("id,country,region,district,ward,address,maximum_distance_km,is_active,created_at").eq("vendor_id",user.id).order("created_at",{ascending:false});
+ if(error){console.error("ZUNE seller locations:",error);state.error=error.message||"Locations could not be loaded.";return;}
+ state.sellerLocations=data||[];state.locationsLoadedFor=user.id;
+ if(state.section==="store")renderPanel();
+}
+async function saveSellerLocation(event){
+ event.preventDefault();const form=event.currentTarget,values=new FormData(form),message=form.querySelector("#zsd-location-message"),button=form.querySelector('button[type="submit"]'),user=window.__zuneSellerUser;
+ const payload={vendor_id:user.id,country:String(values.get("country")||"").trim(),region:String(values.get("region")||"").trim(),district:String(values.get("district")||"").trim(),ward:String(values.get("ward")||"").trim()||null,address:String(values.get("address")||"").trim(),maximum_distance_km:values.get("maximum_distance_km")?Number(values.get("maximum_distance_km")):null,is_active:values.get("is_active")==="on"};
+ if(!payload.country||!payload.region||!payload.district||!payload.address){message.textContent=tr("Jaza nchi, mkoa, wilaya na anwani.","Country, region, district and address are required.");return;}
+ if(payload.maximum_distance_km!==null&&(!Number.isFinite(payload.maximum_distance_km)||payload.maximum_distance_km<=0)){message.textContent=tr("Weka umbali sahihi ulio zaidi ya sifuri.","Enter a valid distance greater than zero.");return;}
+ if(state.busy)return;state.busy=true;button.disabled=true;message.textContent=tr("Inahifadhi...","Saving...");
+ try{let result;if(state.editingLocationId)result=await supabase.from("seller_locations").update(payload).eq("id",state.editingLocationId).eq("vendor_id",user.id);else result=await supabase.from("seller_locations").insert(payload);if(result.error)throw result.error;state.editingLocationId=null;await loadSellerLocations(true);}
+ catch(error){message.textContent=error.message||tr("Imeshindikana kuhifadhi eneo.","Could not save location.");}
+ finally{state.busy=false;button.disabled=false;}
+}
+async function deleteSellerLocation(id){
+ if(!window.confirm(tr("Una uhakika unataka kufuta eneo hili?","Are you sure you want to delete this location?")))return;
+ const {error}=await supabase.from("seller_locations").delete().eq("id",id).eq("vendor_id",window.__zuneSellerUser.id);
+ if(error){alert(error.message);return;}if(state.editingLocationId===id)state.editingLocationId=null;await loadSellerLocations(true);
 }
 
 async function compressSellerPhoto(file){
@@ -345,17 +381,169 @@ async function loadAdsData(){
  state.adsPackages=packages.data||[];state.adsCampaigns=campaigns.data||[];state.adsWallet=wallet.data||null;state.adsTransactions=transactions.data||[];
 }
 
+function renderCustomers(){
+ const rows=state.customers||[];
+ const total=rows.reduce((sum,x)=>sum+Number(x.orders_count||0),0);
+ return `<section class="zsd-card"><div class="zsd-chat-heading"><div><h2>${tr("Wateja wa duka","Store customers")}</h2><p class="zsd-muted">${tr("Wateja waliowahi kuagiza bidhaa zako.","Customers who have ordered your products.")}</p></div><button class="zsd-btn" type="button" id="zsd-refresh-customers">${tr("Onyesha upya","Refresh")}</button></div><div class="zsd-customer-stats"><article><small>${tr("Wateja","Customers")}</small><strong>${rows.length}</strong></article><article><small>${tr("Oda zilizowekwa","Orders placed")}</small><strong>${total}</strong></article></div><div class="zsd-table-wrap"><table class="zsd-table"><thead><tr><th>${tr("Mteja","Customer")}</th><th>${tr("Oda","Orders")}</th><th>${tr("Mara ya mwisho","Last order")}</th></tr></thead><tbody>${rows.map(x=>`<tr><td><strong>${esc(x.name||tr("Mteja wa ZUNE","ZUNE Customer"))}</strong><small>${esc(x.phone||"")}</small></td><td>${Number(x.orders_count)||0}</td><td>${x.last_order?new Date(x.last_order).toLocaleDateString(state.language==="sw"?"sw-TZ":"en-TZ"):"—"}</td></tr>`).join("")||`<tr><td colspan="3"><div class="zsd-empty">${tr("Bado hakuna wateja wenye oda.","No customers with orders yet.")}</div></td></tr>`}</tbody></table></div></section>`;
+}
+async function loadSellerCustomers(){
+ const user=window.__zuneSellerUser;if(!user?.id||state.customersLoading)return;
+ state.customersLoading=true;
+ try{
+  const {data,error}=await supabase.from("order_items").select("order_id").eq("seller_id",user.id).limit(2000);
+  if(error)throw error;
+  const ids=[...new Set((data||[]).map(x=>x.order_id).filter(Boolean))];
+  if(!ids.length){state.customers=[];state.customersLoadedFor=user.id;return;}
+  const ordersResult=await supabase.from("orders").select("id,buyer_id,created_at").in("id",ids);
+  if(ordersResult.error)throw ordersResult.error;
+  const byBuyer=new Map();
+  for(const order of ordersResult.data||[]){
+   if(!order.buyer_id)continue;
+   const item=byBuyer.get(order.buyer_id)||{id:order.buyer_id,orders_count:0,last_order:null};
+   item.orders_count++;
+   if(!item.last_order||new Date(order.created_at)>new Date(item.last_order))item.last_order=order.created_at;
+   byBuyer.set(order.buyer_id,item);
+  }
+  const buyers=[...byBuyer.values()];
+  if(!buyers.length){state.customers=[];state.customersLoadedFor=user.id;return;}
+  const profiles=await supabase.from("profiles").select("id,full_name,phone_number").in("id",buyers.map(x=>x.id));
+  if(profiles.error)throw profiles.error;
+  const lookup=new Map((profiles.data||[]).map(x=>[x.id,x]));
+  state.customers=buyers.map(x=>({...x,name:lookup.get(x.id)?.full_name||tr("Mteja wa ZUNE","ZUNE Customer"),phone:lookup.get(x.id)?.phone_number||""})).sort((a,b)=>new Date(b.last_order)-new Date(a.last_order));
+  state.customersLoadedFor=user.id;
+ }catch(error){console.error("ZUNE seller customers:",error);state.error=error.message||"Customers could not be loaded.";}
+ finally{state.customersLoading=false;if(state.section==="customers")renderPanel();}
+}
+function renderMessages(){
+ const active=state.conversations.find(x=>x.id===state.activeConversationId)||null;
+ const conversations=state.conversations.map(item=>{
+  const buyer=state.chatBuyers?.[item.buyer_id]||tr("Mteja wa ZUNE","ZUNE Customer");
+  const product=state.chatProducts?.[item.product_id]||tr("Bidhaa ya ZUNE","ZUNE Product");
+  const unread=Number(item.unread_count||0);
+  return `<button type="button" class="zsd-chat-thread ${active?.id===item.id?"active":""}" data-open-chat="${esc(item.id)}"><strong>${esc(buyer)}</strong><small>${esc(product)}</small><span>${esc(item.last_message||tr("Fungua mazungumzo","Open conversation"))}</span>${unread?'<i class="zsd-pill blue">'+unread+'</i>':""}</button>`;
+ }).join("");
+ const messageList=state.chatMessages.map(message=>`<div class="zsd-chat-message ${message.sender_id===window.__zuneSellerUser?.id?"mine":"theirs"}"><p>${esc(message.message)}</p><small>${new Date(message.created_at).toLocaleString(state.language==="sw"?"sw-TZ":"en-TZ")}</small></div>`).join("");
+ return `<section class="zsd-card zsd-chat-layout"><div class="zsd-chat-list"><div class="zsd-chat-heading"><h2>${tr("Ujumbe wa wateja","Customer messages")}</h2><button class="zsd-btn" type="button" id="zsd-refresh-messages">${tr("Onyesha upya","Refresh")}</button></div>${state.messagesLoading?'<div class="zsd-empty">'+tr("Inapakia ujumbe...","Loading messages...")+'</div>':conversations||'<div class="zsd-empty">'+tr("Bado hakuna mazungumzo na wateja.","No customer conversations yet.")+'</div>'}</div><div class="zsd-chat-view">${active?`<header><strong>${esc(state.chatBuyers?.[active.buyer_id]||tr("Mteja wa ZUNE","ZUNE Customer"))}</strong><small>${esc(state.chatProducts?.[active.product_id]||"")}</small></header><div class="zsd-chat-history" id="zsd-chat-history">${messageList||'<div class="zsd-empty">'+tr("Anza mazungumzo kwa kujibu mteja.","Reply to start the conversation.")+'</div>'}</div><form id="zsd-chat-form" class="zsd-chat-compose"><textarea name="message" maxlength="4000" required placeholder="${tr("Andika ujumbe...","Write a message...")}"></textarea><button class="zsd-btn primary" type="submit">${tr("Tuma","Send")} →</button></form>`:'<div class="zsd-empty">'+tr("Chagua mazungumzo upande wa kushoto.","Select a conversation on the left.")+'</div>'}</div></section>`;
+}
+async function loadSellerMessages(force=false){
+ const user=window.__zuneSellerUser;if(!user?.id||state.messagesLoading)return;
+ if(!force&&state.messagesLoadedFor===user.id)return;
+ state.messagesLoading=true;
+ try{
+  const {data,error}=await supabase.from("chat_conversations").select("id,buyer_id,seller_id,product_id,created_at,updated_at").eq("seller_id",user.id).order("updated_at",{ascending:false}).limit(50);
+  if(error)throw error;
+  state.conversations=data||[];
+  const buyerIds=[...new Set(state.conversations.map(x=>x.buyer_id).filter(Boolean))];
+  const productIds=[...new Set(state.conversations.map(x=>x.product_id).filter(Boolean))];
+  state.chatBuyers={};state.chatProducts={};
+  if(buyerIds.length){const result=await supabase.from("profiles").select("id,full_name").in("id",buyerIds);if(!result.error)(result.data||[]).forEach(x=>state.chatBuyers[x.id]=x.full_name||tr("Mteja wa ZUNE","ZUNE Customer"));}
+  if(productIds.length){const result=await supabase.from("products").select("id,title").in("id",productIds);if(!result.error)(result.data||[]).forEach(x=>state.chatProducts[x.id]=x.title||tr("Bidhaa ya ZUNE","ZUNE Product"));}
+  if(!state.conversations.some(x=>x.id===state.activeConversationId))state.activeConversationId=state.conversations[0]?.id||null;
+  if(state.activeConversationId){
+   const result=await supabase.from("chat_messages").select("id,conversation_id,sender_id,message,is_read,created_at").eq("conversation_id",state.activeConversationId).order("created_at",{ascending:true}).limit(100);
+   if(result.error)throw result.error;
+   state.chatMessages=result.data||[];
+   await supabase.from("chat_messages").update({is_read:true}).eq("conversation_id",state.activeConversationId).neq("sender_id",user.id).eq("is_read",false);
+  }else state.chatMessages=[];
+  state.messagesLoadedFor=user.id;
+ }catch(error){console.error("ZUNE seller messages:",error);state.error=error.message||"Messages could not be loaded.";}
+ finally{state.messagesLoading=false;if(state.section==="messages")renderPanel();}
+}
+async function sendSellerMessage(event){
+ event.preventDefault();const form=event.currentTarget;const message=String(new FormData(form).get("message")||"").trim();
+ if(!message||!state.activeConversationId||state.busy)return;
+ state.busy=true;const button=form.querySelector("button[type=submit]");if(button)button.disabled=true;
+ try{
+  const {error}=await supabase.from("chat_messages").insert({conversation_id:state.activeConversationId,sender_id:window.__zuneSellerUser.id,message});
+  if(error)throw error;
+  form.reset();await loadSellerMessages(true);
+ }catch(error){console.error("ZUNE send message:",error);alert(error.message||tr("Ujumbe haukutumwa. Jaribu tena.","Message was not sent. Please try again."));}
+ finally{state.busy=false;if(button)button.disabled=false;}
+}
+function renderSupport(){
+ const rows=state.supportTickets.map(ticket=>`<article class="zsd-notification"><div><strong>${esc(ticket.category||tr("Msaada wa Seller","Seller support"))}</strong><p>${esc(ticket.message||"")}</p><small>${new Date(ticket.created_at).toLocaleString(state.language==="sw"?"sw-TZ":"en-TZ")} · ${esc(ticket.status||"open")}</small>${ticket.admin_reply?`<p><strong>${tr("Jibu la Admin","Admin reply")}:</strong> ${esc(ticket.admin_reply)}</p>`:""}</div><span class="zsd-pill blue">${esc(ticket.status||"open")}</span></article>`).join("");
+ return `<section class="zsd-card"><h2>${tr("Msaada wa Seller","Seller Support")}</h2><p class="zsd-muted">${tr("Tuma ombi kwa timu ya ZUNE na fuatilia majibu hapa.","Contact the ZUNE team and follow replies here.")}</p><form id="zsd-support-form" class="zsd-form"><label>${tr("Aina ya tatizo","Issue category")}<select name="category" required><option value="">${tr("Chagua aina","Choose a category")}</option><option value="account">${tr("Akaunti","Account")}</option><option value="products">${tr("Bidhaa na stock","Products and inventory")}</option><option value="orders">${tr("Oda na usafirishaji","Orders and delivery")}</option><option value="ads">${tr("Ads na matangazo","Ads and promotions")}</option><option value="wallet">${tr("Wallet na fedha","Wallet and finance")}</option><option value="other">${tr("Nyingine","Other")}</option></select></label><label class="zsd-full">${tr("Eleza changamoto yako","Describe your issue")}<textarea name="message" rows="4" maxlength="4000" required placeholder="${tr("Andika maelezo...","Write details...")}"></textarea></label><div class="zsd-full"><p id="zsd-support-message" class="zsd-muted" role="status"></p><button type="submit" class="zsd-btn primary">${tr("Tuma ombi la msaada","Submit support request")}</button></div></form><div class="zsd-chat-heading"><h3>${tr("Maombi yangu ya msaada","My support requests")}</h3><button class="zsd-btn" id="zsd-refresh-support" type="button">${tr("Onyesha upya","Refresh")}</button></div>${state.supportLoading?'<div class="zsd-empty">'+tr("Inapakia maombi...","Loading requests...")+'</div>':rows||'<div class="zsd-empty">'+tr("Bado hujatuma ombi la msaada.","You have not submitted a support request yet.")+'</div>'}</section>`;
+}
+async function loadSellerSupport(force=false){
+ const user=window.__zuneSellerUser;if(!user?.id||state.supportLoading)return;
+ if(!force&&state.supportLoadedFor===user.id)return;
+ state.supportLoading=true;
+ try{const {data,error}=await supabase.from("support_tickets").select("id,category,message,status,admin_reply,created_at,updated_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(50);if(error)throw error;state.supportTickets=data||[];state.supportLoadedFor=user.id;}
+ catch(error){console.error("ZUNE seller support:",error);state.error=error.message||"Support requests could not be loaded.";}
+ finally{state.supportLoading=false;if(state.section==="support")renderPanel();}
+}
+async function submitSellerSupport(event){
+ event.preventDefault();const form=event.currentTarget,values=new FormData(form),category=String(values.get("category")||"").trim(),message=String(values.get("message")||"").trim(),status=form.querySelector("#zsd-support-message"),button=form.querySelector("button[type=submit]");
+ if(!category||!message||state.busy)return;
+ state.busy=true;button.disabled=true;status.textContent=tr("Inatuma ombi...","Submitting request...");
+ try{const {error}=await supabase.from("support_tickets").insert({user_id:window.__zuneSellerUser.id,customer_name:state.profile?.full_name||window.__zuneSellerUser.email||"Seller",category,message});if(error)throw error;form.reset();await loadSellerSupport(true);}
+ catch(error){console.error("ZUNE support ticket:",error);status.textContent=error.message||tr("Imeshindikana kutuma ombi.","Could not submit request.");}
+ finally{state.busy=false;button.disabled=false;}
+}
+function renderNotifications(){
+ const rows=state.notifications.map(item=>{
+  const title=state.language==="sw"?(item.title_sw||item.title_en):(item.title_en||item.title_sw);
+  const body=state.language==="sw"?(item.body_sw||item.body_en):(item.body_en||item.body_sw);
+  return `<article class="zsd-notification ${item.is_read?"read":"unread"}"><div><strong>${esc(title||tr("Taarifa ya ZUNE","ZUNE notification"))}</strong><p>${esc(body||"")}</p><small>${new Date(item.created_at).toLocaleString(state.language==="sw"?"sw-TZ":"en-TZ")}</small></div>${item.is_read?"":'<button class="zsd-btn" type="button" data-read-notification="'+esc(item.id)+'">'+tr("Soma","Mark read")+'</button>'}</article>`;
+ }).join("");
+ return `<section class="zsd-card"><div class="zsd-chat-heading"><div><h2>${tr("Notifications","Notifications")}</h2><p class="zsd-muted">${tr("Taarifa za akaunti na biashara yako.","Updates about your account and business.")}</p></div><button class="zsd-btn" type="button" id="zsd-read-all-notifications">${tr("Soma zote","Mark all read")}</button></div>${state.notificationsLoading?'<div class="zsd-empty">'+tr("Inapakia taarifa...","Loading notifications...")+'</div>':rows||'<div class="zsd-empty">'+tr("Bado huna taarifa mpya.","You have no notifications yet.")+'</div>'}</section>`;
+}
+async function loadSellerNotifications(force=false){
+ const user=window.__zuneSellerUser;if(!user?.id||state.notificationsLoading)return;
+ if(!force&&state.notificationsLoadedFor===user.id)return;
+ state.notificationsLoading=true;
+ try{
+  const {data,error}=await supabase.from("notifications").select("id,type,title_sw,title_en,body_sw,body_en,action_url,is_read,created_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(50);
+  if(error)throw error;state.notifications=data||[];state.notificationsLoadedFor=user.id;
+ }catch(error){console.error("ZUNE seller notifications:",error);state.error=error.message||"Notifications could not be loaded.";}
+ finally{state.notificationsLoading=false;if(state.section==="notifications")renderPanel();}
+}
+async function markSellerNotification(id=null){
+ const user=window.__zuneSellerUser;if(!user?.id)return;
+ let query=supabase.from("notifications").update({is_read:true,read_at:new Date().toISOString()}).eq("user_id",user.id).eq("is_read",false);
+ if(id)query=query.eq("id",id);
+ const {error}=await query;if(error){alert(error.message);return;}
+ await loadSellerNotifications(true);
+}
+function renderSettings(){
+ const themes=[["emerald","Emerald Green","#087A55"],["luxury","Luxury","#C69B36"],["ocean","Ocean","#1676C5"],["royal","Royal","#7546B8"],["nature","Nature","#426B3D"],["blossom","Blossom","#D94F83"],["sunset","Sunset","#D65B3C"],["minimal","Minimal","#424B57"]];
+ const current=localStorage.getItem("zune_theme")||"emerald",user=window.__zuneSellerUser;
+ return `<section class="zsd-card"><h2>${tr("Mapendeleo ya Seller Center","Seller Center preferences")}</h2><p class="zsd-muted">${tr("Badilisha rangi ya dashboard na lugha. Theme hii inatumika pia kwenye Marketplace ili mwonekano ubaki thabiti kwenye akaunti yako.","Change the dashboard color theme and language. The selected theme is shared with the Marketplace so your account has a consistent appearance.")}</p><div class="zsd-setting-row"><div><strong>${tr("Lugha","Language")}</strong><small>${tr("Chagua lugha ya dashboard","Choose dashboard language")}</small></div><button class="zsd-btn" id="zsd-settings-language" type="button">${state.language==="sw"?"Kiswahili / English":"English / Kiswahili"}</button></div><div class="zsd-setting-row"><div><strong>${tr("Muonekano / Theme","Appearance / Theme")}</strong><small>${tr("Chagua rangi unayopendelea","Choose your preferred color theme")}</small></div></div><div class="zsd-theme-grid">${themes.map(([id,name,color])=>`<button class="zsd-theme-option ${current===id?"active":""}" type="button" data-seller-theme="${id}" aria-pressed="${current===id}"><i style="background:${color}"></i><span>${name}</span>${current===id?"✓":""}</button>`).join("")}</div><p id="zsd-settings-message" class="zsd-muted" role="status"></p></section><section class="zsd-card"><h2>${tr("Taarifa za akaunti","Account information")}</h2><p><strong>${esc(state.profile?.full_name||user?.email||"Seller")}</strong></p><p class="zsd-muted">${esc(user?.email||"")} · ${tr("Wasifu na nenosiri hubadilishwa kwenye Mipangilio ya Akaunti.","Profile and password are managed in Account Settings.")}</p><a class="zsd-btn" href="./settings.html">${tr("Fungua Mipangilio ya Akaunti","Open Account Settings")}</a></section>`;
+}
 function renderPlaceholder(){
  const names=sections.find(s=>s[0]===state.section);
  return `<section class="zsd-card"><h2>${tr(names[2],names[3])}</h2><p class="zsd-muted">${tr("Sehemu hii imeongezwa kwenye muundo wa dashboard. Itaunganishwa na jedwali na ruhusa sahihi za Supabase kabla ya kuanza kutumia data halisi.","This section is included in the dashboard structure. It will be connected to the correct Supabase tables and permissions before handling live data.")}</p><div class="zsd-empty">${tr("Inaandaliwa — hakuna data ya majaribio iliyowekwa.","In preparation — no sample data has been inserted.")}</div></section>`;
 }
 function renderPanel(){
  const panel=document.getElementById("zsd-panel"); if(!panel)return;
- panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"||state.section==="add-product"?renderProducts():state.section==="orders"?renderOrders():state.section==="inventory"?renderInventory():state.section==="analytics"?renderAnalyticsPage():state.section==="product-performance"?renderProductPerformance():state.section==="finance"||state.section==="transactions"||state.section==="withdrawals"?renderFinance():state.section==="store"?renderStore():state.section==="verification"?renderVerification():state.section==="marketing"?renderMarketing():renderPlaceholder();
+ panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"||state.section==="add-product"?renderProducts():state.section==="orders"?renderOrders():state.section==="inventory"?renderInventory():state.section==="analytics"?renderAnalyticsPage():state.section==="product-performance"?renderProductPerformance():state.section==="finance"||state.section==="transactions"?renderFinance():state.section==="withdrawals"?renderWithdrawals():state.section==="store"?renderStore():state.section==="verification"?renderVerification():state.section==="marketing"?renderMarketing():state.section==="customers"?renderCustomers():state.section==="messages"?renderMessages():state.section==="notifications"?renderNotifications():state.section==="support"?renderSupport():state.section==="settings"?renderSettings():renderPlaceholder();
  const pageTitle=document.getElementById("zsd-page-title");if(pageTitle){const item=sections.find(x=>x[0]===state.section);pageTitle.textContent=item?tr(item[2],item[3]):tr("Muhtasari wa Biashara","Business Overview");}
  panel.querySelectorAll("[data-zsd-section]").forEach(b=>b.addEventListener("click",()=>{state.section=b.dataset.zsdSection;state.sidebarOpen=false;renderPanel();bindActiveNav();}));
  panel.querySelectorAll("[data-zsd-period]").forEach(b=>b.addEventListener("click",()=>{state.salesPeriod=b.dataset.zsdPeriod;renderPanel();bindActiveNav();}));
  panel.querySelector("#zsd-verification-form")?.addEventListener("submit",submitVerification);
+ panel.querySelector("#zsd-chat-form")?.addEventListener("submit",sendSellerMessage);
+ panel.querySelector("#zsd-refresh-customers")?.addEventListener("click",()=>loadSellerCustomers());
+ if(state.section==="customers"&&!state.customersLoadedFor&&!state.customersLoading)loadSellerCustomers();
+ panel.querySelector("#zsd-support-form")?.addEventListener("submit",submitSellerSupport);
+ panel.querySelector("#zsd-refresh-support")?.addEventListener("click",()=>loadSellerSupport(true));
+ panel.querySelector("#zsd-location-form")?.addEventListener("submit",saveSellerLocation);
+ panel.querySelector("#zsd-refresh-locations")?.addEventListener("click",()=>loadSellerLocations(true));
+ panel.querySelector("#zsd-withdrawal-form")?.addEventListener("submit",submitSellerWithdrawal);
+ panel.querySelector("#zsd-refresh-withdrawals")?.addEventListener("click",()=>loadSellerWithdrawals(true));
+ panel.querySelector("#zsd-settings-language")?.addEventListener("click",()=>{state.language=state.language==="sw"?"en":"sw";localStorage.setItem("zune_language",state.language);const app=document.getElementById("app");if(app)renderSellerDashboard({app,user:window.__zuneSellerUser,onBack:window.__zuneSellerBack});});
+ panel.querySelectorAll("[data-seller-theme]").forEach(button=>button.addEventListener("click",()=>{const theme=button.dataset.sellerTheme;const allowed=["emerald","luxury","ocean","royal","nature","blossom","sunset","minimal"];if(!allowed.includes(theme))return;localStorage.setItem("zune_theme",theme);document.documentElement.setAttribute("data-theme",theme);renderPanel();}));
+ if(state.section==="withdrawals"&&state.withdrawalsLoadedFor!==window.__zuneSellerUser?.id&&!state.withdrawalsLoading)loadSellerWithdrawals();
+ panel.querySelector("#zsd-cancel-location")?.addEventListener("click",()=>{state.editingLocationId=null;renderPanel();});
+ panel.querySelectorAll("[data-edit-location]").forEach(button=>button.addEventListener("click",()=>{state.editingLocationId=button.dataset.editLocation;renderPanel();}));
+ panel.querySelectorAll("[data-delete-location]").forEach(button=>button.addEventListener("click",()=>deleteSellerLocation(button.dataset.deleteLocation)));
+ if(state.section==="store"&&state.locationsLoadedFor!==window.__zuneSellerUser?.id)loadSellerLocations();
+ if(state.section==="support"&&state.supportLoadedFor!==window.__zuneSellerUser?.id&&!state.supportLoading)loadSellerSupport();
+ panel.querySelectorAll("[data-open-chat]").forEach(button=>button.addEventListener("click",async()=>{state.activeConversationId=button.dataset.openChat;state.chatMessages=[];await loadSellerMessages(true);}));
+ panel.querySelector("#zsd-refresh-messages")?.addEventListener("click",()=>loadSellerMessages(true));
+ panel.querySelector("#zsd-read-all-notifications")?.addEventListener("click",()=>markSellerNotification());
+ panel.querySelectorAll("[data-read-notification]").forEach(button=>button.addEventListener("click",()=>markSellerNotification(button.dataset.readNotification)));
+ if(state.section==="messages"&&state.messagesLoadedFor!==window.__zuneSellerUser?.id&&!state.messagesLoading)loadSellerMessages();
+ if(state.section==="notifications"&&state.notificationsLoadedFor!==window.__zuneSellerUser?.id&&!state.notificationsLoading)loadSellerNotifications();
  panel.querySelector("#zsd-gallery-input")?.addEventListener("change",event=>{if(event.target.files?.length)addSellerPhotos(event.target.files);event.target.value="";});
  panel.querySelector("#zsd-camera-input")?.addEventListener("change",event=>{if(event.target.files?.length)addSellerPhotos(event.target.files);event.target.value="";});
  if(state.section==="products"){renderPhotoSelection();panel.querySelector("#zsd-product-form")?.addEventListener("submit",publishSellerProduct);} if(state.section==="marketing"){
@@ -407,7 +595,12 @@ async function loadData(user){
  ]);
  state.profile=profile.data||null;state.products=products.data||[];state.orderItems=items.data||[];state.store=store.data||null;state.badgeRequest=badge.data||null;state.wallet=wallet.data||null;state.ledger=ledger.data||[];
  const orderIds=[...new Set((items.data||[]).map(x=>x.order_id).filter(Boolean))];
- if(orderIds.length){const {data}=await supabase.from("orders").select("id,status,total_price,created_at").in("id",orderIds);state.orders=data||[];}else state.orders=[];
+ if(orderIds.length){
+  const {data,error}=await supabase.from("orders").select("id,status,total_price,created_at,checkout_id,recipient_name,delivery_region,delivery_district,delivery_method,payment_status").in("id",orderIds);
+  if(error)throw error;state.orders=data||[];
+  const checkoutIds=[...new Set(state.orders.map(x=>x.checkout_id).filter(Boolean))];
+  if(checkoutIds.length){const deliveries=await supabase.from("order_deliveries").select("checkout_id,status,delivery_fee,currency,created_at").eq("vendor_id",user.id).in("checkout_id",checkoutIds);if(deliveries.error)throw deliveries.error;state.orderDeliveries=deliveries.data||[];}else state.orderDeliveries=[];
+ }else{state.orders=[];state.orderDeliveries=[];}
  state.loading=false;
 }
 export async function renderSellerDashboard({app,user,onBack}){

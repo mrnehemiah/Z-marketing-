@@ -4,7 +4,7 @@
 // ============================================
 
 import { supabase } from "./supabase.js";
-import { renderSellerDashboard } from "./seller-dashboard.js";
+import { renderSellerDashboard } from "./seller-dashboard.js?v=20261115-foundation";
 import { renderCartPage as renderCartView, bindCartEvents as bindCartViewEvents, loadCartProducts } from "./cart.js";
 
 // --------------------------------------------
@@ -1401,14 +1401,99 @@ function productCard(product) {
 function openStoreDetails(ownerId, product = null) {
   if (!ownerId) return;
   document.getElementById("z-store-detail-overlay")?.remove();
-  const cs=product?.__zuneStore||null, cp=product?.__zuneOwnerProfile||null;
-  const fallback=cs?.store_name||product?.store_name||product?.seller_name||(language()==="sw"?"Duka la ZUNE":"ZUNE Store");
-  const overlay=document.createElement("div"); overlay.id="z-store-detail-overlay"; overlay.className="z-product-detail-overlay";
-  overlay.innerHTML=`<section class="z-product-detail-sheet" role="dialog" aria-modal="true" aria-label="${safe(fallback)}"><button type="button" class="z-detail-close" aria-label="Close">×</button><div class="z-detail-content"><span class="z-account-eyebrow">${language()==="sw"?"TAARIFA ZA DUKA":"STORE INFORMATION"}</span><h2 id="z-store-detail-name">${safe(fallback)}</h2><div id="z-store-detail-status" class="z-product-store"></div><p id="z-store-detail-location" class="z-product-location"></p><p id="z-store-detail-message" class="z-account-message">${language()==="sw"?"Inapakia taarifa za duka...":"Loading store information..."}</p></div></section>`;
-  document.body.appendChild(overlay); const close=()=>overlay.remove(); overlay.addEventListener("click",e=>{if(e.target===overlay)close();}); overlay.querySelector(".z-detail-close")?.addEventListener("click",close);
-  const status=(s,p)=>{overlay.querySelector("#z-store-detail-status").innerHTML=(s?.verification_status==="verified"?'<span class="z-verified-store-mark" title="Verified Store">✓</span><strong>Verified Store</strong>':(language()==="sw"?"Duka halijathibitishwa":"Store not verified"))+(p?.is_verified===true?'<span class="z-verified-account-mark" title="Verified Account"><svg viewBox="-30 -30 60 60"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>Verified Account</strong>':"");};
-  status(cs,cp);
-  Promise.all([supabase.from("stores").select("owner_id,store_name,verification_status,region,district,address").eq("owner_id",ownerId).maybeSingle(),supabase.from("profiles").select("id,is_verified").eq("id",ownerId).maybeSingle()]).then(([sr,pr])=>{if(!overlay.isConnected)return;if(sr.error)throw sr.error;if(pr.error)throw pr.error;const s=sr.data||cs,p=pr.data||cp;overlay.querySelector("#z-store-detail-name").textContent=s?.store_name||fallback;overlay.querySelector("#z-store-detail-location").textContent=[s?.district,s?.region,s?.address].filter(Boolean).join(", ");status(s,p);overlay.querySelector("#z-store-detail-message").textContent=language()==="sw"?"Taarifa za duka zimeonyeshwa.":"Store information is shown above.";}).catch(e=>{console.warn("ZUNE store details:",e);const m=overlay.querySelector("#z-store-detail-message");if(m)m.textContent=language()==="sw"?"Baadhi ya taarifa hazikupatikana.":"Some information could not be loaded.";});
+  const cachedStore = product?.__zuneStore || null;
+  const cachedProfile = product?.__zuneOwnerProfile || null;
+  const fallback = cachedStore?.store_name || product?.store_name || product?.seller_name || (language()==="sw"?"Duka la ZUNE":"ZUNE Store");
+  const overlay = document.createElement("div");
+  overlay.id = "z-store-detail-overlay";
+  overlay.className = "z-product-detail-overlay";
+  overlay.innerHTML = `<section class="z-product-detail-sheet z-storefront-sheet" role="dialog" aria-modal="true" aria-label="${safe(fallback)}">
+    <button type="button" class="z-detail-close" aria-label="Close">×</button>
+    <div class="z-storefront-banner"><span class="z-storefront-brand">ⓏⓊⓃⒺ MARKETPLACE</span><div class="z-storefront-heading"><h2 id="z-store-detail-name">${safe(fallback)}</h2><div id="z-store-detail-status" class="z-product-store"></div><p id="z-store-detail-location" class="z-product-location"></p></div></div>
+    <div class="z-storefront-content"><div class="z-storefront-section-head"><div><span class="z-account-eyebrow">${language()==="sw"?"DUKA LA SELLER":"SELLER STOREFRONT"}</span><h3>${language()==="sw"?"Bidhaa za duka":"Store products"}</h3></div><span id="z-storefront-count" class="z-storefront-count"></span></div>
+    <p id="z-store-detail-message" class="z-account-message">${language()==="sw"?"Inapakia taarifa na bidhaa za duka...":"Loading store information and products..."}</p>
+    <div id="z-storefront-products" class="z-storefront-product-grid"></div></div>
+  </section>`;
+  document.body.appendChild(overlay);
+  const close=()=>overlay.remove();
+  overlay.addEventListener("click",e=>{if(e.target===overlay)close();});
+  overlay.querySelector(".z-detail-close")?.addEventListener("click",close);
+
+  const badgeMarkup=(store,profile)=>{
+    const verifiedStore=String(store?.verification_status||"").toLowerCase()==="verified";
+    const verifiedAccount=profile?.is_verified===true;
+    return (verifiedStore?'<span class="z-verified-store-mark" title="Verified Store">✓</span><strong>Verified Store</strong>':(language()==="sw"?"Duka halijathibitishwa":"Store not verified"))+
+      (verifiedAccount?'<span class="z-verified-account-mark" title="Verified Account"><svg viewBox="-30 -30 60 60"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>Verified Account</strong>':"");
+  };
+
+  if(!document.getElementById("zuneStorefrontTemplateStyles")){
+    const style=document.createElement("style");
+    style.id="zuneStorefrontTemplateStyles";
+    style.textContent=`
+      .z-storefront-sheet{width:min(760px,100%);max-height:92vh;overflow:auto;padding:0!important;background:var(--surface,#fff)}
+      .z-storefront-banner{padding:24px 22px 20px;background:linear-gradient(135deg,#087a55,#064d39);color:#fff}
+      .z-storefront-brand{font-size:10px;font-weight:800;letter-spacing:2px;opacity:.8}
+      .z-storefront-heading h2{margin:12px 0 8px;color:inherit;font-size:25px}
+      .z-storefront-heading .z-product-store{color:inherit;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+      .z-storefront-heading .z-product-location{color:rgba(255,255,255,.8);margin:8px 0 0}
+      .z-storefront-content{padding:20px}
+      .z-storefront-section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:14px}
+      .z-storefront-section-head h3{margin:5px 0 0;font-size:18px}
+      .z-storefront-count{font-size:12px;color:var(--text-muted)}
+      .z-storefront-product-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+      .z-storefront-product-grid .z-product-card{min-width:0}
+      .z-storefront-sheet[data-zune-store-template="editorial"] .z-storefront-banner{background:#29251f}
+      .z-storefront-sheet[data-zune-store-template="hero"] .z-storefront-banner{background:linear-gradient(135deg,#101d35,#314b73);padding:42px 24px}
+      .z-storefront-sheet[data-zune-store-template="compact"] .z-storefront-content{padding:12px}
+      .z-storefront-sheet[data-zune-store-template="compact"] .z-storefront-product-grid{gap:7px}
+      .z-storefront-sheet[data-zune-store-template="boutique"] .z-storefront-banner{background:#34251f}
+      .z-storefront-sheet[data-zune-store-template="catalog"] .z-storefront-product-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+      .z-storefront-sheet[data-zune-store-template="stories"] .z-storefront-banner{background:linear-gradient(135deg,#58366b,#a66eae)}
+      .z-storefront-sheet[data-zune-store-template="minimal"] .z-storefront-banner{background:#f4f4f1;color:#242424}
+      .z-storefront-sheet[data-zune-store-template="minimal"] .z-storefront-product-grid .z-product-card{box-shadow:none;border-radius:0}
+      .z-storefront-sheet[data-zune-store-template="deals"] .z-storefront-banner{background:linear-gradient(135deg,#a94c12,#e58b2a)}
+      .z-storefront-sheet[data-zune-store-template="showcase"] .z-storefront-banner{background:linear-gradient(135deg,#111820,#354b5d)}
+      @media(max-width:520px){.z-storefront-product-grid,.z-storefront-sheet[data-zune-store-template="catalog"] .z-storefront-product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.z-storefront-content{padding:14px}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  Promise.all([
+    supabase.from("stores").select("owner_id,store_name,verification_status,region,district,address").eq("owner_id",ownerId).maybeSingle(),
+    supabase.from("profiles").select("id,is_verified").eq("id",ownerId).maybeSingle(),
+    supabase.from("products").select("*").eq("vendor_id",ownerId).order("created_at",{ascending:false}).limit(24)
+  ]).then(([storeResult,profileResult,productsResult])=>{
+    if(!overlay.isConnected)return;
+    if(storeResult.error)throw storeResult.error;
+    if(profileResult.error)throw profileResult.error;
+    const store=storeResult.data||cachedStore;
+    const profile=profileResult.data||cachedProfile;
+    const products=productsResult.error?[]:(productsResult.data||[]);
+    const templateKey="zune_template_store:"+ownerId;
+    let selectedTemplate="classic";
+    try{selectedTemplate=localStorage.getItem(templateKey)||"classic";}catch(_){}
+    const allowed=["classic","editorial","hero","compact","boutique","catalog","stories","minimal","deals","showcase"];
+    const template=allowed.includes(selectedTemplate)?selectedTemplate:"classic";
+    const sheet=overlay.querySelector(".z-storefront-sheet");
+    sheet.setAttribute("data-zune-store-template",template);
+    overlay.querySelector("#z-store-detail-name").textContent=store?.store_name||fallback;
+    overlay.querySelector("#z-store-detail-location").textContent=[store?.district,store?.region,store?.address].filter(Boolean).join(", ");
+    overlay.querySelector("#z-store-detail-status").innerHTML=badgeMarkup(store,profile);
+    overlay.querySelector("#z-storefront-count").textContent=products.length+" "+(language()==="sw"?"bidhaa":"products");
+    products.forEach(item=>{item.__zuneStore=store;item.__zuneOwnerProfile=profile;});
+    overlay.querySelector("#z-storefront-products").innerHTML=products.length?products.map(productCard).join(""):"";
+    const message=overlay.querySelector("#z-store-detail-message");
+    if(productsResult.error)message.textContent=language()==="sw"?"Taarifa za duka zimepatikana, lakini bidhaa hazikuweza kupakiwa.":"Store details loaded, but products could not be loaded.";
+    else if(!products.length)message.textContent=language()==="sw"?"Duka hili bado halijaweka bidhaa.":"This store has not listed any products yet.";
+    else message.remove();
+    overlay.querySelectorAll("[data-open-store]").forEach(button=>button.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();openStoreDetails(button.dataset.openStore);}));
+    overlay.querySelectorAll("[data-save-product]").forEach(button=>button.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();toggleSaved(button.dataset.saveProduct);button.classList.toggle("is-saved");button.textContent=button.classList.contains("is-saved")?"♥":"♡";}));
+    overlay.querySelectorAll("[data-open-product]").forEach(card=>card.addEventListener("click",event=>{if(event.target.closest("[data-save-product]"))return;const item=products.find(p=>String(p.id)===card.dataset.openProduct);if(item)openProductDetails(item);}));
+  }).catch(error=>{
+    console.warn("ZUNE storefront:",error);
+    const message=overlay.querySelector("#z-store-detail-message");
+    if(message)message.textContent=language()==="sw"?"Imeshindikana kupakia taarifa za duka. Tafadhali jaribu tena.":"Unable to load this storefront. Please try again.";
+  });
 }
 
 function openProductDetails(product) {
@@ -1436,6 +1521,7 @@ function openProductDetails(product) {
         ${product.category ? `<p class="z-detail-category">${safe(product.category)}</p>` : ""}
         ${stock !== null ? `<p class="z-detail-stock">${stock > 0 ? (language()==="sw" ? "Stock iliyopo: " : "Available stock: ") + stock : (language()==="sw" ? "Bidhaa imeisha stock" : "Out of stock")}</p>` : ""}
         <button type="button" class="z-primary-button z-detail-add" ${stock !== null && stock <= 0 ? "disabled" : ""}>${tx("addCart")}</button>
+        ${product.vendor_id && String(product.vendor_id)!==String(homeState.user?.id) ? `<button type="button" class="z-primary-button z-detail-message" style="margin-top:9px;background:transparent;color:var(--primary);border:1px solid var(--border)">${language()==="sw"?"Wasiliana na Seller":"Message Seller"}</button>` : ""}
       </div>
     </section>`;
   document.body.appendChild(overlay);
@@ -1444,11 +1530,60 @@ function openProductDetails(product) {
   overlay.querySelector(".z-detail-close")?.addEventListener("click", close);
   overlay.querySelector("[data-open-store]")?.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();openStoreDetails(event.currentTarget.dataset.openStore,product);});
   overlay.querySelector(".z-detail-add")?.addEventListener("click", () => {
-    addToCart(String(product.id));
+    addToCart(String(product.id),product);
     close();
   });
+  overlay.querySelector(".z-detail-message")?.addEventListener("click",()=>openBuyerSellerChat(product));
   const onKey = event => { if (event.key === "Escape") { close(); document.removeEventListener("keydown", onKey); } };
   document.addEventListener("keydown", onKey);
+}
+
+async function openBuyerSellerChat(product){
+ const user=homeState.user, sellerId=product?.vendor_id;
+ if(!user?.id||!sellerId)return;
+ if(String(user.id)===String(sellerId))return;
+ document.getElementById("z-buyer-chat-overlay")?.remove();
+ const overlay=document.createElement("div");overlay.id="z-buyer-chat-overlay";overlay.className="z-product-detail-overlay";
+ overlay.innerHTML=`<section class="z-product-detail-sheet z-buyer-chat-sheet" role="dialog" aria-modal="true" aria-label="Seller messages"><button type="button" class="z-detail-close" aria-label="Close">×</button><div class="z-detail-content"><span class="z-account-eyebrow">${language()==="sw"?"MAZUNGUMZO YA BIDHAA":"PRODUCT CONVERSATION"}</span><h2>${safe(product.title||tx("emptyName"))}</h2><p class="z-product-location">${language()==="sw"?"Unazungumza na":"Chatting with"} ${safe(product.__zuneStore?.store_name||product.store_name||"ZUNE Seller")}</p><div id="z-buyer-chat-history" class="z-buyer-chat-history"><p>${language()==="sw"?"Inafungua mazungumzo...":"Opening conversation..."}</p></div><form id="z-buyer-chat-form" class="z-buyer-chat-compose"><textarea name="message" maxlength="4000" required placeholder="${language()==="sw"?"Andika ujumbe kwa Seller...":"Write a message to the Seller..."}"></textarea><button type="submit" class="z-primary-button">${language()==="sw"?"Tuma":"Send"} →</button></form></div></section>`;
+ document.body.appendChild(overlay);
+ const close=()=>{overlay.remove();document.removeEventListener("keydown",onKey);};
+ const onKey=event=>{if(event.key==="Escape")close();};
+ overlay.addEventListener("click",event=>{if(event.target===overlay)close();});
+ overlay.querySelector(".z-detail-close")?.addEventListener("click",close);
+ document.addEventListener("keydown",onKey);
+ if(!document.getElementById("zuneBuyerChatStyles")){
+  const style=document.createElement("style");style.id="zuneBuyerChatStyles";style.textContent=`.z-buyer-chat-sheet{max-width:620px}.z-buyer-chat-history{display:flex;flex-direction:column;gap:9px;max-height:48vh;min-height:180px;overflow:auto;padding:12px;background:var(--background,#f5f8f6);border:1px solid var(--border);border-radius:14px}.z-buyer-chat-message{max-width:84%;align-self:flex-start;padding:9px 12px;border-radius:13px;background:var(--surface,#fff);overflow-wrap:anywhere}.z-buyer-chat-message.mine{align-self:flex-end;background:color-mix(in srgb,var(--primary) 14%,white)}.z-buyer-chat-message p{margin:0;font-size:13px;white-space:pre-wrap}.z-buyer-chat-message small{display:block;margin-top:5px;font-size:9px;color:var(--text-muted)}.z-buyer-chat-compose{display:flex;gap:9px;margin-top:12px}.z-buyer-chat-compose textarea{flex:1;min-width:0;min-height:44px;max-height:110px;padding:10px;border:1px solid var(--border);border-radius:12px;font:inherit}.z-buyer-chat-compose button{white-space:nowrap}@media(max-width:480px){.z-buyer-chat-compose{flex-direction:column}}`;
+  document.head.appendChild(style);
+ }
+ let conversationId=null;
+ const history=overlay.querySelector("#z-buyer-chat-history");
+ const renderMessages=rows=>{
+  history.innerHTML=rows.length?rows.map(message=>`<div class="z-buyer-chat-message ${message.sender_id===user.id?"mine":""}"><p>${safe(message.message)}</p><small>${new Date(message.created_at).toLocaleString(language()==="sw"?"sw-TZ":"en-TZ")}</small></div>`).join(""):'<p class="z-muted">'+(language()==="sw"?"Anza mazungumzo kwa kutuma ujumbe.":"Start the conversation by sending a message.")+'</p>';
+  history.scrollTop=history.scrollHeight;
+ };
+ const refresh=async()=>{
+  const result=await supabase.from("chat_messages").select("id,sender_id,message,is_read,created_at").eq("conversation_id",conversationId).order("created_at",{ascending:true}).limit(100);
+  if(result.error)throw result.error;
+  renderMessages(result.data||[]);
+  await supabase.from("chat_messages").update({is_read:true}).eq("conversation_id",conversationId).neq("sender_id",user.id).eq("is_read",false);
+ };
+ try{
+  let result=await supabase.from("chat_conversations").select("id").eq("buyer_id",user.id).eq("seller_id",sellerId).eq("product_id",product.id).maybeSingle();
+  if(result.error)throw result.error;
+  if(result.data)conversationId=result.data.id;
+  else{
+   result=await supabase.from("chat_conversations").insert({buyer_id:user.id,seller_id:sellerId,product_id:product.id}).select("id").single();
+   if(result.error)throw result.error;conversationId=result.data.id;
+  }
+  await refresh();
+  overlay.querySelector("#z-buyer-chat-form")?.addEventListener("submit",async event=>{
+   event.preventDefault();const form=event.currentTarget,message=String(new FormData(form).get("message")||"").trim(),button=form.querySelector("button[type=submit]");
+   if(!message||!conversationId||button.disabled)return;button.disabled=true;
+   try{const sent=await supabase.from("chat_messages").insert({conversation_id:conversationId,sender_id:user.id,message});if(sent.error)throw sent.error;form.reset();await refresh();}
+   catch(error){alert(error.message|| (language()==="sw"?"Ujumbe haukutumwa.":"Message could not be sent."));}
+   finally{button.disabled=false;}
+  });
+ }catch(error){console.error("ZUNE buyer-seller chat:",error);history.textContent=error.message||(language()==="sw"?"Imeshindikana kufungua mazungumzo.":"Unable to open this conversation.");}
 }
 
 // --------------------------------------------
@@ -1480,12 +1615,12 @@ function toggleSaved(productId) {
 // 12. ADD TO CART
 // --------------------------------------------
 
-function addToCart(productId) {
+function addToCart(productId, productOverride = null) {
   const id = String(productId);
 
-  const product = homeState.products.find(
-    item => String(item.id) === id
-  );
+  const product = productOverride && String(productOverride.id)===id
+    ? productOverride
+    : homeState.products.find(item => String(item.id) === id);
 
   if (!product) {
     alert(
@@ -2622,6 +2757,40 @@ function applyMarketplaceTemplate() {
     .z-marketplace[data-zune-template="showcase"] .z-home-content{max-width:1240px}.z-marketplace[data-zune-template="showcase"] .z-home-carousel,.z-marketplace[data-zune-template="showcase"] .z-slide-copy{min-height:310px}.z-marketplace[data-zune-template="showcase"] .z-home-carousel{border-radius:24px}.z-marketplace[data-zune-template="showcase"] .z-product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.z-marketplace[data-zune-template="showcase"] .z-product-card{border-radius:20px}.z-marketplace[data-zune-template="showcase"] .z-product-media{aspect-ratio:1/1.08}
     @media(min-width:760px){.z-marketplace[data-zune-template="catalog"] .z-product-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.z-marketplace[data-zune-template="showcase"] .z-product-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
     @media(max-width:520px){.z-marketplace[data-zune-template="catalog"] .z-category-directory{grid-template-columns:repeat(2,minmax(0,1fr))}.z-marketplace[data-zune-template="catalog"] .z-product-grid,.z-marketplace[data-zune-template="showcase"] .z-product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    /* Full-surface template system: themes apply to every Marketplace view, not only Home. */
+    .z-marketplace{--z-template-radius:16px;--z-template-shadow:0 8px 26px rgba(18,35,28,.07)}
+    .z-marketplace[data-zune-template="classic"]{--background:#f5f8f6;--surface:#fff;--text:#17251f;--text-muted:#718078;--border:#e2ebe5;--primary:#087a55;--z-template-radius:16px}
+    .z-marketplace[data-zune-template="editorial"]{--background:#f7f4ef;--surface:#fffdf9;--text:#29251f;--text-muted:#82786d;--border:#e8e0d5;--primary:#8a5b38;--z-template-radius:5px;--z-template-shadow:0 2px 10px rgba(41,37,31,.05);font-family:Georgia,serif}
+    .z-marketplace[data-zune-template="hero"]{--background:#101d35;--surface:#192a49;--text:#f4f7ff;--text-muted:#bdc9df;--border:#314565;--primary:#e9b85d;--z-template-radius:22px;--z-template-shadow:0 12px 32px rgba(0,0,0,.2)}
+    .z-marketplace[data-zune-template="compact"]{--background:#f2f5f7;--surface:#fff;--text:#1e2933;--text-muted:#71808c;--border:#e0e6eb;--primary:#286b8f;--z-template-radius:9px;--z-template-shadow:0 2px 8px rgba(20,35,45,.05)}
+    .z-marketplace[data-zune-template="boutique"]{--background:#f4eee8;--surface:#fffaf5;--text:#34251f;--text-muted:#8a766c;--border:#e8d9cf;--primary:#9a6048;--z-template-radius:4px;--z-template-shadow:0 5px 18px rgba(65,39,28,.08)}
+    .z-marketplace[data-zune-template="catalog"]{--background:#f1f5fa;--surface:#fff;--text:#1e2c40;--text-muted:#718198;--border:#dce5f0;--primary:#2864a4;--z-template-radius:10px;--z-template-shadow:0 3px 12px rgba(30,60,95,.07)}
+    .z-marketplace[data-zune-template="stories"]{--background:#f7f2fa;--surface:#fff;--text:#30233a;--text-muted:#85748e;--border:#eadff0;--primary:#8b55a5;--z-template-radius:22px;--z-template-shadow:0 8px 24px rgba(75,42,91,.08)}
+    .z-marketplace[data-zune-template="minimal"]{--background:#fff;--surface:#fff;--text:#202020;--text-muted:#858585;--border:#ededed;--primary:#333;--z-template-radius:0;--z-template-shadow:none}
+    .z-marketplace[data-zune-template="deals"]{--background:#fff8ed;--surface:#fff;--text:#382817;--text-muted:#927b61;--border:#f1dfc5;--primary:#d87519;--z-template-radius:12px;--z-template-shadow:0 5px 18px rgba(154,91,22,.09)}
+    .z-marketplace[data-zune-template="showcase"]{--background:#111820;--surface:#1b2732;--text:#f3f6f8;--text-muted:#b4c0c9;--border:#35434e;--primary:#d6aa58;--z-template-radius:20px;--z-template-shadow:0 12px 30px rgba(0,0,0,.22)}
+    .z-marketplace{background:var(--background);color:var(--text);min-height:100vh}
+    .z-marketplace .z-home,.z-marketplace .z-home-content{background:var(--background);color:var(--text)}
+    .z-marketplace .z-home-content{border-color:var(--border)}
+    .z-marketplace .z-home-header,.z-marketplace .z-bottom-nav,.z-marketplace .z-account-section,.z-marketplace .z-empty-state,.z-marketplace .z-category-directory,.z-marketplace .z-search-results,.z-marketplace .z-cart-panel,.z-marketplace .z-order-summary{background:var(--surface);color:var(--text);border-color:var(--border)}
+    .z-marketplace .z-section-heading h1,.z-marketplace .z-section-heading h2,.z-marketplace .z-page-title,.z-marketplace .z-account-section h2{color:var(--text)}
+    .z-marketplace .z-product-card,.z-marketplace .z-category,.z-marketplace .z-account-shortcut,.z-marketplace .z-cart-item,.z-marketplace .z-seller-status{background:var(--surface);color:var(--text);border-color:var(--border);border-radius:var(--z-template-radius);box-shadow:var(--z-template-shadow)}
+    .z-marketplace .z-product-card{overflow:hidden}
+    .z-marketplace .z-product-card button,.z-marketplace .z-primary-button,.z-marketplace .z-search-submit{border-radius:var(--z-template-radius)}
+    .z-marketplace .z-product-card h3,.z-marketplace .z-product-card strong,.z-marketplace .z-product-card .z-product-title{color:var(--text)}
+    .z-marketplace .z-product-card p,.z-marketplace .z-product-card small,.z-marketplace .z-muted{color:var(--text-muted)}
+    .z-marketplace .z-icon-button,.z-marketplace .z-bottom-nav button{color:var(--text);border-color:var(--border)}
+    .z-marketplace .z-bottom-nav{border-top:1px solid var(--border)}
+    .z-marketplace .z-home-carousel{border-radius:var(--z-template-radius);overflow:hidden}
+    .z-marketplace .z-category{transition:transform .18s ease,box-shadow .18s ease}
+    .z-marketplace .z-category:active,.z-marketplace .z-product-card:active{transform:scale(.99)}
+    .z-marketplace[data-zune-template="hero"] .z-home-header,.z-marketplace[data-zune-template="showcase"] .z-home-header{background:var(--surface);color:var(--text);border-color:var(--border)}
+    .z-marketplace[data-zune-template="hero"] .z-primary-button,.z-marketplace[data-zune-template="showcase"] .z-primary-button{background:var(--primary);color:#17202a}
+    .z-marketplace[data-zune-template="minimal"] .z-product-card,.z-marketplace[data-zune-template="minimal"] .z-account-section{box-shadow:none}
+    .z-marketplace[data-zune-template="compact"] .z-product-card{border-radius:8px}
+    .z-marketplace[data-zune-template="stories"] .z-category{border-radius:22px}
+    @media(prefers-reduced-motion:reduce){.z-marketplace .z-category{transition:none}}
+
   `;
   document.head.appendChild(style);
 }
