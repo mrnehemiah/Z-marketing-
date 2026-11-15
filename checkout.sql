@@ -1,13 +1,34 @@
+-- Admin-managed coupon redemption, enforced atomically by checkout RPC.
+ALTER TABLE public.order_checkouts ADD COLUMN IF NOT EXISTS coupon_id uuid REFERENCES public.coupons(id);
+ALTER TABLE public.order_checkouts ADD COLUMN IF NOT EXISTS discount_total numeric NOT NULL DEFAULT 0;
+CREATE TABLE IF NOT EXISTS public.coupon_redemptions (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ coupon_id uuid NOT NULL REFERENCES public.coupons(id),
+ buyer_id uuid NOT NULL REFERENCES auth.users(id),
+ checkout_id uuid NOT NULL REFERENCES public.order_checkouts(id) ON DELETE CASCADE,
+ discount_amount numeric NOT NULL CHECK(discount_amount>=0),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ CONSTRAINT coupon_redemptions_one_per_buyer UNIQUE(coupon_id,buyer_id),
+ CONSTRAINT coupon_redemptions_one_per_checkout UNIQUE(checkout_id)
+);
+ALTER TABLE public.coupon_redemptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS coupon_redemptions_buyer_read_own ON public.coupon_redemptions;
+CREATE POLICY coupon_redemptions_buyer_read_own ON public.coupon_redemptions FOR SELECT TO authenticated USING (buyer_id=auth.uid());
+DROP POLICY IF EXISTS coupon_redemptions_admin_read ON public.coupon_redemptions;
+CREATE POLICY coupon_redemptions_admin_read ON public.coupon_redemptions FOR SELECT TO authenticated USING (zune_is_admin());
+
 -- ZUNE Marketplace atomic checkout (payment collection remains a separate phase)
 ALTER TABLE public.order_checkouts ADD COLUMN IF NOT EXISTS idempotency_key text;
 CREATE UNIQUE INDEX IF NOT EXISTS order_checkouts_buyer_idempotency_uidx
  ON public.order_checkouts (buyer_id, idempotency_key)
  WHERE idempotency_key IS NOT NULL;
 
-CREATE OR REPLACE FUNCTION public.zune_create_checkout(
+DROP FUNCTION IF EXISTS public.zune_create_checkout(jsonb,jsonb,text);
+CREATE FUNCTION public.zune_create_checkout(
  p_items jsonb,
  p_address jsonb,
- p_idempotency_key text
+ p_idempotency_key text,
+ p_coupon_code text DEFAULT NULL
 ) RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -36,6 +57,9 @@ DECLARE
  v_ward text;
  v_payment_method text := 'cash_on_delivery';
  v_seller_location uuid;
+ v_coupon public.coupons%ROWTYPE;
+ v_coupon_id uuid;
+ v_discount numeric := 0;
 BEGIN
  IF v_buyer IS NULL THEN RAISE EXCEPTION 'Tafadhali ingia kwanza.'; END IF;
  IF p_address IS NULL OR jsonb_typeof(p_address) <> 'object' THEN RAISE EXCEPTION 'Anwani ya kufikishiwa si sahihi.'; END IF;
@@ -66,7 +90,7 @@ BEGIN
   SELECT jsonb_build_object(
    'checkout_id',v_checkout_id,
    'order_ids',coalesce(jsonb_agg(o.id),'[]'::jsonb),
-   'subtotal',oc.subtotal,'delivery_total',oc.delivery_total,'grand_total',oc.grand_total,
+   'subtotal',oc.subtotal,'delivery_total',oc.delivery_total,'discount_total',oc.discount_total,'grand_total',oc.grand_total,
    'reused',true
   ) INTO v_existing
   FROM public.order_checkouts oc
@@ -96,6 +120,22 @@ BEGIN
   v_subtotal := v_subtotal + (v_product.price * v_quantity);
  END LOOP;
 
+ IF nullif(trim(coalesce(p_coupon_code,'')),'') IS NOT NULL THEN
+  SELECT * INTO v_coupon FROM public.coupons
+   WHERE upper(code)=upper(trim(p_coupon_code)) AND lower(status)='active'
+    AND starts_at<=now() AND (expires_at IS NULL OR expires_at>now())
+   FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Coupon si sahihi au muda wake umeisha.'; END IF;
+  IF v_coupon.usage_limit IS NOT NULL AND v_coupon.usage_count>=v_coupon.usage_limit THEN RAISE EXCEPTION 'Coupon imefikia kikomo cha matumizi.'; END IF;
+  IF EXISTS(SELECT 1 FROM public.coupon_redemptions WHERE coupon_id=v_coupon.id AND buyer_id=v_buyer) THEN RAISE EXCEPTION 'Umeshafanya matumizi ya coupon hii.'; END IF;
+  IF v_subtotal<coalesce(v_coupon.min_order_amount,0) THEN RAISE EXCEPTION 'Jumla ya bidhaa haijafikia kiwango cha chini cha coupon.'; END IF;
+  IF lower(v_coupon.discount_type)='percentage' THEN v_discount:=v_subtotal*v_coupon.discount_value/100;
+  ELSE v_discount:=v_coupon.discount_value; END IF;
+  IF v_coupon.max_discount_amount IS NOT NULL THEN v_discount:=least(v_discount,v_coupon.max_discount_amount); END IF;
+  v_discount:=least(greatest(v_discount,0),v_subtotal);
+  v_coupon_id:=v_coupon.id;
+ END IF;
+
  -- Delivery quote is configured by Admin for each destination and seller.
  FOR v_vendor IN
   SELECT DISTINCT p.vendor_id
@@ -113,14 +153,20 @@ BEGIN
 
  INSERT INTO public.order_checkouts(
   buyer_id,recipient_name,recipient_phone,recipient_email,country,region,district,ward,
-  delivery_address,latitude,longitude,subtotal,delivery_total,grand_total,payment_method,status,idempotency_key
+  delivery_address,latitude,longitude,subtotal,delivery_total,discount_total,grand_total,payment_method,status,idempotency_key,coupon_id
  ) VALUES (
   v_buyer,v_recipient,v_phone,nullif(trim(coalesce(p_address->>'email','')),''),
   v_country,v_region,v_district,v_ward,v_delivery_address,
   nullif(p_address->>'latitude','')::double precision,
   nullif(p_address->>'longitude','')::double precision,
-  v_subtotal,v_delivery_total,v_subtotal+v_delivery_total,v_payment_method,'pending',p_idempotency_key
+  v_subtotal,v_delivery_total,v_discount,v_subtotal+v_delivery_total-v_discount,v_payment_method,'pending',p_idempotency_key,v_coupon_id
  ) RETURNING id INTO v_checkout_id;
+
+ IF v_coupon_id IS NOT NULL THEN
+  INSERT INTO public.coupon_redemptions(coupon_id,buyer_id,checkout_id,discount_amount)
+  VALUES(v_coupon_id,v_buyer,v_checkout_id,v_discount);
+  UPDATE public.coupons SET usage_count=usage_count+1,updated_at=now() WHERE id=v_coupon_id;
+ END IF;
 
  -- Create one order per product to preserve existing Seller and Admin order workflows.
  FOR v_item IN SELECT value FROM jsonb_array_elements(p_items)
@@ -170,23 +216,25 @@ BEGIN
 
  RETURN jsonb_build_object(
   'checkout_id',v_checkout_id,'order_ids',to_jsonb(v_order_ids),
-  'subtotal',v_subtotal,'delivery_total',v_delivery_total,
-  'grand_total',v_subtotal+v_delivery_total,'reused',false
+  'subtotal',v_subtotal,'delivery_total',v_delivery_total,'discount_total',v_discount,
+  'grand_total',v_subtotal+v_delivery_total-v_discount,'reused',false
  );
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.zune_create_checkout(jsonb,jsonb,text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.zune_create_checkout(jsonb,jsonb,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.zune_create_checkout(jsonb,jsonb,text,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.zune_create_checkout(jsonb,jsonb,text,text) TO authenticated;
 
 
 -- Preview delivery quote before order placement
-CREATE OR REPLACE FUNCTION public.zune_quote_checkout(p_items jsonb,p_address jsonb)
+DROP FUNCTION IF EXISTS public.zune_quote_checkout(jsonb,jsonb);
+CREATE FUNCTION public.zune_quote_checkout(p_items jsonb,p_address jsonb,p_coupon_code text DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
 DECLARE
  v_buyer uuid:=auth.uid(); v_item jsonb; v_product public.products%ROWTYPE;
  v_qty integer; v_subtotal numeric:=0; v_vendors integer; v_quote record;
  v_fee numeric; v_delivery numeric:=0; v_country text; v_region text; v_district text;
+ v_coupon public.coupons%ROWTYPE; v_discount numeric:=0;
 BEGIN
  IF v_buyer IS NULL THEN RAISE EXCEPTION 'Tafadhali ingia kwanza.'; END IF;
  IF p_address IS NULL OR jsonb_typeof(p_address) <> 'object' THEN RAISE EXCEPTION 'Anwani ya kufikishiwa si sahihi.'; END IF;
@@ -202,15 +250,28 @@ BEGIN
   IF coalesce(v_product.stock_quantity,0)<v_qty THEN RAISE EXCEPTION 'Stock haitoshi kwa bidhaa: %',v_product.title; END IF;
   v_subtotal:=v_subtotal+v_product.price*v_qty;
  END LOOP;
+ IF nullif(trim(coalesce(p_coupon_code,'')),'') IS NOT NULL THEN
+  SELECT * INTO v_coupon FROM public.coupons
+   WHERE upper(code)=upper(trim(p_coupon_code)) AND lower(status)='active'
+    AND starts_at<=now() AND (expires_at IS NULL OR expires_at>now());
+  IF NOT FOUND THEN RETURN jsonb_build_object('ready',false,'message','Coupon si sahihi au muda wake umeisha.'); END IF;
+  IF v_coupon.usage_limit IS NOT NULL AND v_coupon.usage_count>=v_coupon.usage_limit THEN RETURN jsonb_build_object('ready',false,'message','Coupon imefikia kikomo cha matumizi.'); END IF;
+  IF EXISTS(SELECT 1 FROM public.coupon_redemptions WHERE coupon_id=v_coupon.id AND buyer_id=v_buyer) THEN RETURN jsonb_build_object('ready',false,'message','Umeshafanya matumizi ya coupon hii.'); END IF;
+  IF v_subtotal<coalesce(v_coupon.min_order_amount,0) THEN RETURN jsonb_build_object('ready',false,'message','Jumla ya bidhaa haijafikia kiwango cha chini cha coupon.'); END IF;
+  IF lower(v_coupon.discount_type)='percentage' THEN v_discount:=v_subtotal*v_coupon.discount_value/100;
+  ELSE v_discount:=v_coupon.discount_value; END IF;
+  IF v_coupon.max_discount_amount IS NOT NULL THEN v_discount:=least(v_discount,v_coupon.max_discount_amount); END IF;
+  v_discount:=least(greatest(v_discount,0),v_subtotal);
+ END IF;
  SELECT count(DISTINCT p.vendor_id) INTO v_vendors FROM jsonb_array_elements(p_items) i JOIN public.products p ON p.id=(i->>'product_id')::uuid;
  SELECT * INTO v_quote FROM public.get_zune_delivery_quote(v_country,v_region,v_district);
  IF NOT coalesce(v_quote.found,false) THEN RETURN jsonb_build_object('ready',false,'message','Gharama ya delivery haijawekwa kwa eneo hili. Tafadhali wasiliana na Support.'); END IF;
  v_fee:=greatest(coalesce(v_quote.base_fee,0),coalesce(v_quote.minimum_fee,0));
  v_delivery:=v_fee*v_vendors;
- RETURN jsonb_build_object('ready',true,'subtotal',v_subtotal,'delivery_total',v_delivery,'grand_total',v_subtotal+v_delivery,'seller_count',v_vendors,'currency',coalesce(v_quote.currency,'TZS'));
+ RETURN jsonb_build_object('ready',true,'subtotal',v_subtotal,'delivery_total',v_delivery,'discount_total',v_discount,'grand_total',v_subtotal+v_delivery-v_discount,'seller_count',v_vendors,'currency',coalesce(v_quote.currency,'TZS'));
 END; $$;
-REVOKE ALL ON FUNCTION public.zune_quote_checkout(jsonb,jsonb) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.zune_quote_checkout(jsonb,jsonb) TO authenticated;
+REVOKE ALL ON FUNCTION public.zune_quote_checkout(jsonb,jsonb,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.zune_quote_checkout(jsonb,jsonb,text) TO authenticated;
 
 
 -- Track stock deducted by this atomic checkout and restore it on Admin cancellation.
