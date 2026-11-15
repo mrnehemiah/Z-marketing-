@@ -34,3 +34,6 @@ CREATE POLICY product_reviews_buyer_create_verified_purchase ON public.product_r
 );
 DROP POLICY IF EXISTS product_reviews_admin_manage ON public.product_reviews;
 CREATE POLICY product_reviews_admin_manage ON public.product_reviews FOR ALL TO authenticated USING (zune_is_admin()) WITH CHECK (zune_is_admin());
+
+ALTER TABLE public.product_reviews ADD COLUMN IF NOT EXISTS moderated_by uuid REFERENCES auth.users(id);
+ALTER TABLE public.product_reviews ADD COLUMN IF NOT EXISTS moderated_at timestamptz;
