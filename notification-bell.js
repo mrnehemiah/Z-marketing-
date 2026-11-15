@@ -94,7 +94,8 @@ function findHomeActions() {
     bellMount.id = "zune-notification-bell";
   }
 
-  actions.appendChild(bellMount);
+  // Keep notifications first in the approved header order: Notifications, Cart, Account.
+  actions.prepend(bellMount);
   renderBell();
 }
 
