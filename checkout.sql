@@ -279,7 +279,7 @@ GRANT EXECUTE ON FUNCTION public.zune_quote_checkout(jsonb,jsonb,text) TO authen
 -- Track stock deducted by this atomic checkout and restore it on Admin cancellation.
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS stock_deducted boolean NOT NULL DEFAULT false;
 CREATE OR REPLACE FUNCTION public.zune_restore_stock_on_order_cancel()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $zune$
 DECLARE v_total integer; v_completed integer; v_cancelled integer; v_confirmed integer;
 BEGIN
  IF OLD.status::text IS DISTINCT FROM 'cancelled'
@@ -304,7 +304,7 @@ BEGIN
   WHERE id=NEW.checkout_id;
  END IF;
  RETURN NEW;
-END; $;
+END; $zune$;
 DROP TRIGGER IF EXISTS zune_restore_stock_on_order_cancel ON public.orders;
 CREATE TRIGGER zune_restore_stock_on_order_cancel
  AFTER UPDATE OF status ON public.orders
