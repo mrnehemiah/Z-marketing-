@@ -520,7 +520,7 @@ function renderNotifications(){
   const body=state.language==="sw"?(item.body_sw||item.body_en):(item.body_en||item.body_sw);
   return `<article class="zsd-notification ${item.is_read?"read":"unread"}"><div><strong>${esc(title||tr("Taarifa ya ZUNE","ZUNE notification"))}</strong><p>${esc(body||"")}</p><small>${new Date(item.created_at).toLocaleString(state.language==="sw"?"sw-TZ":"en-TZ")}</small></div>${item.is_read?"":'<button class="zsd-btn" type="button" data-read-notification="'+esc(item.id)+'">'+tr("Soma","Mark read")+'</button>'}</article>`;
  }).join("");
- return `<section class="zsd-card"><div class="zsd-chat-heading"><div><h2>${tr("Notifications","Notifications")}</h2><p class="zsd-muted">${tr("Taarifa za akaunti na biashara yako.","Updates about your account and business.")}</p></div><button class="zsd-btn" type="button" id="zsd-read-all-notifications">${tr("Soma zote","Mark all read")}</button></div>${state.notificationsLoading?'<div class="zsd-empty">'+tr("Inapakia taarifa...","Loading notifications...")+'</div>':rows||'<div class="zsd-empty">'+tr("Bado huna taarifa mpya.","You have no notifications yet.")+'</div>'}</section>`;
+ return `<section class="zsd-card"><div class="zsd-chat-heading"><div><h2>${tr("Notifications","Notifications")}</h2><p class="zsd-muted">${tr("Taarifa za akaunti na biashara yako.","Updates about your account and business.")}</p></div><button class="zsd-btn" type="button" id="zsd-refresh-notifications">${tr("Onyesha upya","Refresh")}</button><button class="zsd-btn" type="button" id="zsd-read-all-notifications">${tr("Soma zote","Mark all read")}</button></div>${state.notificationsLoading?'<div class="zsd-empty">'+tr("Inapakia taarifa...","Loading notifications...")+'</div>':rows||'<div class="zsd-empty">'+tr("Bado huna taarifa mpya.","You have no notifications yet.")+'</div>'}</section>`;
 }
 async function loadSellerNotifications(force=false){
  const user=window.__zuneSellerUser;if(!user?.id||state.notificationsLoading)return;
@@ -605,6 +605,7 @@ function renderPanel(){
  panel.querySelectorAll("[data-open-chat]").forEach(button=>button.addEventListener("click",async()=>{state.activeConversationId=button.dataset.openChat;state.chatMessages=[];await loadSellerMessages(true);}));
  panel.querySelector("#zsd-refresh-messages")?.addEventListener("click",()=>loadSellerMessages(true));
  panel.querySelector("#zsd-read-all-notifications")?.addEventListener("click",()=>markSellerNotification());
+ panel.querySelector("#zsd-refresh-notifications")?.addEventListener("click",()=>loadSellerNotifications(true));
  panel.querySelectorAll("[data-read-notification]").forEach(button=>button.addEventListener("click",()=>markSellerNotification(button.dataset.readNotification)));
  if(state.section==="messages"&&state.messagesLoadedFor!==window.__zuneSellerUser?.id&&!state.messagesLoading)loadSellerMessages();
  if(state.section==="notifications"&&state.notificationsLoadedFor!==window.__zuneSellerUser?.id&&!state.notificationsLoading)loadSellerNotifications();
