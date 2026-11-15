@@ -15,9 +15,10 @@ import {
   logoutCustomer
 } from "./auth.js";
 
-import { renderMarketplaceHome } from "./home.js?v=20261115-store-profile-v1";
+
 
 const app = document.getElementById("app");
+let marketplaceHomeModule = null;
 
 const state = {
   language: localStorage.getItem("zune_language") || "",
@@ -1166,7 +1167,12 @@ async function renderAccount() {
       return;
     }
 
-    await renderMarketplaceHome({
+    if (!marketplaceHomeModule) {
+      app.innerHTML = '<section class="app-loading" role="status" aria-live="polite"><div class="zune-wave" aria-label="ZUNE"><span>Ⓩ</span><span>Ⓤ</span><span>Ⓝ</span><span>Ⓔ</span></div><p>Inapakia ZUNE Marketplace...</p></section>';
+      marketplaceHomeModule = await import("./home.js?v=20261115-home-lazy-v1");
+    }
+
+    await marketplaceHomeModule.renderMarketplaceHome({
       app,
       user,
 
