@@ -1398,14 +1398,99 @@ function productCard(product) {
 function openStoreDetails(ownerId, product = null) {
   if (!ownerId) return;
   document.getElementById("z-store-detail-overlay")?.remove();
-  const cs=product?.__zuneStore||null, cp=product?.__zuneOwnerProfile||null;
-  const fallback=cs?.store_name||product?.store_name||product?.seller_name||(language()==="sw"?"Duka la ZUNE":"ZUNE Store");
-  const overlay=document.createElement("div"); overlay.id="z-store-detail-overlay"; overlay.className="z-product-detail-overlay";
-  overlay.innerHTML=`<section class="z-product-detail-sheet" role="dialog" aria-modal="true" aria-label="${safe(fallback)}"><button type="button" class="z-detail-close" aria-label="Close">×</button><div class="z-detail-content"><span class="z-account-eyebrow">${language()==="sw"?"TAARIFA ZA DUKA":"STORE INFORMATION"}</span><h2 id="z-store-detail-name">${safe(fallback)}</h2><div id="z-store-detail-status" class="z-product-store"></div><p id="z-store-detail-location" class="z-product-location"></p><p id="z-store-detail-message" class="z-account-message">${language()==="sw"?"Inapakia taarifa za duka...":"Loading store information..."}</p></div></section>`;
-  document.body.appendChild(overlay); const close=()=>overlay.remove(); overlay.addEventListener("click",e=>{if(e.target===overlay)close();}); overlay.querySelector(".z-detail-close")?.addEventListener("click",close);
-  const status=(s,p)=>{overlay.querySelector("#z-store-detail-status").innerHTML=(s?.verification_status==="verified"?'<span class="z-verified-store-mark" title="Verified Store">✓</span><strong>Verified Store</strong>':(language()==="sw"?"Duka halijathibitishwa":"Store not verified"))+(p?.is_verified===true?'<span class="z-verified-account-mark" title="Verified Account"><svg viewBox="-30 -30 60 60"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>Verified Account</strong>':"");};
-  status(cs,cp);
-  Promise.all([supabase.from("stores").select("owner_id,store_name,verification_status,region,district,address").eq("owner_id",ownerId).maybeSingle(),supabase.from("profiles").select("id,is_verified").eq("id",ownerId).maybeSingle()]).then(([sr,pr])=>{if(!overlay.isConnected)return;if(sr.error)throw sr.error;if(pr.error)throw pr.error;const s=sr.data||cs,p=pr.data||cp;overlay.querySelector("#z-store-detail-name").textContent=s?.store_name||fallback;overlay.querySelector("#z-store-detail-location").textContent=[s?.district,s?.region,s?.address].filter(Boolean).join(", ");status(s,p);overlay.querySelector("#z-store-detail-message").textContent=language()==="sw"?"Taarifa za duka zimeonyeshwa.":"Store information is shown above.";}).catch(e=>{console.warn("ZUNE store details:",e);const m=overlay.querySelector("#z-store-detail-message");if(m)m.textContent=language()==="sw"?"Baadhi ya taarifa hazikupatikana.":"Some information could not be loaded.";});
+  const cachedStore = product?.__zuneStore || null;
+  const cachedProfile = product?.__zuneOwnerProfile || null;
+  const fallback = cachedStore?.store_name || product?.store_name || product?.seller_name || (language()==="sw"?"Duka la ZUNE":"ZUNE Store");
+  const overlay = document.createElement("div");
+  overlay.id = "z-store-detail-overlay";
+  overlay.className = "z-product-detail-overlay";
+  overlay.innerHTML = `<section class="z-product-detail-sheet z-storefront-sheet" role="dialog" aria-modal="true" aria-label="${safe(fallback)}">
+    <button type="button" class="z-detail-close" aria-label="Close">×</button>
+    <div class="z-storefront-banner"><span class="z-storefront-brand">ⓏⓊⓃⒺ MARKETPLACE</span><div class="z-storefront-heading"><h2 id="z-store-detail-name">${safe(fallback)}</h2><div id="z-store-detail-status" class="z-product-store"></div><p id="z-store-detail-location" class="z-product-location"></p></div></div>
+    <div class="z-storefront-content"><div class="z-storefront-section-head"><div><span class="z-account-eyebrow">${language()==="sw"?"DUKA LA SELLER":"SELLER STOREFRONT"}</span><h3>${language()==="sw"?"Bidhaa za duka":"Store products"}</h3></div><span id="z-storefront-count" class="z-storefront-count"></span></div>
+    <p id="z-store-detail-message" class="z-account-message">${language()==="sw"?"Inapakia taarifa na bidhaa za duka...":"Loading store information and products..."}</p>
+    <div id="z-storefront-products" class="z-storefront-product-grid"></div></div>
+  </section>`;
+  document.body.appendChild(overlay);
+  const close=()=>overlay.remove();
+  overlay.addEventListener("click",e=>{if(e.target===overlay)close();});
+  overlay.querySelector(".z-detail-close")?.addEventListener("click",close);
+
+  const badgeMarkup=(store,profile)=>{
+    const verifiedStore=String(store?.verification_status||"").toLowerCase()==="verified";
+    const verifiedAccount=profile?.is_verified===true;
+    return (verifiedStore?'<span class="z-verified-store-mark" title="Verified Store">✓</span><strong>Verified Store</strong>':(language()==="sw"?"Duka halijathibitishwa":"Store not verified"))+
+      (verifiedAccount?'<span class="z-verified-account-mark" title="Verified Account"><svg viewBox="-30 -30 60 60"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>Verified Account</strong>':"");
+  };
+
+  if(!document.getElementById("zuneStorefrontTemplateStyles")){
+    const style=document.createElement("style");
+    style.id="zuneStorefrontTemplateStyles";
+    style.textContent=`
+      .z-storefront-sheet{width:min(760px,100%);max-height:92vh;overflow:auto;padding:0!important;background:var(--surface,#fff)}
+      .z-storefront-banner{padding:24px 22px 20px;background:linear-gradient(135deg,#087a55,#064d39);color:#fff}
+      .z-storefront-brand{font-size:10px;font-weight:800;letter-spacing:2px;opacity:.8}
+      .z-storefront-heading h2{margin:12px 0 8px;color:inherit;font-size:25px}
+      .z-storefront-heading .z-product-store{color:inherit;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+      .z-storefront-heading .z-product-location{color:rgba(255,255,255,.8);margin:8px 0 0}
+      .z-storefront-content{padding:20px}
+      .z-storefront-section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:14px}
+      .z-storefront-section-head h3{margin:5px 0 0;font-size:18px}
+      .z-storefront-count{font-size:12px;color:var(--text-muted)}
+      .z-storefront-product-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+      .z-storefront-product-grid .z-product-card{min-width:0}
+      .z-storefront-sheet[data-zune-store-template="editorial"] .z-storefront-banner{background:#29251f}
+      .z-storefront-sheet[data-zune-store-template="hero"] .z-storefront-banner{background:linear-gradient(135deg,#101d35,#314b73);padding:42px 24px}
+      .z-storefront-sheet[data-zune-store-template="compact"] .z-storefront-content{padding:12px}
+      .z-storefront-sheet[data-zune-store-template="compact"] .z-storefront-product-grid{gap:7px}
+      .z-storefront-sheet[data-zune-store-template="boutique"] .z-storefront-banner{background:#34251f}
+      .z-storefront-sheet[data-zune-store-template="catalog"] .z-storefront-product-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+      .z-storefront-sheet[data-zune-store-template="stories"] .z-storefront-banner{background:linear-gradient(135deg,#58366b,#a66eae)}
+      .z-storefront-sheet[data-zune-store-template="minimal"] .z-storefront-banner{background:#f4f4f1;color:#242424}
+      .z-storefront-sheet[data-zune-store-template="minimal"] .z-storefront-product-grid .z-product-card{box-shadow:none;border-radius:0}
+      .z-storefront-sheet[data-zune-store-template="deals"] .z-storefront-banner{background:linear-gradient(135deg,#a94c12,#e58b2a)}
+      .z-storefront-sheet[data-zune-store-template="showcase"] .z-storefront-banner{background:linear-gradient(135deg,#111820,#354b5d)}
+      @media(max-width:520px){.z-storefront-product-grid,.z-storefront-sheet[data-zune-store-template="catalog"] .z-storefront-product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.z-storefront-content{padding:14px}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  Promise.all([
+    supabase.from("stores").select("owner_id,store_name,verification_status,region,district,address").eq("owner_id",ownerId).maybeSingle(),
+    supabase.from("profiles").select("id,is_verified").eq("id",ownerId).maybeSingle(),
+    supabase.from("products").select("*").eq("vendor_id",ownerId).order("created_at",{ascending:false}).limit(24)
+  ]).then(([storeResult,profileResult,productsResult])=>{
+    if(!overlay.isConnected)return;
+    if(storeResult.error)throw storeResult.error;
+    if(profileResult.error)throw profileResult.error;
+    const store=storeResult.data||cachedStore;
+    const profile=profileResult.data||cachedProfile;
+    const products=productsResult.error?[]:(productsResult.data||[]);
+    const templateKey="zune_template_store:"+ownerId;
+    let selectedTemplate="classic";
+    try{selectedTemplate=localStorage.getItem(templateKey)||"classic";}catch(_){}
+    const allowed=["classic","editorial","hero","compact","boutique","catalog","stories","minimal","deals","showcase"];
+    const template=allowed.includes(selectedTemplate)?selectedTemplate:"classic";
+    const sheet=overlay.querySelector(".z-storefront-sheet");
+    sheet.setAttribute("data-zune-store-template",template);
+    overlay.querySelector("#z-store-detail-name").textContent=store?.store_name||fallback;
+    overlay.querySelector("#z-store-detail-location").textContent=[store?.district,store?.region,store?.address].filter(Boolean).join(", ");
+    overlay.querySelector("#z-store-detail-status").innerHTML=badgeMarkup(store,profile);
+    overlay.querySelector("#z-storefront-count").textContent=products.length+" "+(language()==="sw"?"bidhaa":"products");
+    products.forEach(item=>{item.__zuneStore=store;item.__zuneOwnerProfile=profile;});
+    overlay.querySelector("#z-storefront-products").innerHTML=products.length?products.map(productCard).join(""):"";
+    const message=overlay.querySelector("#z-store-detail-message");
+    if(productsResult.error)message.textContent=language()==="sw"?"Taarifa za duka zimepatikana, lakini bidhaa hazikuweza kupakiwa.":"Store details loaded, but products could not be loaded.";
+    else if(!products.length)message.textContent=language()==="sw"?"Duka hili bado halijaweka bidhaa.":"This store has not listed any products yet.";
+    else message.remove();
+    overlay.querySelectorAll("[data-open-store]").forEach(button=>button.addEventListener("click",()=>openStoreDetails(button.dataset.openStore)));
+    overlay.querySelectorAll("[data-add-cart]").forEach(button=>button.addEventListener("click",()=>{const item=products.find(p=>String(p.id)===button.dataset.addCart);if(item)addToCart(item.id);}));
+    overlay.querySelectorAll("[data-product-id]").forEach(button=>button.addEventListener("click",()=>{const item=products.find(p=>String(p.id)===button.dataset.productId);if(item)openProductDetails(item);}));
+  }).catch(error=>{
+    console.warn("ZUNE storefront:",error);
+    const message=overlay.querySelector("#z-store-detail-message");
+    if(message)message.textContent=language()==="sw"?"Imeshindikana kupakia taarifa za duka. Tafadhali jaribu tena.":"Unable to load this storefront. Please try again.";
+  });
 }
 
 function openProductDetails(product) {
