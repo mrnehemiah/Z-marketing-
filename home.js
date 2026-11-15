@@ -1157,7 +1157,7 @@ async function loadProducts(reset = false) {
       try {
         const { data: stores, error: storesError } = await supabase
           .from("stores")
-          .select("owner_id,store_name,verification_status,region,district,address")
+          .select("owner_id,store_name,verification_status,region,district,address,logo_url")
           .in("owner_id", vendorIds);
         if (storesError) throw storesError;
         const storeByOwner = new Map((stores || []).map(store => [String(store.owner_id), store]));
@@ -1852,7 +1852,7 @@ function renderFeaturedStores(){
   const name=store.store_name||"ZUNE Store";
   const initials=String(name).trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part.charAt(0).toUpperCase()).join("")||"Z";
   const verified=["verified","approved"].includes(String(store.verification_status||"").toLowerCase());
-  return `<button type="button" class="z-featured-store" data-featured-store="${safe(store.owner_id)}" aria-label="${safe(name)}"><span class="z-featured-store-logo" aria-hidden="true">${safe(initials)}</span><strong>${safe(name)} ${verified?`<span class="store-verified" title="Verified Store" aria-label="Verified Store">✓</span>`:""}</strong><small>${safe([store.district,store.region].filter(Boolean).join(", ")|| (language()==="sw"?"Duka la ZUNE":"ZUNE Store"))}</small></button>`;
+  return `<button type="button" class="z-featured-store" data-featured-store="${safe(store.owner_id)}" aria-label="${safe(name)}"><span class="z-featured-store-logo" aria-hidden="true">${store.logo_url?`<img src="${safe(store.logo_url)}" alt="" loading="lazy">`:safe(initials)}</span><strong>${safe(name)} ${verified?`<span class="store-verified" title="Verified Store" aria-label="Verified Store">✓</span>`:""}</strong><small>${safe([store.district,store.region].filter(Boolean).join(", ")|| (language()==="sw"?"Duka la ZUNE":"ZUNE Store"))}</small></button>`;
  }).join("");
 }
 
