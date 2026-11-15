@@ -1916,6 +1916,7 @@ function bindHomeEvents() {
     homeState.selectedCategory="";
     homeState.search="";
     renderMarketplacePage("explore");
+    loadProducts(true);
   }));
 
   document.querySelector("[data-open-cart]")
