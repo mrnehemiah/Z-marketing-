@@ -7,7 +7,7 @@ const sections = [
   ["finance","◈","Fedha","Finance"],
   ["customers","♙","Wateja","Customers"],
   ["messages","✉","Ujumbe","Messages"],
-  ["marketing","✦","Masoko","Marketing"],
+  ["marketing","✦","Matangazo","Ads & Marketing"],
   ["analytics","▥","Takwimu","Analytics"],
   ["store","▧","Duka","Store"],
   ["verification","✓","Uthibitisho","Verification"],
@@ -18,7 +18,7 @@ const sections = [
   ["assistant","✧","ZUNE AI","ZUNE AI"]
 ];
 
-const state = { section:"overview", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, loading:false, busy:false, error:"" };
+const state = { section:"overview", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], loading:false, busy:false, error:"" };
 const tr = (sw,en) => state.language==="sw"?sw:en;
 const esc = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = value => new Intl.NumberFormat("sw-TZ",{style:"currency",currency:"TZS",maximumFractionDigits:0}).format(Number(value)||0);
@@ -203,18 +203,86 @@ async function publishSellerProduct(event){
   if(currentButton){currentButton.disabled=false;currentButton.textContent=tr("Kagua na Chapisha bidhaa","Review and Publish product");}
  }
 }
+function renderMarketing(){
+ const packages=state.adsPackages||[], campaigns=state.adsCampaigns||[], wallet=state.adsWallet||{};
+ const typeLabel=x=>x==="sponsored_store"?"Sponsored Store":x==="sponsored_product"?"Sponsored Product":"Combo";
+ const packageOptions=packages.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+' · '+money(p.price_tzs)+' · '+esc(p.duration_days)+' '+tr("siku","days")+'</option>').join("");
+ const products=state.products.filter(p=>p.moderation_status==="approved");
+ return `
+ <section class="zsd-stats"><div class="zsd-stat"><small>Ads Available</small><strong>${money(wallet.available_tzs||0)}</strong></div><div class="zsd-stat"><small>Pending</small><strong>${money(wallet.pending_tzs||0)}</strong></div><div class="zsd-stat"><small>Reserved</small><strong>${money(wallet.reserved_tzs||0)}</strong></div></section>
+ <section class="zsd-card"><div class="zsd-section-kicker">ZUNE ADS</div><h2>${tr("Omba tangazo jipya","Create an ad campaign")}</h2><p class="zsd-muted">${tr("Chagua package inayopatikana. Kampeni itapitiwa na Admin Mkuu kabla haijaonekana sokoni. Bajeti itahifadhiwa kutoka Ads Wallet baada ya kuidhinishwa.","Choose an available package. Admin Mkuu reviews every campaign before it appears on the marketplace. The campaign budget is reserved from your Ads Wallet only after approval.")}</p>
+ ${packages.length?`<form id="zsd-ad-campaign-form" class="zsd-form">
+ <label>${tr("Aina ya tangazo","Campaign type")}<select class="zsd-input" name="campaign_type" required><option value="sponsored_store">Sponsored Store</option><option value="sponsored_product">Sponsored Product</option><option value="combo">Combo</option></select></label>
+ <label>${tr("Package","Package")}<select class="zsd-input" name="package_id" required>${packageOptions}</select></label>
+ <label class="zsd-full">${tr("Bidhaa ya kutangaza (inahitajika kwa Product na Combo)","Product to promote (required for Product and Combo)")}<select class="zsd-input" name="product_id"><option value="">${tr("Chagua bidhaa","Select a product")}</option>${products.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.title)+'</option>').join("")}</select></label>
+ <label class="zsd-full">${tr("Kichwa cha tangazo","Ad title")}<input name="title" maxlength="140" required></label>
+ <label class="zsd-full">${tr("Kiungo cha picha ya tangazo (hiari)","Creative image URL (optional)")}<input name="creative_url" type="url" maxlength="1000" placeholder="https://..."></label>
+ <label>${tr("Placement","Placement")}<select class="zsd-input" name="placement"><option value="home">Home</option><option value="category">Category</option><option value="search">Search</option><option value="recommendations">Recommendations</option></select></label>
+ <div class="zsd-full"><div id="zsd-ad-campaign-message" class="zsd-alert" role="status"></div><button class="zsd-btn primary" type="submit" style="width:100%">${tr("Tuma kwa review","Submit for review")}</button></div>
+ </form>`:`<div class="zsd-empty">${tr("Hakuna Ad Package inayopatikana kwa sasa. Wasiliana na Admin Mkuu.","No active Ad Packages are available yet. Contact Admin Mkuu.")}</div>`}
+ </section>
+ <section class="zsd-card"><h2>${tr("Omba kuongeza fedha kwenye Ads Wallet","Add funds to Ads Wallet")}</h2><p class="zsd-muted">${tr("Weka Transaction ID na risiti ya malipo. Salio litaongezwa baada ya Admin Mkuu kuthibitisha malipo.","Provide the transaction ID and payment receipt. Funds are credited only after Admin Mkuu verifies the payment.")}</p>
+ <form id="zsd-ads-deposit-form" class="zsd-form"><label>${tr("Kiasi (TZS)","Amount (TZS)")}<input name="amount_tzs" type="number" min="1" step="1" required></label><label>${tr("Transaction ID","Transaction ID")}<input name="external_transaction_id" maxlength="160" required></label><label class="zsd-full">${tr("Risiti ya malipo (JPG, PNG, WEBP au PDF; hadi MB 10)","Payment receipt (JPG, PNG, WEBP or PDF; up to 10 MB)")}<input name="receipt" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label><div class="zsd-full"><div id="zsd-ads-deposit-message" class="zsd-alert" role="status"></div><button class="zsd-btn primary" type="submit" style="width:100%">${tr("Tuma ombi la deposit","Submit deposit request")}</button></div></form></section>
+ <section class="zsd-card"><h2>${tr("Historia ya kampeni","Campaign history")}</h2>${campaigns.length?`<div style="overflow:auto"><table class="zsd-table"><thead><tr><th>${tr("Kampeni","Campaign")}</th><th>${tr("Aina","Type")}</th><th>Placement</th><th>${tr("Bajeti","Budget")}</th><th>${tr("Hali","Status")}</th></tr></thead><tbody>${campaigns.map(x=>'<tr><td>'+esc(x.title)+'</td><td>'+esc(typeLabel(x.campaign_type))+'</td><td>'+esc(x.placement)+'</td><td>'+money(x.budget_tzs)+'</td><td>'+esc(x.status.replaceAll("_"," "))+(x.review_reason?'<small>'+esc(x.review_reason)+'</small>':'')+'</td></tr>').join("")}</tbody></table></div>`:`<div class="zsd-empty">${tr("Bado hujatuma kampeni.","You have not submitted any campaigns yet.")}</div>`}</section>
+ <section class="zsd-card"><h2>${tr("Historia ya Ads Wallet","Ads Wallet history")}</h2>${state.adsTransactions.length?`<div style="overflow:auto"><table class="zsd-table"><thead><tr><th>${tr("Tarehe","Date")}</th><th>${tr("Aina","Type")}</th><th>${tr("Kiasi","Amount")}</th><th>${tr("Hali","Status")}</th></tr></thead><tbody>${state.adsTransactions.map(x=>'<tr><td>'+new Date(x.created_at).toLocaleDateString()+'</td><td>'+esc(x.transaction_type.replaceAll("_"," "))+'</td><td>'+money(x.amount_tzs)+'</td><td>'+esc(x.status)+'</td></tr>').join("")}</tbody></table></div>`:`<div class="zsd-empty">${tr("Hakuna miamala ya Ads Wallet.","No Ads Wallet transactions yet.")}</div>`}</section>`;
+}
+async function submitAdCampaign(event){
+ event.preventDefault();const form=event.currentTarget,msg=form.querySelector("#zsd-ad-campaign-message"),button=form.querySelector("button[type=submit]");
+ if(state.busy)return;state.busy=true;button.disabled=true;if(msg)msg.textContent=tr("Inatuma kampeni...","Submitting campaign...");
+ try{
+  const fd=new FormData(form),type=String(fd.get("campaign_type")),pkg=state.adsPackages.find(x=>String(x.id)===String(fd.get("package_id")));
+  if(!state.store?.id)throw new Error(tr("Duka lako halijapatikana.","Your store profile is not available."));
+  if(!pkg||pkg.campaign_type!==type)throw new Error(tr("Package haioani na aina ya tangazo.","The selected package does not match the campaign type."));
+  const productId=String(fd.get("product_id")||"").trim();
+  if(type!=="sponsored_store"&&!productId)throw new Error(tr("Chagua bidhaa ya kutangaza.","Select a product to promote."));
+  const starts=new Date(),ends=new Date(starts.getTime()+Number(pkg.duration_days)*86400000);
+  const payload={seller_id:window.__zuneSellerUser.id,store_id:state.store.id,product_id:type==="sponsored_store"?null:productId,package_id:pkg.id,campaign_type:type,placement:String(fd.get("placement")||"home"),title:String(fd.get("title")||"").trim(),creative_url:String(fd.get("creative_url")||"").trim()||null,budget_tzs:Number(pkg.price_tzs),starts_at:starts.toISOString(),ends_at:ends.toISOString(),status:"pending_review"};
+  const {error}=await supabase.from("ad_campaigns").insert(payload);if(error)throw error;
+  if(msg)msg.textContent=tr("Kampeni imetumwa kwa Admin Mkuu kwa review.","Campaign submitted to Admin Mkuu for review.");
+  await loadAdsData();renderPanel();
+ }catch(error){if(msg)msg.textContent=error.message||tr("Imeshindikana kutuma kampeni.","Could not submit campaign.");}
+ finally{state.busy=false;if(button)button.disabled=false;}
+}
+async function submitAdsDeposit(event){
+ event.preventDefault();const form=event.currentTarget,msg=form.querySelector("#zsd-ads-deposit-message"),button=form.querySelector("button[type=submit]");
+ if(state.busy)return;state.busy=true;button.disabled=true;
+ let uploadedPath=null;
+ try{
+  const fd=new FormData(form),file=fd.get("receipt"),amount=Number(fd.get("amount_tzs")),transactionId=String(fd.get("external_transaction_id")||"").trim();
+  if(!(file instanceof File)||!file.size||file.size>10*1024*1024||!["image/jpeg","image/png","image/webp","application/pdf"].includes(file.type))throw new Error(tr("Chagua risiti sahihi isiyozidi MB 10.","Choose a valid receipt up to 10 MB."));
+  const ext=file.type==="application/pdf"?"pdf":file.type.split("/")[1].replace("jpeg","jpg");
+  uploadedPath=window.__zuneSellerUser.id+"/"+Date.now()+"-"+Math.random().toString(36).slice(2)+"."+ext;
+  const upload=await supabase.storage.from("ads-payment-receipts").upload(uploadedPath,file,{contentType:file.type,upsert:false});if(upload.error)throw upload.error;
+  const {error}=await supabase.from("ads_wallet_transactions").insert({seller_id:window.__zuneSellerUser.id,transaction_type:"deposit_request",amount_tzs:amount,status:"pending",external_transaction_id:transactionId,receipt_path:uploadedPath});
+  if(error)throw error;
+  if(msg)msg.textContent=tr("Ombi la deposit limetumwa. Salio litaongezwa baada ya uthibitisho wa Admin Mkuu.","Deposit request submitted. Funds will be credited after Admin Mkuu verifies it.");
+  form.reset();await loadAdsData();renderPanel();
+ }catch(error){if(uploadedPath)await supabase.storage.from("ads-payment-receipts").remove([uploadedPath]);if(msg)msg.textContent=error.message||tr("Imeshindikana kutuma ombi.","Could not submit request.");}
+ finally{state.busy=false;if(button)button.disabled=false;}
+}
+async function loadAdsData(){
+ const user=window.__zuneSellerUser;if(!user?.id)return;
+ const [packages,campaigns,wallet,transactions]=await Promise.all([
+  supabase.from("ad_packages").select("*").eq("is_active",true).order("created_at",{ascending:false}),
+  supabase.from("ad_campaigns").select("*").eq("seller_id",user.id).order("created_at",{ascending:false}),
+  supabase.from("ads_wallets").select("seller_id,available_tzs,pending_tzs,reserved_tzs").eq("seller_id",user.id).maybeSingle(),
+  supabase.from("ads_wallet_transactions").select("id,transaction_type,amount_tzs,status,created_at,external_transaction_id").eq("seller_id",user.id).order("created_at",{ascending:false}).limit(100)
+ ]);
+ state.adsPackages=packages.data||[];state.adsCampaigns=campaigns.data||[];state.adsWallet=wallet.data||null;state.adsTransactions=transactions.data||[];
+}
+
 function renderPlaceholder(){
  const names=sections.find(s=>s[0]===state.section);
  return `<section class="zsd-card"><h2>${tr(names[2],names[3])}</h2><p class="zsd-muted">${tr("Sehemu hii imeongezwa kwenye muundo wa dashboard. Itaunganishwa na jedwali na ruhusa sahihi za Supabase kabla ya kuanza kutumia data halisi.","This section is included in the dashboard structure. It will be connected to the correct Supabase tables and permissions before handling live data.")}</p><div class="zsd-empty">${tr("Inaandaliwa — hakuna data ya majaribio iliyowekwa.","In preparation — no sample data has been inserted.")}</div></section>`;
 }
 function renderPanel(){
  const panel=document.getElementById("zsd-panel"); if(!panel)return;
- panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"?renderProducts():state.section==="orders"?renderOrders():state.section==="finance"?renderFinance():state.section==="store"?renderStore():state.section==="verification"?renderVerification():renderPlaceholder();
+ panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"?renderProducts():state.section==="orders"?renderOrders():state.section==="finance"?renderFinance():state.section==="store"?renderStore():state.section==="verification"?renderVerification():state.section==="marketing"?renderMarketing():renderPlaceholder();
  panel.querySelectorAll("[data-zsd-section]").forEach(b=>b.addEventListener("click",()=>{state.section=b.dataset.zsdSection;renderPanel();bindActiveNav();}));
  panel.querySelector("#zsd-verification-form")?.addEventListener("submit",submitVerification);
  panel.querySelector("#zsd-gallery-input")?.addEventListener("change",event=>{if(event.target.files?.length)addSellerPhotos(event.target.files);event.target.value="";});
  panel.querySelector("#zsd-camera-input")?.addEventListener("change",event=>{if(event.target.files?.length)addSellerPhotos(event.target.files);event.target.value="";});
- if(state.section==="products"){renderPhotoSelection();panel.querySelector("#zsd-product-form")?.addEventListener("submit",publishSellerProduct);}
+ if(state.section==="products"){renderPhotoSelection();panel.querySelector("#zsd-product-form")?.addEventListener("submit",publishSellerProduct);} if(state.section==="marketing"){panel.querySelector("#zsd-ad-campaign-form")?.addEventListener("submit",submitAdCampaign);panel.querySelector("#zsd-ads-deposit-form")?.addEventListener("submit",submitAdsDeposit);}
 }
 function bindActiveNav(){
  document.querySelectorAll("[data-zsd-section]").forEach(b=>b.classList.toggle("active",b.dataset.zsdSection===state.section));
