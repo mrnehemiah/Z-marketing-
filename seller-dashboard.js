@@ -204,7 +204,7 @@ async function loadSellerWithdrawals(force=false){
  if(!force&&state.withdrawalsLoadedFor===user.id)return;
  state.withdrawalsLoading=true;
  try{const {data,error}=await supabase.from("withdrawal_requests").select("id,user_id,amount,currency,payout_method,payout_account_name,payout_account_reference,status,admin_note,payout_reference,created_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(50);if(error)throw error;state.withdrawalRequests=data||[];state.withdrawalsLoadedFor=user.id;}
- catch(error){console.error("ZUNE withdrawals:",error);state.error=error.message||"Withdrawals could not be loaded.";}
+ catch(error){console.error("ZUNE withdrawals:",error);state.error=error.message||"Withdrawals could not be loaded.";state.withdrawalsLoadedFor=user.id;}
  finally{state.withdrawalsLoading=false;if(state.section==="withdrawals")renderPanel();}
 }
 async function submitSellerWithdrawal(event){
@@ -419,8 +419,9 @@ function renderCustomers(){
  const total=rows.reduce((sum,x)=>sum+Number(x.orders_count||0),0);
  return `<section class="zsd-card"><div class="zsd-chat-heading"><div><h2>${tr("Wateja wa duka","Store customers")}</h2><p class="zsd-muted">${tr("Wateja waliowahi kuagiza bidhaa zako.","Customers who have ordered your products.")}</p></div><button class="zsd-btn" type="button" id="zsd-refresh-customers">${tr("Onyesha upya","Refresh")}</button></div><div class="zsd-customer-stats"><article><small>${tr("Wateja","Customers")}</small><strong>${rows.length}</strong></article><article><small>${tr("Oda zilizowekwa","Orders placed")}</small><strong>${total}</strong></article></div><div class="zsd-table-wrap"><table class="zsd-table"><thead><tr><th>${tr("Mteja","Customer")}</th><th>${tr("Oda","Orders")}</th><th>${tr("Mara ya mwisho","Last order")}</th></tr></thead><tbody>${rows.map(x=>`<tr><td><strong>${esc(x.name||tr("Mteja wa ZUNE","ZUNE Customer"))}</strong><small>${esc(x.phone||"")}</small></td><td>${Number(x.orders_count)||0}</td><td>${x.last_order?new Date(x.last_order).toLocaleDateString(state.language==="sw"?"sw-TZ":"en-TZ"):"—"}</td></tr>`).join("")||`<tr><td colspan="3"><div class="zsd-empty">${tr("Bado hakuna wateja wenye oda.","No customers with orders yet.")}</div></td></tr>`}</tbody></table></div></section>`;
 }
-async function loadSellerCustomers(){
+async function loadSellerCustomers(force=false){
  const user=window.__zuneSellerUser;if(!user?.id||state.customersLoading)return;
+ if(!force&&state.customersLoadedFor===user.id)return;
  state.customersLoading=true;
  try{
   const {data,error}=await supabase.from("order_items").select("order_id").eq("seller_id",user.id).limit(2000);
@@ -444,7 +445,7 @@ async function loadSellerCustomers(){
   const lookup=new Map((profiles.data||[]).map(x=>[x.id,x]));
   state.customers=buyers.map(x=>({...x,name:lookup.get(x.id)?.full_name||tr("Mteja wa ZUNE","ZUNE Customer"),phone:lookup.get(x.id)?.phone_number||""})).sort((a,b)=>new Date(b.last_order)-new Date(a.last_order));
   state.customersLoadedFor=user.id;
- }catch(error){console.error("ZUNE seller customers:",error);state.error=error.message||"Customers could not be loaded.";}
+ }catch(error){console.error("ZUNE seller customers:",error);state.error=error.message||"Customers could not be loaded.";state.customersLoadedFor=user.id;}
  finally{state.customersLoading=false;if(state.section==="customers")renderPanel();}
 }
 function renderMessages(){
@@ -479,7 +480,7 @@ async function loadSellerMessages(force=false){
    await supabase.from("chat_messages").update({is_read:true}).eq("conversation_id",state.activeConversationId).neq("sender_id",user.id).eq("is_read",false);
   }else state.chatMessages=[];
   state.messagesLoadedFor=user.id;
- }catch(error){console.error("ZUNE seller messages:",error);state.error=error.message||"Messages could not be loaded.";}
+ }catch(error){console.error("ZUNE seller messages:",error);state.error=error.message||"Messages could not be loaded.";state.messagesLoadedFor=user.id;}
  finally{state.messagesLoading=false;if(state.section==="messages")renderPanel();}
 }
 async function sendSellerMessage(event){
@@ -502,7 +503,7 @@ async function loadSellerSupport(force=false){
  if(!force&&state.supportLoadedFor===user.id)return;
  state.supportLoading=true;
  try{const {data,error}=await supabase.from("support_tickets").select("id,category,message,status,admin_reply,created_at,updated_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(50);if(error)throw error;state.supportTickets=data||[];state.supportLoadedFor=user.id;}
- catch(error){console.error("ZUNE seller support:",error);state.error=error.message||"Support requests could not be loaded.";}
+ catch(error){console.error("ZUNE seller support:",error);state.error=error.message||"Support requests could not be loaded.";state.supportLoadedFor=user.id;}
  finally{state.supportLoading=false;if(state.section==="support")renderPanel();}
 }
 async function submitSellerSupport(event){
@@ -528,7 +529,7 @@ async function loadSellerNotifications(force=false){
  try{
   const {data,error}=await supabase.from("notifications").select("id,type,title_sw,title_en,body_sw,body_en,action_url,is_read,created_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(50);
   if(error)throw error;state.notifications=data||[];state.notificationsLoadedFor=user.id;
- }catch(error){console.error("ZUNE seller notifications:",error);state.error=error.message||"Notifications could not be loaded.";}
+ }catch(error){console.error("ZUNE seller notifications:",error);state.error=error.message||"Notifications could not be loaded.";state.notificationsLoadedFor=user.id;}
  finally{state.notificationsLoading=false;if(state.section==="notifications")renderPanel();}
 }
 async function markSellerNotification(id=null){
@@ -582,7 +583,7 @@ function renderPanel(){
  panel.querySelectorAll("[data-zsd-period]").forEach(b=>b.addEventListener("click",()=>{state.salesPeriod=b.dataset.zsdPeriod;renderPanel();bindActiveNav();}));
  panel.querySelector("#zsd-verification-form")?.addEventListener("submit",submitVerification);
  panel.querySelector("#zsd-chat-form")?.addEventListener("submit",sendSellerMessage);
- panel.querySelector("#zsd-refresh-customers")?.addEventListener("click",()=>loadSellerCustomers());
+ panel.querySelector("#zsd-refresh-customers")?.addEventListener("click",()=>loadSellerCustomers(true));
  panel.querySelector("#zsd-refresh-reviews")?.addEventListener("click",()=>loadSellerReviews(true));
  if(state.section==="reviews"&&state.reviewsLoadedFor!==window.__zuneSellerUser?.id)loadSellerReviews();
  if(state.section==="promotions"&&!state.promotionsLoaded)loadSellerPromotions();
