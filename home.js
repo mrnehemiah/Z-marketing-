@@ -26,6 +26,8 @@ function readStorage(key, fallback) {
 const homeState = {
   products: [],
   categories: [],
+  featuredStores: [],
+  searchSuggestionsOpen: false,
 
   selectedCategory: "",
   search: "",
@@ -274,6 +276,8 @@ function zIcon(name) {
 
     cart: '<path d="M3 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 1.9-1.5L22 8H6"/><circle cx="10" cy="21" r="1"/><circle cx="18" cy="21" r="1"/>',
 
+    notification: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
+
     saved: '<path d="M20.8 8.6c0 5.1-8.8 11-8.8 11s-8.8-5.9-8.8-11a4.8 4.8 0 0 1 8.8-2.5 4.8 4.8 0 0 1 8.8 2.5z"/>',
 
     account: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
@@ -392,6 +396,19 @@ function addHomeStyles() {
       border-radius: 15px;
     }
 
+    .z-search-box { position:relative; }
+    .z-search-suggestions{position:absolute;top:calc(100% + 7px);left:0;right:0;z-index:40;display:none;max-height: min(55vh,360px);overflow:auto;padding:7px;border:1px solid var(--border);border-radius:14px;background:var(--surface);box-shadow:0 12px 30px rgba(0,0,0,.14)}
+    .z-search-suggestions.open{display:block}
+    .z-search-suggestion{width:100%;display:flex;align-items:center;gap:10px;padding:10px;border:0;border-radius:9px;background:transparent;color:var(--text);text-align:left;font-size:12px;cursor:pointer}
+    .z-search-suggestion:hover{background:var(--background)}
+    .z-search-suggestion small{display:block;color:var(--text-muted);margin-top:3px}
+    .z-featured-stores{display:flex;gap:11px;overflow-x:auto;padding:3px 1px 12px;scrollbar-width:none}
+    .z-featured-stores::-webkit-scrollbar{display:none}
+    .z-featured-store{flex:0 0 175px;min-height:84px;padding:13px;border:1px solid var(--border);border-radius:15px;background:var(--surface);color:var(--text);text-align:left}
+    .z-featured-store strong{display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .z-featured-store small{display:block;margin-top:7px;color:var(--text-muted);font-size:10px}
+    .z-featured-store .store-verified{color:var(--verified-store);font-weight:800}
+    .z-sponsored-placeholder{display:none}
     .z-search-box input {
       width: 100%;
       min-width: 0;
@@ -1128,6 +1145,10 @@ async function loadProducts(reset = false) {
         if (storesError) throw storesError;
         const storeByOwner = new Map((stores || []).map(store => [String(store.owner_id), store]));
         products.forEach(item => { item.__zuneStore = storeByOwner.get(String(item.vendor_id)) || null; });
+        const merged=new Map((homeState.featuredStores||[]).map(st=>[String(st.owner_id),st]));
+        (stores||[]).forEach(st=>merged.set(String(st.owner_id),st));
+        homeState.featuredStores=[...merged.values()].slice(0,20);
+        const featuredHolder=document.getElementById("z-featured-stores");if(featuredHolder)featuredHolder.innerHTML=renderFeaturedStores();
       } catch (storeError) {
         console.warn("ZUNE store details unavailable for product cards:", storeError);
       }
@@ -1536,7 +1557,10 @@ const ZUNE_HOME_SLIDES = [
  {k:"JENGA BIASHARA",sw:"Panua biashara yako mtandaoni",en:"Grow your business online",sd:"Anza safari yako ya kuuza na ZUNE.",ed:"Start your selling journey with ZUNE.",sc:"Fungua akaunti",ec:"Get started",a:"account",img:"https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?auto=format&fit=crop&w=1400&q=85"},
  {k:"GUNDUA ZAIDI",sw:"Kuna mengi ya kugundua",en:"There is more to discover",sd:"Vinjari bidhaa kutoka makundi tofauti.",ed:"Explore products across different categories.",sc:"Gundua sasa",ec:"Discover now",a:"explore",img:"https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1400&q=85"},
  {k:"ZUNE KWA WOTE",sw:"Nunua na uza kwa urahisi",en:"Buy and sell with ease",sd:"Soko linalowaunganisha wanunuzi na wauzaji.",ed:"A marketplace connecting buyers and sellers.",sc:"Tembelea soko",ec:"Visit marketplace",a:"products",img:"https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=1400&q=85"},
- {k:"KARIBU ZUNE",sw:"Anza safari yako leo",en:"Start your journey today",sd:"Chunguza bidhaa na huduma mbalimbali.",ed:"Explore a wide range of products and services.",sc:"Endelea",ec:"Continue",a:"explore",img:"https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1400&q=85"}
+ {k:"KARIBU ZUNE",sw:"Anza safari yako leo",en:"Start your journey today",sd:"Chunguza bidhaa na huduma mbalimbali.",ed:"Explore a wide range of products and services.",sc:"Endelea",ec:"Continue",a:"explore",img:"https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1400&q=85"},
+ {k:"MADUKA YALIYOTHIBITISHWA",sw:"Nunua kutoka maduka yenye uhakika",en:"Shop from trusted stores",sd:"Gundua wauzaji waliothibitishwa ZUNE.",ed:"Discover verified sellers on ZUNE.",sc:"Gundua maduka",ec:"Discover stores",a:"stores",img:"https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1400&q=85"},
+ {k:"CHAGUO LAKO",sw:"Pata bidhaa zinazokuvutia",en:"Find products you love",sd:"Vinjari bidhaa kulingana na mahitaji yako.",ed:"Explore products that match your needs.",sc:"Tafuta sasa",ec:"Search now",a:"search",img:"https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1400&q=85"},
+ {k:"UNUNUZI RAHISI",sw:"Anza kununua kwa urahisi",en:"Shopping made simple",sd:"Bidhaa na maduka mbalimbali sehemu moja.",ed:"Products and stores in one place.",sc:"Anza sasa",ec:"Start now",a:"products",img:"https://images.unsplash.com/photo-1607082349566-187342175e2f?auto=format&fit=crop&w=1400&q=85"}
 ];
 function renderHomeCarousel(){
  const slide=ZUNE_HOME_SLIDES[homeState.carouselIndex%ZUNE_HOME_SLIDES.length],sw=language()==="sw";
@@ -1563,6 +1587,7 @@ function bindCarouselEvents(){
   const a=el.querySelector("[data-slide-action]").dataset.slideAction;
   if(a==="account")window.location.assign("./account.html");
   else if(a==="categories")renderMarketplacePage("explore");
+  else if(a==="stores")document.getElementById("z-featured-stores")?.scrollIntoView({behavior:"smooth"});
   else if(a==="search")document.getElementById("z-home-search")?.focus();
   else document.getElementById("z-product-area")?.scrollIntoView({behavior:"smooth",block:"start"});
  });
@@ -1570,6 +1595,12 @@ function bindCarouselEvents(){
  el.addEventListener("touchend",e=>{const d=(e.changedTouches[0]?.clientX||0)-x;if(Math.abs(d)>45)moveHomeSlide(d<0?1:-1);},{passive:true});
 }
 function startCarouselAutoplay(){if(homeState.carouselTimer)clearInterval(homeState.carouselTimer);homeState.carouselTimer=setInterval(()=>moveHomeSlide(1),5000);}
+
+function renderFeaturedStores(){
+ const stores=homeState.featuredStores||[];
+ if(!stores.length)return `<div class="z-empty-state">${language()==="sw"?"Maduka yataonekana kadri bidhaa za wauzaji zinavyopakiwa.":"Stores will appear as seller products load."}</div>`;
+ return stores.slice(0,10).map(store=>`<article class="z-featured-store"><strong>${safe(store.store_name||"ZUNE Store")} ${store.verification_status==="verified"?`<span class="store-verified" title="Verified Store">✓</span>`:""}</strong><small>${safe([store.district,store.region].filter(Boolean).join(", ")|| (language()==="sw"?"Duka la ZUNE":"ZUNE Store"))}</small></article>`).join("");
+}
 
 // --------------------------------------------
 // 17. RENDER CATEGORIES
@@ -1579,30 +1610,10 @@ function renderCategories() {
   const categories = homeState.categories || [];
 
   return `
-    <div class="z-category-list">
-
-      <button
-        type="button"
-        class="z-category ${!homeState.selectedCategory ? "active" : ""}"
-        data-category=""
-      >
-        ${tx("all")}
-      </button>
-
-      ${categories.map(category => `
-        <button
-          type="button"
-          class="z-category ${
-            String(homeState.selectedCategory) === String(category.id)
-              ? "active"
-              : ""
-          }"
-          data-category="${safe(category.id)}"
-        >
-          ${safe(category.name)}
-        </button>
+    <div class="z-category-directory">
+      ${categories.slice(0,8).map(category => `
+        <button type="button" class="z-category ${String(homeState.selectedCategory)===String(category.id)?"active":""}" data-category="${safe(category.id)}">${safe(category.name)}</button>
       `).join("")}
-
     </div>
   `;
 }
@@ -1624,6 +1635,8 @@ function renderHomePage() {
           </div>
 
           <div class="z-home-actions">
+
+            <button type="button" class="z-icon-button" data-open-notifications aria-label="Notifications">${zIcon("notification")}</button>
 
             <button
               type="button"
@@ -1657,7 +1670,10 @@ function renderHomePage() {
             placeholder="${tx("search")}"
             value="${safe(homeState.search)}"
             autocomplete="off"
+            aria-controls="z-search-suggestions"
+            aria-expanded="false"
           >
+          <div class="z-search-suggestions" id="z-search-suggestions" role="listbox"></div>
         </label>
 
       </header>
@@ -1677,6 +1693,11 @@ function renderHomePage() {
             ${renderCategories()}
           </div>
 
+        </section>
+
+        <section id="z-featured-stores-section">
+          <div class="z-section-heading"><h2>${language()==="sw"?"Maduka Maarufu":"Featured Stores"}</h2></div>
+          <div class="z-featured-stores" id="z-featured-stores">${renderFeaturedStores()}</div>
         </section>
 
         <section>
@@ -1754,20 +1775,30 @@ function bindSearchEvents() {
 
   let searchTimeout;
 
+  const suggestionBox=document.getElementById("z-search-suggestions");
+  const renderSuggestions=()=>{
+    if(!suggestionBox)return;
+    const q=input.value.trim().toLowerCase();
+    if(!q){suggestionBox.classList.remove("open");input.setAttribute("aria-expanded","false");return;}
+    const matches=homeState.products.filter(p=>String(p.title||"").toLowerCase().includes(q)).slice(0,6);
+    const storeMatches=homeState.featuredStores.filter(st=>String(st.store_name||"").toLowerCase().includes(q)).slice(0,3);
+    const rows=[...matches.map(p=>`<button type="button" class="z-search-suggestion" data-suggest-product="${safe(p.id)}">⌕ <span>${safe(p.title)}<small>${money(p.price)}</small></span></button>`),...storeMatches.map(st=>`<button type="button" class="z-search-suggestion" data-suggest-store="${safe(st.owner_id)}">▣ <span>${safe(st.store_name)}<small>${language()==="sw"?"Duka":"Store"}</small></span></button>` )];
+    suggestionBox.innerHTML=rows.length?rows.join(""):`<div class="z-search-suggestion">${language()==="sw"?"Endelea kuandika kutafuta bidhaa zaidi":"Keep typing to search more products"}</div>`;
+    suggestionBox.classList.add("open");input.setAttribute("aria-expanded","true");
+  };
   input.addEventListener("input", () => {
-    clearTimeout(searchTimeout);
-
+    renderSuggestions();clearTimeout(searchTimeout);
     searchTimeout = setTimeout(async () => {
-      homeState.search = input.value.trim();
-
-      homeState.products = [];
-      homeState.page = 0;
-      homeState.hasMore = true;
-
-      await loadProducts(true);
-
-    }, 450);
+      homeState.search = input.value.trim();homeState.products = [];homeState.page = 0;homeState.hasMore = true;
+      await loadProducts(true);renderSuggestions();
+    }, 350);
   });
+  suggestionBox?.addEventListener("click",event=>{
+    const productButton=event.target.closest("[data-suggest-product]");
+    if(productButton){const product=homeState.products.find(p=>String(p.id)===productButton.dataset.suggestProduct);if(product)openProductDetails(product);suggestionBox.classList.remove("open");return;}
+    const storeButton=event.target.closest("[data-suggest-store]");if(storeButton){suggestionBox.classList.remove("open");document.getElementById("z-featured-stores-section")?.scrollIntoView({behavior:"smooth"});}
+  });
+  document.addEventListener("click",event=>{if(!event.target.closest(".z-search-box"))suggestionBox?.classList.remove("open");},{once:true});
 }
 
 // --------------------------------------------
@@ -1780,6 +1811,12 @@ function bindHomeEvents() {
   bindCarouselEvents();
   startCarouselAutoplay();
   document.querySelector("[data-open-categories]")?.addEventListener("click", () => renderMarketplacePage("explore"));
+
+  document.querySelector("[data-open-notifications]")?.addEventListener("click",()=>{
+    window.dispatchEvent(new CustomEvent("zune:open-notifications"));
+    const target=document.querySelector("[data-notifications],#notificationsPage,#notifications");
+    if(target)target.scrollIntoView({behavior:"smooth"});
+  });
 
   document.querySelector("[data-open-cart]")
     ?.addEventListener("click", () => {
