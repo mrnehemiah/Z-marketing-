@@ -55,4 +55,5 @@ async function apply(){
  }
  document.dispatchEvent(new CustomEvent("zune:template-applied",{detail:{template}}));
 }
+window.ZUNE_APPLY_CUSTOMER_TEMPLATE=apply;
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",apply,{once:true});else apply();
