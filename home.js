@@ -2536,6 +2536,35 @@ function bindAccountEvents() {
 // 33. MAIN PAGE RENDERER
 // --------------------------------------------
 
+
+/* Apply the signed-in customer's selected template to the live Marketplace UI. */
+function applyMarketplaceTemplate() {
+  const id = homeState.user?.id;
+  let selected = "classic";
+  try { if (id) selected = localStorage.getItem("zune_template_customer:" + id) || "classic"; } catch (_) {}
+  const allowed = ["classic","editorial","hero","compact","boutique","catalog","stories","minimal","deals","showcase"];
+  const template = allowed.includes(selected) ? selected : "classic";
+  const marketplace = homeState.app?.querySelector(".z-marketplace");
+  if (marketplace) marketplace.setAttribute("data-zune-template", template);
+  if (document.getElementById("zuneMarketplaceTemplateStyles")) return;
+  const style = document.createElement("style");
+  style.id = "zuneMarketplaceTemplateStyles";
+  style.textContent = `
+    .z-marketplace[data-zune-template="editorial"] .z-home-content{max-width:1240px}.z-marketplace[data-zune-template="editorial"] .z-home-carousel{border-radius:4px;min-height:285px}.z-marketplace[data-zune-template="editorial"] .z-section-heading h2{font-family:Georgia,serif;font-size:20px}.z-marketplace[data-zune-template="editorial"] .z-product-grid{gap:18px}.z-marketplace[data-zune-template="editorial"] .z-product-card{border-radius:5px;box-shadow:none}.z-marketplace[data-zune-template="editorial"] .z-product-media{aspect-ratio:1/1}
+    .z-marketplace[data-zune-template="hero"] .z-home-content{max-width:1180px}.z-marketplace[data-zune-template="hero"] .z-home-carousel,.z-marketplace[data-zune-template="hero"] .z-slide-copy{min-height:340px}.z-marketplace[data-zune-template="hero"] .z-home-carousel{border-radius:26px}.z-marketplace[data-zune-template="hero"] .z-home-welcome{display:none}
+    .z-marketplace[data-zune-template="compact"] .z-home-header{padding:8px 12px}.z-marketplace[data-zune-template="compact"] .z-home-top{margin-bottom:8px}.z-marketplace[data-zune-template="compact"] .z-icon-button{width:35px;height:35px;border-radius:10px}.z-marketplace[data-zune-template="compact"] .z-search-box{min-height:40px}.z-marketplace[data-zune-template="compact"] .z-home-content{padding:10px}.z-marketplace[data-zune-template="compact"] .z-home-carousel,.z-marketplace[data-zune-template="compact"] .z-slide-copy{min-height:150px}.z-marketplace[data-zune-template="compact"] .z-product-grid{gap:7px}.z-marketplace[data-zune-template="compact"] .z-product-card{border-radius:10px}.z-marketplace[data-zune-template="compact"] .z-product-media{aspect-ratio:1/1}
+    .z-marketplace[data-zune-template="boutique"] .z-home-header{background:#28211f;color:#fff;border:0}.z-marketplace[data-zune-template="boutique"] .z-home-header .z-icon-button{background:#3a302d;color:#fff;border-color:#51443f}.z-marketplace[data-zune-template="boutique"] .zune-logo{color:#e5c6a8}.z-marketplace[data-zune-template="boutique"] .z-home-carousel{border-radius:30px 5px 30px 5px}.z-marketplace[data-zune-template="boutique"] .z-product-card{border-radius:4px;box-shadow:none}.z-marketplace[data-zune-template="boutique"] .z-product-media{aspect-ratio:4/5}
+    .z-marketplace[data-zune-template="catalog"] .z-home-content{max-width:1300px}.z-marketplace[data-zune-template="catalog"] .z-category-directory{grid-template-columns:repeat(4,minmax(0,1fr))}.z-marketplace[data-zune-template="catalog"] .z-product-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.z-marketplace[data-zune-template="catalog"] .z-product-card{border-radius:9px}.z-marketplace[data-zune-template="catalog"] .z-product-media{aspect-ratio:1/1}
+    .z-marketplace[data-zune-template="stories"] .z-home-carousel{border-radius:26px 26px 8px 8px}.z-marketplace[data-zune-template="stories"] .z-category-directory .z-category{min-height:70px;border-radius:18px;white-space:normal}.z-marketplace[data-zune-template="stories"] .z-product-row{grid-auto-columns:minmax(180px,55%)}.z-marketplace[data-zune-template="stories"] .z-product-card{border-radius:22px}
+    .z-marketplace[data-zune-template="minimal"] .z-home-header{box-shadow:none;border:0;background:var(--background)}.z-marketplace[data-zune-template="minimal"] .z-icon-button{border:0;background:transparent}.z-marketplace[data-zune-template="minimal"] .z-home-carousel{border-radius:0;min-height:185px}.z-marketplace[data-zune-template="minimal"] .z-slide-copy{min-height:185px}.z-marketplace[data-zune-template="minimal"] .z-product-card{border:0;border-radius:0;box-shadow:none}.z-marketplace[data-zune-template="minimal"] .z-product-media{aspect-ratio:1/1}
+    .z-marketplace[data-zune-template="deals"] .z-home-carousel{min-height:255px;border:3px solid #f0a33b}.z-marketplace[data-zune-template="deals"] .z-product-card{border-radius:12px}.z-marketplace[data-zune-template="deals"] .z-product-flag.discount{font-size:10px;padding:6px 9px}
+    .z-marketplace[data-zune-template="showcase"] .z-home-content{max-width:1240px}.z-marketplace[data-zune-template="showcase"] .z-home-carousel,.z-marketplace[data-zune-template="showcase"] .z-slide-copy{min-height:310px}.z-marketplace[data-zune-template="showcase"] .z-home-carousel{border-radius:24px}.z-marketplace[data-zune-template="showcase"] .z-product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.z-marketplace[data-zune-template="showcase"] .z-product-card{border-radius:20px}.z-marketplace[data-zune-template="showcase"] .z-product-media{aspect-ratio:1/1.08}
+    @media(min-width:760px){.z-marketplace[data-zune-template="catalog"] .z-product-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.z-marketplace[data-zune-template="showcase"] .z-product-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:520px){.z-marketplace[data-zune-template="catalog"] .z-category-directory{grid-template-columns:repeat(2,minmax(0,1fr))}.z-marketplace[data-zune-template="catalog"] .z-product-grid,.z-marketplace[data-zune-template="showcase"] .z-product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  `;
+  document.head.appendChild(style);
+}
+
 function renderMarketplacePage(page) {
   homeState.activeTab = page;
   if (page !== "home" && homeState.carouselTimer) {
@@ -2595,6 +2624,7 @@ function renderMarketplacePage(page) {
     </div>
   `;
 
+  applyMarketplaceTemplate();
   bindNavigation();
 
   switch (homeState.activeTab) {
