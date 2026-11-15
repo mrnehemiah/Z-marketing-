@@ -1280,7 +1280,7 @@ function bindSponsoredAdEvents() {
     card.querySelector("[data-open-product]")?.addEventListener("keydown", event => {
       if (event.key === "Enter" || event.key === " ") recordSponsoredEvent(campaignId, "click");
     }, { once: true });
-  });
+  }));
 }
 
 // --------------------------------------------
@@ -2047,6 +2047,8 @@ function renderExplorePage() {
             ${(homeState.categories || []).map(category => `<button type="button" class="z-category ${String(homeState.selectedCategory)===String(category.id)?"active":""}" data-category="${safe(category.id)}">${safe(category.name)}</button>`).join("")}
           </div>
         </section>
+
+        <section id="z-explore-sponsored-section"><div class="z-section-heading"><h2>${language()==="sw"?"Matangazo Yanayokufaa":"Sponsored for You"}</h2></div><div id="z-explore-sponsored-products" class="z-sponsored-products"></div></section>
 
         <div id="z-product-area">
 
