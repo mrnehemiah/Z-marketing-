@@ -16,7 +16,7 @@ const names=[
 let user=null,profile={},store=null,mode="customer",selected={customer:"classic",store:"classic"},previewId=null;
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const key=(kind)=>"zune_template_"+kind+":"+user.id;
-function loadChoices(){try{selected.customer=localStorage.getItem(key("customer"))||"classic";selected.store=localStorage.getItem(key("store"))||"classic";}catch(e){console.warn("Template preferences unavailable",e);}}
+function loadChoices(){try{selected.customer=user.user_metadata?.zune_template_customer||localStorage.getItem(key("customer"))||"classic";selected.store=store?.storefront_template||localStorage.getItem(key("store"))||"classic";}catch(e){console.warn("Template preferences unavailable",e);}}
 function mini(id){const n=names.find(x=>x.id===id)||names[0];return '<div class="tg-mini layout-'+(names.indexOf(n)+1)+'"><div class="tg-mini-top"><span>ⓏⓊⓃⒺ</span><span>⌕　♡　▣</span></div><div class="tg-mini-search"></div><div class="tg-mini-hero"></div><div class="tg-mini-tiles"><i></i><i></i><i></i><i></i></div><div class="tg-mini-products"><i></i><i></i><i></i></div><div class="tg-mini-footer"></div></div>';}
 function render(){
  const current=selected[mode],isSeller=profile.role==="vendor";
@@ -32,7 +32,7 @@ function render(){
 }
 function openPreview(id){const n=names.find(x=>x.id===id);if(!n)return;previewId=id;const modal=document.getElementById("tg-modal");modal.querySelector(".tg-modal-head h2").textContent=n.name;modal.querySelector(".tg-large-preview").innerHTML=mini(id);modal.querySelector(".tg-modal-desc").textContent=n.desc;modal.querySelector("[data-modal-apply]").textContent=selected[mode]===id?"Template inatumika":"Tumia template hii";modal.classList.add("open");modal.setAttribute("aria-hidden","false");}
 function closePreview(){const m=document.getElementById("tg-modal");m.classList.remove("open");m.setAttribute("aria-hidden","true");}
-function applyTemplate(id){if(mode==="store"&&profile.role!=="vendor")return;selected[mode]=id;try{localStorage.setItem(key(mode),id);}catch(e){alert("Imeshindikana kuhifadhi uchaguzi kwenye kifaa hiki.");return;}if(mode==="customer")window.ZUNE_APPLY_CUSTOMER_TEMPLATE?.();closePreview();render();const msg=document.getElementById("tg-toast");msg.innerHTML='Template imehifadhiwa. <a href="./index.html" style="color:#ffd08a;text-decoration:underline;margin-left:8px;pointer-events:auto">Angalia Marketplace →</a>';msg.style.pointerEvents="auto";msg.classList.add("show");setTimeout(()=>msg.classList.remove("show"),5000);}
+async function applyTemplate(id){if(mode==="store"&&profile.role!=="vendor")return;selected[mode]=id;const msg=document.getElementById("tg-toast");try{localStorage.setItem(key(mode),id);if(mode==="customer"){const {error}=await supabase.auth.updateUser({data:{...(user.user_metadata||{}),zune_template_customer:id}});if(error)throw error;}else{const {error}=await supabase.from("stores").update({storefront_template:id}).eq("owner_id",user.id);if(error)throw error;store={...(store||{}),storefront_template:id};}}catch(e){console.error("ZUNE template save:",e);selected[mode]=mode==="customer"?(user.user_metadata?.zune_template_customer||"classic"):(store?.storefront_template||"classic");msg.textContent="Imeshindikana kuhifadhi template. Tafadhali jaribu tena.";msg.classList.add("show");render();return;}if(mode==="customer")window.ZUNE_APPLY_CUSTOMER_TEMPLATE?.();closePreview();render();msg.innerHTML=mode==="store"?'Template ya duka imehifadhiwa. <a href="./index.html" style="color:#ffd08a;text-decoration:underline;margin-left:8px;pointer-events:auto">Angalia duka →</a>':'Template imehifadhiwa. <a href="./index.html" style="color:#ffd08a;text-decoration:underline;margin-left:8px;pointer-events:auto">Angalia Marketplace →</a>';msg.style.pointerEvents="auto";msg.classList.add("show");setTimeout(()=>msg.classList.remove("show"),5000);}
 document.getElementById("tg-modal").addEventListener("click",e=>{if(e.target.id==="tg-modal"||e.target.closest("[data-close-modal]"))closePreview();});
 document.querySelector("[data-modal-apply]").addEventListener("click",()=>{if(previewId)applyTemplate(previewId);});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closePreview();});
@@ -42,6 +42,7 @@ async function init(){
  user=session.user;
  const {data,error:profileError}=await supabase.from("profiles").select("id,role").eq("id",user.id).maybeSingle();if(profileError)throw profileError;profile=profile||data||{};
  profile=data||{};
+ if(profile.role==="vendor"){const {data:storeData,error:storeError}=await supabase.from("stores").select("id,storefront_template").eq("owner_id",user.id).maybeSingle();if(storeError)throw storeError;store=storeData||null;}
  loadChoices();render();
 }
 init().catch(e=>{console.error("ZUNE templates:",e);root.innerHTML='<div class="tg-empty">Imeshindikana kupakia templates. Tafadhali jaribu tena.</div>';});
