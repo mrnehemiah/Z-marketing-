@@ -53,7 +53,13 @@ async function apply(){
  for(const [key,value] of Object.entries({bg:p.bg,surface:p.surface,text:p.text,muted:p.muted,border:p.border,radius:p.radius,shadow:p.shadow,font:p.font})){
   document.documentElement.style.setProperty("--z-page-"+key,value);
  }
+ const tokens={background:p.bg,surface:p.surface,text:p.text,"text-muted":p.muted,border:p.border,"radius-lg":p.radius,shadow:p.shadow,primary:template==="deals"?"#c46b19":template==="hero"?"#6d9ee8":template==="showcase"?"#80c6a6":"#087A55"};
+ for(const [name,value] of Object.entries(tokens))document.documentElement.style.setProperty("--"+name,value);
+ document.documentElement.dataset.zuneTemplate=template;
+ document.body?.setAttribute("data-zune-template",template);
+
  document.dispatchEvent(new CustomEvent("zune:template-applied",{detail:{template}}));
 }
 window.ZUNE_APPLY_CUSTOMER_TEMPLATE=apply;
+window.addEventListener("storage",event=>{if(event.key?.startsWith("zune_template_customer:"))apply();});
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",apply,{once:true});else apply();
