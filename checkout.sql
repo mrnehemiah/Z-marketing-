@@ -23,6 +23,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS order_checkouts_buyer_idempotency_uidx
  ON public.order_checkouts (buyer_id, idempotency_key)
  WHERE idempotency_key IS NOT NULL;
 
+DROP FUNCTION IF EXISTS public.zune_create_checkout(jsonb,jsonb,text,text);
 DROP FUNCTION IF EXISTS public.zune_create_checkout(jsonb,jsonb,text);
 CREATE FUNCTION public.zune_create_checkout(
  p_items jsonb,
@@ -227,6 +228,7 @@ GRANT EXECUTE ON FUNCTION public.zune_create_checkout(jsonb,jsonb,text,text) TO 
 
 
 -- Preview delivery quote before order placement
+DROP FUNCTION IF EXISTS public.zune_quote_checkout(jsonb,jsonb,text);
 DROP FUNCTION IF EXISTS public.zune_quote_checkout(jsonb,jsonb);
 CREATE FUNCTION public.zune_quote_checkout(p_items jsonb,p_address jsonb,p_coupon_code text DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
