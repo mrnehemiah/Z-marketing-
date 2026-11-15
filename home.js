@@ -702,7 +702,7 @@ function addHomeStyles() {
       font-size: 10px;
       font-weight: 750;
     }
-    .z-product-store-name {
+    .z-store-open { border:0; padding:0; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer; }\n    .z-store-open:hover,.z-store-open:focus-visible { color:var(--primary); text-decoration:underline; }\n    .z-product-store-name {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -1381,7 +1381,7 @@ function productCard(product) {
         </div>
         ${ratingMarkup}
         <div class="z-product-store">
-          <span class="z-product-store-name">${safe(storeName)}</span>
+          <button type="button" class="z-product-store-name z-store-open" data-open-store="${safe(product.vendor_id||"")}">${safe(storeName)}</button>
           ${accountVerified ? '<span class="z-verified-account-mark" title="Verified Account" aria-label="Verified Account"><svg viewBox="-30 -30 60 60" role="img"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' : ""}
         </div>
         ${location ? `<div class="z-product-location">⌖ ${safe(location)}</div>` : ""}
@@ -1394,6 +1394,19 @@ function productCard(product) {
 // --------------------------------------------
 // 11. PRODUCT DETAILS QUICK VIEW
 // --------------------------------------------
+
+function openStoreDetails(ownerId, product = null) {
+  if (!ownerId) return;
+  document.getElementById("z-store-detail-overlay")?.remove();
+  const cs=product?.__zuneStore||null, cp=product?.__zuneOwnerProfile||null;
+  const fallback=cs?.store_name||product?.store_name||product?.seller_name||(language()==="sw"?"Duka la ZUNE":"ZUNE Store");
+  const overlay=document.createElement("div"); overlay.id="z-store-detail-overlay"; overlay.className="z-product-detail-overlay";
+  overlay.innerHTML=`<section class="z-product-detail-sheet" role="dialog" aria-modal="true" aria-label="${safe(fallback)}"><button type="button" class="z-detail-close" aria-label="Close">×</button><div class="z-detail-content"><span class="z-account-eyebrow">${language()==="sw"?"TAARIFA ZA DUKA":"STORE INFORMATION"}</span><h2 id="z-store-detail-name">${safe(fallback)}</h2><div id="z-store-detail-status" class="z-product-store"></div><p id="z-store-detail-location" class="z-product-location"></p><p id="z-store-detail-message" class="z-account-message">${language()==="sw"?"Inapakia taarifa za duka...":"Loading store information..."}</p></div></section>`;
+  document.body.appendChild(overlay); const close=()=>overlay.remove(); overlay.addEventListener("click",e=>{if(e.target===overlay)close();}); overlay.querySelector(".z-detail-close")?.addEventListener("click",close);
+  const status=(s,p)=>{overlay.querySelector("#z-store-detail-status").innerHTML=(s?.verification_status==="verified"?'<span class="z-verified-store-mark" title="Verified Store">✓</span><strong>Verified Store</strong>':(language()==="sw"?"Duka halijathibitishwa":"Store not verified"))+(p?.is_verified===true?'<span class="z-verified-account-mark" title="Verified Account"><svg viewBox="-30 -30 60 60"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>Verified Account</strong>':"");};
+  status(cs,cp);
+  Promise.all([supabase.from("stores").select("owner_id,store_name,verification_status,region,district,address").eq("owner_id",ownerId).maybeSingle(),supabase.from("profiles").select("id,is_verified").eq("id",ownerId).maybeSingle()]).then(([sr,pr])=>{if(!overlay.isConnected)return;if(sr.error)throw sr.error;if(pr.error)throw pr.error;const s=sr.data||cs,p=pr.data||cp;overlay.querySelector("#z-store-detail-name").textContent=s?.store_name||fallback;overlay.querySelector("#z-store-detail-location").textContent=[s?.district,s?.region,s?.address].filter(Boolean).join(", ");status(s,p);overlay.querySelector("#z-store-detail-message").textContent=language()==="sw"?"Taarifa za duka zimeonyeshwa.":"Store information is shown above.";}).catch(e=>{console.warn("ZUNE store details:",e);const m=overlay.querySelector("#z-store-detail-message");if(m)m.textContent=language()==="sw"?"Baadhi ya taarifa hazikupatikana.":"Some information could not be loaded.";});
+}
 
 function openProductDetails(product) {
   document.getElementById("z-product-detail-overlay")?.remove();
@@ -1412,7 +1425,7 @@ function openProductDetails(product) {
       <button type="button" class="z-detail-close" aria-label="Close">×</button>
       <div class="z-detail-image-wrap">${productImage(product)}</div>
       <div class="z-detail-content">
-        <div class="z-product-store"><span class="z-product-store-name">${safe(storeName)}</span>${accountVerified ? '<span class="z-verified-account-mark" title="Verified Account" aria-label="Verified Account"><svg viewBox="-30 -30 60 60" role="img"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' : ""}${verified ? '<span class="z-verified-store-mark" aria-label="Verified Store">✓</span>' : ""}</div>
+        <div class="z-product-store"><button type="button" class="z-product-store-name z-store-open" data-open-store="${safe(product.vendor_id||"")}">${safe(storeName)}</button>${accountVerified ? '<span class="z-verified-account-mark" title="Verified Account" aria-label="Verified Account"><svg viewBox="-30 -30 60 60" role="img"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' : ""}${verified ? '<span class="z-verified-store-mark" aria-label="Verified Store">✓</span>' : ""}</div>
         ${location ? `<div class="z-product-location">⌖ ${safe(location)}</div>` : ""}
         <h2>${safe(product.title || tx("emptyName"))}</h2>
         <p class="z-detail-price">${money(product.price)}</p>
@@ -1426,6 +1439,7 @@ function openProductDetails(product) {
   const close = () => overlay.remove();
   overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
   overlay.querySelector(".z-detail-close")?.addEventListener("click", close);
+  overlay.querySelector("[data-open-store]")?.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();openStoreDetails(event.currentTarget.dataset.openStore,product);});
   overlay.querySelector(".z-detail-add")?.addEventListener("click", () => {
     addToCart(String(product.id));
     close();
@@ -1545,6 +1559,7 @@ function removeCartItem(productId) {
 function bindProductCards(root){
   if(!root)return;
   root.querySelectorAll("[data-save-product]").forEach(button=>button.addEventListener("click",event=>{event.stopPropagation();toggleSaved(button.dataset.saveProduct);}));
+  root.querySelectorAll("[data-open-store]").forEach(button=>button.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();const id=button.dataset.openStore;const p=homeState.products.find(x=>String(x.vendor_id)===String(id))||homeState.sponsoredProducts.find(x=>String(x.product.vendor_id)===String(id))?.product;openStoreDetails(id,p||null);}));
   root.querySelectorAll("[data-open-product]").forEach(card=>{
     const open=()=>{const product=homeState.products.find(item=>String(item.id)===card.dataset.openProduct)||homeState.sponsoredProducts.find(item=>String(item.product.id)===card.dataset.openProduct)?.product;if(product)openProductDetails(product);};
     card.addEventListener("click",event=>{if(event.target.closest("[data-save-product]"))return;open();});
