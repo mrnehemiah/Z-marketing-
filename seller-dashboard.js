@@ -34,7 +34,7 @@ function styles(){
  link=document.createElement("link");
  link.id="zune-seller-dashboard-styles";
  link.rel="stylesheet";
- link.href="./seller-dashboard.css?v=20261115-premium-v2";
+ link.href="./seller-dashboard.css?v=20261115-store-profile-v1";
  document.head.appendChild(link);
 }
 
