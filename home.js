@@ -32,7 +32,9 @@ const homeState = {
   featuredStores: [],
   sponsoredCampaigns: [],
   sponsoredProducts: [],
+  sponsoredStores: [],
   sponsoredAdsLoaded: false,
+  selectedVendor: "",
   searchSuggestionsOpen: false,
 
   selectedCategory: "",
@@ -535,7 +537,7 @@ function addHomeStyles() {
       align-items: stretch;
     }
 
-    .z-sponsored-products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.z-sponsored-card{position:relative;min-width:0}.z-sponsored-label,.z-sponsored-note{display:inline-flex;align-items:center;background:#fff2df;color:#9a570c;border:1px solid #f2d4aa;border-radius:999px;padding:4px 9px;font-size:10px;font-weight:800;margin-bottom:6px}.z-sponsored-card .z-product-card{height:100%}.z-sponsored-empty{grid-column:1/-1;color:var(--z-muted,#777);font-size:13px;padding:12px 0}@media(min-width:700px){.z-sponsored-products{grid-template-columns:repeat(4,minmax(0,1fr))}}
+    .z-sponsored-products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.z-sponsored-card{position:relative;min-width:0}.z-sponsored-label,.z-sponsored-note{display:inline-flex;align-items:center;background:#fff2df;color:#9a570c;border:1px solid #f2d4aa;border-radius:999px;padding:4px 9px;font-size:10px;font-weight:800;margin-bottom:6px}.z-sponsored-card .z-product-card{height:100%}.z-sponsored-empty{grid-column:1/-1;color:var(--z-muted,#777);font-size:13px;padding:12px 0}.z-sponsored-stores{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.z-sponsored-store{border:1px solid var(--border,#e4ebe7);border-radius:14px;background:var(--surface,#fff);padding:12px;display:flex;flex-direction:column;gap:8px}.z-sponsored-store strong{font-size:14px}.z-sponsored-store button{align-self:flex-start;border:0;background:transparent;color:var(--primary,#087b5a);font-weight:700;padding:0}@media(min-width:700px){.z-sponsored-products{grid-template-columns:repeat(4,minmax(0,1fr))}}
     .z-product-card {
       min-width: 0;
       overflow: hidden;
@@ -1126,6 +1128,8 @@ async function loadProducts(reset = false) {
       );
     }
 
+    if (homeState.selectedVendor) query = query.eq("vendor_id", homeState.selectedVendor);
+
     if (homeState.search.trim()) {
       const searchValue = homeState.search.trim()
         .replace(/[,%()]/g, " ");
@@ -1215,16 +1219,17 @@ async function loadSponsoredCampaigns() {
   try {
     const now = new Date().toISOString();
     const { data, error } = await supabase.from("ad_campaigns")
-      .select("id,store_id,product_id,campaign_type,placement,title,starts_at,ends_at")
+      .select("id,store_id,seller_id,product_id,campaign_type,placement,title,starts_at,ends_at")
       .eq("status", "approved").order("created_at", { ascending: false }).limit(40);
     if (error) throw error;
-    const campaigns = (data || []).filter(c =>
-      (!c.starts_at || c.starts_at <= now) && (!c.ends_at || c.ends_at > now) &&
+    const liveCampaigns = (data || []).filter(c => (!c.starts_at || c.starts_at <= now) && (!c.ends_at || c.ends_at > now));
+    homeState.sponsoredStores = liveCampaigns.filter(c => c.campaign_type === "sponsored_store" && ["home","home_feed"].includes(String(c.placement||"").toLowerCase()));
+    const campaigns = liveCampaigns.filter(c =>
       ["sponsored_product", "combo"].includes(c.campaign_type) &&
       ["home", "home_feed", "trending", "recommendations", "category", "search"].includes(String(c.placement || "").toLowerCase()) && c.product_id
     );
     const productIds = [...new Set(campaigns.map(c => c.product_id))];
-    if (!productIds.length) return;
+    if (!productIds.length) { updateProductArea(); bindSponsoredAdEvents(); return; }
     const { data: products, error: productError } = await supabase.from("products").select("*").in("id", productIds);
     if (productError) throw productError;
     const byId = new Map((products || []).map(p => [String(p.id), p]));
@@ -1255,6 +1260,12 @@ async function loadSponsoredCampaigns() {
   }
 }
 
+function openSponsoredStore(sellerId){
+  if(!sellerId)return;
+  homeState.selectedVendor=String(sellerId);homeState.selectedCategory="";homeState.search="";
+  renderMarketplacePage("explore");loadProducts(true);
+}
+
 function recordSponsoredEvent(campaignId, eventType) {
   if (!campaignId) return;
   supabase.from("ad_events").insert({ campaign_id: campaignId, event_type: eventType })
@@ -1262,7 +1273,7 @@ function recordSponsoredEvent(campaignId, eventType) {
 }
 
 function bindSponsoredAdEvents() {
-  const hosts = [document.getElementById("z-sponsored-products"), document.getElementById("z-explore-sponsored-products")].filter(Boolean);
+  const hosts = [document.getElementById("z-sponsored-products"), document.getElementById("z-explore-sponsored-products"), document.getElementById("z-sponsored-stores")].filter(Boolean);
   if (!hosts.length) return;
   hosts.forEach(host => host.querySelectorAll("[data-sponsored-campaign]").forEach(card => {
     if (card.dataset.impressionBound) return;
@@ -1277,6 +1288,7 @@ function bindSponsoredAdEvents() {
       observer.observe(card);
     }
     card.querySelector("[data-open-product]")?.addEventListener("click", () => recordSponsoredEvent(campaignId, "click"), { once: true });
+    card.querySelector("[data-sponsored-open]")?.addEventListener("click", () => { recordSponsoredEvent(campaignId, card.dataset.sponsoredEvent || "store_visit"); openSponsoredStore(card.querySelector("[data-sponsored-open]").dataset.sponsoredOpen); }, { once: true });
     card.querySelector("[data-open-product]")?.addEventListener("keydown", event => {
       if (event.key === "Enter" || event.key === " ") recordSponsoredEvent(campaignId, "click");
     }, { once: true });
@@ -1768,6 +1780,8 @@ function renderHomePage() {
           <div class="z-featured-stores" id="z-featured-stores">${renderFeaturedStores()}</div>
         </section>
 
+        <section id="z-sponsored-stores-section"><div class="z-section-heading"><h2>${language()==="sw"?"Maduka Yaliyodhaminiwa":"Sponsored Stores"}</h2></div><div id="z-sponsored-stores" class="z-sponsored-stores"></div></section>
+
         <section id="z-sponsored-products-section">
           <div class="z-section-heading"><h2>${language()==="sw"?"Bidhaa Zilizodhaminiwa":"Sponsored Products"}</h2><span class="z-sponsored-note">${language()==="sw"?"Matangazo":"Ads"}</span></div>
           <div class="z-sponsored-products" id="z-sponsored-products"><div class="z-sponsored-empty">${language()==="sw"?"Inapakia matangazo…":"Loading sponsored products…"}</div></div>
@@ -1847,7 +1861,7 @@ function bindSearchEvents() {
   input.addEventListener("input", () => {
     renderSuggestions();clearTimeout(searchTimeout);
     searchTimeout = setTimeout(async () => {
-      homeState.search = input.value.trim();homeState.products = [];homeState.page = 0;homeState.hasMore = true;
+      homeState.search = input.value.trim();homeState.selectedVendor="";homeState.products = [];homeState.page = 0;homeState.hasMore = true;
       await loadProducts(true);renderSuggestions();
     }, 350);
   });
@@ -2084,7 +2098,7 @@ function renderExplorePage() {
 function bindExploreEvents() {
   const categoryArea=document.getElementById("z-explore-category-area");
   categoryArea?.querySelectorAll("[data-category]").forEach(button=>button.addEventListener("click",async()=>{
-    homeState.selectedCategory=button.dataset.category||"";
+    homeState.selectedCategory=button.dataset.category||"";homeState.selectedVendor="";
     homeState.products=[];homeState.page=0;homeState.hasMore=true;
     categoryArea.innerHTML=(homeState.categories||[]).map(category=>`<button type="button" class="z-category ${String(homeState.selectedCategory)===String(category.id)?"active":""}" data-category="${safe(category.id)}">${safe(category.name)}</button>`).join("");
     bindExploreEvents();await loadProducts(true);
