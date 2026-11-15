@@ -438,9 +438,7 @@ export async function mountStandaloneCart(root) {
     },
 
     onContinueShopping: () => window.location.assign("./index.html"),
-    onCheckout: () => alert(language === "en"
-      ? "Checkout will be available soon."
-      : "Mfumo wa malipo utaunganishwa baadaye."),
+    onCheckout: () => window.location.assign("./checkout.html"),
     onRetry: () => refresh()
   });
 
