@@ -23,7 +23,7 @@ const sections = [
   ["settings","⚙","Mipangilio","Settings","MSAADA NA MIPANGILIO"]
 ];
 
-const state = { section:"overview", sidebarCollapsed:false, sidebarOpen:false, salesPeriod:"7d", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], adsEvents:[], conversations:[], activeConversationId:null, chatMessages:[], notifications:[], customers:[], customersLoading:false, customersLoadedFor:null, supportTickets:[], messagesLoadedFor:null, notificationsLoadedFor:null, supportLoadedFor:null, messagesLoading:false, notificationsLoading:false, supportLoading:false, loading:false, busy:false, error:"" };
+const state = { section:"overview", sidebarCollapsed:false, sidebarOpen:false, salesPeriod:"7d", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], adsEvents:[], conversations:[], activeConversationId:null, chatMessages:[], notifications:[], customers:[], customersLoading:false, customersLoadedFor:null, supportTickets:[], sellerLocations:[], locationsLoadedFor:null, editingLocationId:null, messagesLoadedFor:null, notificationsLoadedFor:null, supportLoadedFor:null, messagesLoading:false, notificationsLoading:false, supportLoading:false, loading:false, busy:false, error:"" };
 const tr = (sw,en) => state.language==="sw"?sw:en;
 const esc = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = value => new Intl.NumberFormat("sw-TZ",{style:"currency",currency:"TZS",maximumFractionDigits:0}).format(Number(value)||0);
@@ -185,8 +185,35 @@ function renderFinance(){
  <p class="zsd-muted">${tr("Ada za ZUNE, fedha zinazosubiri na utoaji wa fedha vitaonyeshwa baada ya sera za malipo na withdrawal kuunganishwa.","ZUNE fees, pending payouts and withdrawals will appear once payment and withdrawal workflows are connected.")}</p>`;
 }
 function renderStore(){
- const s=state.store;
- return `<section class="zsd-card"><h2>${tr("Taarifa za duka","Store information")}</h2>${s?`<p><strong>${esc(s.store_name)}</strong></p><p class="zsd-muted">${tr("Hali ya uthibitisho wa duka","Store verification")}: ${esc(s.verification_status||"pending")}</p>`:`<div class="zsd-empty">${tr("Taarifa za duka hazijapatikana bado.","Store details are not available yet.")}</div>`}<div class="zsd-alert">${tr("Uhariri wa jina, nembo, cover, saa za kazi na sera utafunguliwa baada ya sehemu hizo za duka kuongezwa kwenye database.","Editing store name, logo, cover, business hours and policies will be enabled after those store fields are added to the database.")}</div></section>`;
+ const s=state.store, rows=state.sellerLocations||[], editing=rows.find(x=>x.id===state.editingLocationId)||null;
+ const field=(name,label,value="",required=false)=>`<label>${label}<input class="zsd-input" name="${name}" value="${esc(value)}" ${required?"required":""} maxlength="180"></label>`;
+ return `<section class="zsd-card"><h2>${tr("Wasifu wa duka","Store profile")}</h2>${s?`<p><strong>${esc(s.store_name)}</strong></p><p class="zsd-muted">${tr("Hali ya uthibitisho wa duka","Store verification")}: ${esc(s.verification_status||"pending")}</p>`:`<div class="zsd-empty">${tr("Taarifa za duka hazijapatikana bado.","Store details are not available yet.")}</div>`}<div class="zsd-alert">${tr("Jina la duka na hali ya uthibitisho hudhibitiwa na Admin Mkuu kwa sasa. Huwezi kubadilisha taarifa hizo hapa.","Store name and verification status are currently controlled by Admin Mkuu and cannot be changed here.")}</div></section>
+ <section class="zsd-card"><div class="zsd-chat-heading"><div><h2>${tr("Maeneo ya duka na usafirishaji","Store locations & delivery")}</h2><p class="zsd-muted">${tr("Ongeza au hariri maeneo ambayo duka lako linaweza kuhudumia. Haya ni maeneo ya duka, si mabadiliko ya anwani ya mteja.","Add or edit the areas your store can serve. These are store service locations, not customer delivery addresses.")}</p></div><button class="zsd-btn" id="zsd-refresh-locations" type="button">${tr("Onyesha upya","Refresh")}</button></div>
+ <form id="zsd-location-form" class="zsd-form">${field("country",tr("Nchi","Country"),editing?.country||"Tanzania",true)}${field("region",tr("Mkoa","Region"),editing?.region||"",true)}${field("district",tr("Wilaya","District"),editing?.district||"",true)}${field("ward",tr("Kata","Ward"),editing?.ward||"")}${field("address",tr("Anwani / eneo","Address / area"),editing?.address||"",true)}${field("maximum_distance_km",tr("Umbali wa juu wa huduma (km)","Maximum service distance (km)"),editing?.maximum_distance_km??"",false)}<label class="zsd-location-active"><input type="checkbox" name="is_active" ${editing?.is_active===false?"":"checked"}> ${tr("Eneo hili linatumika","This location is active")}</label><div class="zsd-full"><p id="zsd-location-message" class="zsd-muted" role="status"></p><button class="zsd-btn primary" type="submit">${editing?tr("Hifadhi mabadiliko","Save changes"):tr("Ongeza eneo","Add location")}</button> ${editing?'<button class="zsd-btn" type="button" id="zsd-cancel-location">Cancel</button>':""}</div></form>
+ <div class="zsd-location-list">${rows.map(x=>`<article class="zsd-location-item"><div><strong>${esc([x.address,x.ward,x.district,x.region,x.country].filter(Boolean).join(", "))}</strong><small>${x.maximum_distance_km?esc(x.maximum_distance_km)+" km · ":""}${x.is_active?tr("Linafanya kazi","Active"):tr("Limesitishwa","Inactive")}</small></div><div><button class="zsd-btn" type="button" data-edit-location="${esc(x.id)}">${tr("Hariri","Edit")}</button> <button class="zsd-btn" type="button" data-delete-location="${esc(x.id)}">${tr("Futa","Delete")}</button></div></article>`).join("")||`<div class="zsd-empty">${tr("Bado hujaongeza eneo la duka.","You have not added a store location yet.")}</div>`}</div></section>`;
+}
+async function loadSellerLocations(force=false){
+ const user=window.__zuneSellerUser;if(!user?.id)return;
+ if(!force&&state.locationsLoadedFor===user.id)return;
+ const {data,error}=await supabase.from("seller_locations").select("id,country,region,district,ward,address,maximum_distance_km,is_active,created_at").eq("vendor_id",user.id).order("created_at",{ascending:false});
+ if(error){console.error("ZUNE seller locations:",error);state.error=error.message||"Locations could not be loaded.";return;}
+ state.sellerLocations=data||[];state.locationsLoadedFor=user.id;
+ if(state.section==="store")renderPanel();
+}
+async function saveSellerLocation(event){
+ event.preventDefault();const form=event.currentTarget,values=new FormData(form),message=form.querySelector("#zsd-location-message"),button=form.querySelector('button[type="submit"]'),user=window.__zuneSellerUser;
+ const payload={vendor_id:user.id,country:String(values.get("country")||"").trim(),region:String(values.get("region")||"").trim(),district:String(values.get("district")||"").trim(),ward:String(values.get("ward")||"").trim()||null,address:String(values.get("address")||"").trim(),maximum_distance_km:values.get("maximum_distance_km")?Number(values.get("maximum_distance_km")):null,is_active:values.get("is_active")==="on"};
+ if(!payload.country||!payload.region||!payload.district||!payload.address){message.textContent=tr("Jaza nchi, mkoa, wilaya na anwani.","Country, region, district and address are required.");return;}
+ if(payload.maximum_distance_km!==null&&(!Number.isFinite(payload.maximum_distance_km)||payload.maximum_distance_km<=0)){message.textContent=tr("Weka umbali sahihi ulio zaidi ya sifuri.","Enter a valid distance greater than zero.");return;}
+ if(state.busy)return;state.busy=true;button.disabled=true;message.textContent=tr("Inahifadhi...","Saving...");
+ try{let result;if(state.editingLocationId)result=await supabase.from("seller_locations").update(payload).eq("id",state.editingLocationId).eq("vendor_id",user.id);else result=await supabase.from("seller_locations").insert(payload);if(result.error)throw result.error;state.editingLocationId=null;await loadSellerLocations(true);}
+ catch(error){message.textContent=error.message||tr("Imeshindikana kuhifadhi eneo.","Could not save location.");}
+ finally{state.busy=false;button.disabled=false;}
+}
+async function deleteSellerLocation(id){
+ if(!window.confirm(tr("Una uhakika unataka kufuta eneo hili?","Are you sure you want to delete this location?")))return;
+ const {error}=await supabase.from("seller_locations").delete().eq("id",id).eq("vendor_id",window.__zuneSellerUser.id);
+ if(error){alert(error.message);return;}if(state.editingLocationId===id)state.editingLocationId=null;await loadSellerLocations(true);
 }
 
 async function compressSellerPhoto(file){
@@ -493,6 +520,12 @@ function renderPanel(){
  if(state.section==="customers"&&!state.customersLoadedFor&&!state.customersLoading)loadSellerCustomers();
  panel.querySelector("#zsd-support-form")?.addEventListener("submit",submitSellerSupport);
  panel.querySelector("#zsd-refresh-support")?.addEventListener("click",()=>loadSellerSupport(true));
+ panel.querySelector("#zsd-location-form")?.addEventListener("submit",saveSellerLocation);
+ panel.querySelector("#zsd-refresh-locations")?.addEventListener("click",()=>loadSellerLocations(true));
+ panel.querySelector("#zsd-cancel-location")?.addEventListener("click",()=>{state.editingLocationId=null;renderPanel();});
+ panel.querySelectorAll("[data-edit-location]").forEach(button=>button.addEventListener("click",()=>{state.editingLocationId=button.dataset.editLocation;renderPanel();}));
+ panel.querySelectorAll("[data-delete-location]").forEach(button=>button.addEventListener("click",()=>deleteSellerLocation(button.dataset.deleteLocation)));
+ if(state.section==="store"&&state.locationsLoadedFor!==window.__zuneSellerUser?.id)loadSellerLocations();
  if(state.section==="support"&&state.supportLoadedFor!==window.__zuneSellerUser?.id&&!state.supportLoading)loadSellerSupport();
  panel.querySelectorAll("[data-open-chat]").forEach(button=>button.addEventListener("click",async()=>{state.activeConversationId=button.dataset.openChat;state.chatMessages=[];await loadSellerMessages(true);}));
  panel.querySelector("#zsd-refresh-messages")?.addEventListener("click",()=>loadSellerMessages(true));
