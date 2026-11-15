@@ -9,7 +9,7 @@ ZUNE Marketplace is the customer and seller-facing marketplace application. The 
 
 ## Architecture
 
-- Customer and Seller templates are independent and preserve account/store/product/order data when changed.
+- Customer and Seller templates are independent and preserve account/store/product/order data when changed. Customer template styling is applied across Home, Cart, Checkout, Orders, Profile, Settings, Verification and the Templates page.
 - Marketplace home includes Smart Search, admin-managed categories and promotions, product discovery feeds, verified badges, saved products and cart.
 - Seller storefronts are public and use Seller-selected storefront templates independently from the Customer interface.
 - Seller Center includes product and inventory tools, orders, delivery visibility, customers, messages, notifications, support, wallet and withdrawal requests, service locations, marketing, reviews and preferences.
