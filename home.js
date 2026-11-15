@@ -1221,7 +1221,7 @@ async function loadSponsoredCampaigns() {
     const campaigns = (data || []).filter(c =>
       (!c.starts_at || c.starts_at <= now) && (!c.ends_at || c.ends_at > now) &&
       ["sponsored_product", "combo"].includes(c.campaign_type) &&
-      ["home", "home_feed", "trending", "recommendations"].includes(String(c.placement || "").toLowerCase()) && c.product_id
+      ["home", "home_feed", "trending", "recommendations", "category", "search"].includes(String(c.placement || "").toLowerCase()) && c.product_id
     );
     const productIds = [...new Set(campaigns.map(c => c.product_id))];
     if (!productIds.length) return;
@@ -1534,7 +1534,7 @@ function bindProductCards(root){
   if(!root)return;
   root.querySelectorAll("[data-save-product]").forEach(button=>button.addEventListener("click",event=>{event.stopPropagation();toggleSaved(button.dataset.saveProduct);}));
   root.querySelectorAll("[data-open-product]").forEach(card=>{
-    const open=()=>{const product=homeState.products.find(item=>String(item.id)===card.dataset.openProduct);if(product)openProductDetails(product);};
+    const open=()=>{const product=homeState.products.find(item=>String(item.id)===card.dataset.openProduct)||homeState.sponsoredProducts.find(item=>String(item.product.id)===card.dataset.openProduct)?.product;if(product)openProductDetails(product);};
     card.addEventListener("click",event=>{if(event.target.closest("[data-save-product]"))return;open();});
     card.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();open();}});
   });
