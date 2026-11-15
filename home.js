@@ -1146,7 +1146,7 @@ async function loadProducts(reset = false) {
 
     if (requestId !== homeState.requestId) return;
 
-    const products = data || [];
+    const products = await attachPublicProductRatings(data || []);
 
     // Attach public store details and account verification to product owners.
     const vendorIds = [...new Set(products.map(item => item.vendor_id).filter(Boolean))];
@@ -1389,6 +1389,20 @@ function productCard(product) {
       </div>
     </article>
   `;
+}
+
+async function attachPublicProductRatings(products){
+ if(!Array.isArray(products)||!products.length)return products;
+ const ids=[...new Set(products.map(p=>p.id).filter(Boolean))];
+ if(!ids.length)return products;
+ try{
+  const {data,error}=await supabase.from("product_reviews").select("product_id,rating").in("product_id",ids).eq("moderation_status","approved").eq("is_visible",true);
+  if(error)throw error;
+  const stats=new Map();
+  for(const row of data||[]){const x=stats.get(row.product_id)||{sum:0,count:0};x.sum+=Number(row.rating)||0;x.count++;stats.set(row.product_id,x);}
+  products.forEach(p=>{const x=stats.get(p.id);p.average_rating=x?Math.round((x.sum/x.count)*10)/10:0;p.review_count=x?.count||0;});
+ }catch(error){console.warn("ZUNE public product ratings:",error);}
+ return products;
 }
 
 // --------------------------------------------
