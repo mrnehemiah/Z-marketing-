@@ -413,12 +413,15 @@ function addHomeStyles() {
     .z-product-row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(155px,43%);gap:11px;overflow-x:auto;padding:2px 1px 13px;scroll-snap-type:x mandatory;scrollbar-width:none}
     .z-product-row>.z-product-card{scroll-snap-align:start}
     @media(min-width:700px){.z-product-row{grid-auto-columns:minmax(190px,24%)}}
-    .z-featured-stores{display:flex;gap:11px;overflow-x:auto;padding:3px 1px 12px;scrollbar-width:none}
+    .z-featured-stores{display:flex;gap:18px;overflow-x:auto;padding:5px 2px 14px;scrollbar-width:none}
     .z-featured-stores::-webkit-scrollbar{display:none}
-    .z-featured-store{flex:0 0 175px;min-height:84px;padding:13px;border:1px solid var(--border);border-radius:15px;background:var(--surface);color:var(--text);text-align:left}
-    .z-featured-store strong{display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .z-featured-store small{display:block;margin-top:7px;color:var(--text-muted);font-size:10px}
-    .z-featured-store .store-verified{color:var(--verified-store);font-weight:800}
+    .z-featured-store{flex:0 0 92px;min-height:132px;padding:7px 4px;border:0;border-radius:14px;background:transparent;color:var(--text);text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer}
+    .z-featured-store-logo{width:76px;height:76px;flex:0 0 76px;border-radius:50%;display:grid;place-items:center;overflow:hidden;border:2px solid var(--border);background:var(--surface);color:var(--primary);font-size:23px;font-weight:900;letter-spacing:-1px;box-shadow:0 3px 12px rgba(0,0,0,.07)}
+    .z-featured-store-logo img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%}
+    .z-featured-store strong{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;font-size:11px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .z-featured-store small{display:block;max-width:100%;color:var(--text-muted);font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .z-featured-store .store-verified{display:inline-grid;place-items:center;width:14px;height:14px;flex:0 0 14px;border-radius:50%;background:var(--verified-store,#2586ce);color:#fff;font-size:9px;font-weight:900}
+    .z-featured-store:focus-visible{outline:2px solid var(--primary);outline-offset:3px;border-radius:12px}
     .z-sponsored-placeholder{display:none}
     .z-search-box input {
       width: 100%;
@@ -1845,7 +1848,12 @@ function startCarouselAutoplay(){if(homeState.carouselTimer)clearInterval(homeSt
 function renderFeaturedStores(){
  const stores=homeState.featuredStores||[];
  if(!stores.length)return `<div class="z-empty-state">${language()==="sw"?"Maduka yataonekana kadri bidhaa za wauzaji zinavyopakiwa.":"Stores will appear as seller products load."}</div>`;
- return stores.slice(0,10).map(store=>`<article class="z-featured-store"><strong>${safe(store.store_name||"ZUNE Store")} ${store.verification_status==="verified"?`<span class="store-verified" title="Verified Store">✓</span>`:""}</strong><small>${safe([store.district,store.region].filter(Boolean).join(", ")|| (language()==="sw"?"Duka la ZUNE":"ZUNE Store"))}</small></article>`).join("");
+ return stores.slice(0,10).map(store=>{
+  const name=store.store_name||"ZUNE Store";
+  const initials=String(name).trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part.charAt(0).toUpperCase()).join("")||"Z";
+  const verified=["verified","approved"].includes(String(store.verification_status||"").toLowerCase());
+  return `<button type="button" class="z-featured-store" data-featured-store="${safe(store.owner_id)}" aria-label="${safe(name)}"><span class="z-featured-store-logo" aria-hidden="true">${safe(initials)}</span><strong>${safe(name)} ${verified?`<span class="store-verified" title="Verified Store" aria-label="Verified Store">✓</span>`:""}</strong><small>${safe([store.district,store.region].filter(Boolean).join(", ")|| (language()==="sw"?"Duka la ZUNE":"ZUNE Store"))}</small></button>`;
+ }).join("");
 }
 
 // --------------------------------------------
@@ -2048,6 +2056,7 @@ function bindHomeEvents() {
   startCarouselAutoplay();
   document.querySelector("[data-open-categories]")?.addEventListener("click", () => renderMarketplacePage("categories"));
   document.querySelector("[data-view-all-products]")?.addEventListener("click",()=>renderMarketplacePage("explore"));
+  document.querySelectorAll("[data-featured-store]").forEach(button=>button.addEventListener("click",()=>{const ownerId=button.dataset.featuredStore;if(ownerId)openStoreDetails(ownerId);}));
 
   document.querySelector("[data-open-cart]")
     ?.addEventListener("click", () => {
