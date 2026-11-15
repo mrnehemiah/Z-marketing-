@@ -34,7 +34,7 @@ function styles(){
  link=document.createElement("link");
  link.id="zune-seller-dashboard-styles";
  link.rel="stylesheet";
- link.href="./seller-dashboard.css?v=20261115-build";
+ link.href="./seller-dashboard.css?v=20261115-premium-v2";
  document.head.appendChild(link);
 }
 
@@ -43,9 +43,10 @@ function verifiedAccountMark(){
 }
 function renderNav(){
  const groups=[...new Set(sections.map(item=>item[4]))];
+ const groupTitle=group=>({DASHBOARD:tr("MUHTASARI","OVERVIEW"),BIASHARA:tr("USIMAMIZI WA BIASHARA","BUSINESS MANAGEMENT"),FEDHA:tr("FEDHA NA MALIPO","FINANCE & PAYMENTS"),UCHAMBUZI:tr("TAKWIMU NA UCHAMBUZI","INSIGHTS & ANALYTICS"),MASOKO:tr("MASOKO NA MATANGAZO","MARKETING"),MAWASILIANO:tr("MAWASILIANO","COMMUNICATION"),DUKA:tr("USIMAMIZI WA DUKA","STORE MANAGEMENT"),"MSAADA NA MIPANGILIO":tr("MSAADA NA MIPANGILIO","SUPPORT & SETTINGS")}[group]||group);
  return groups.map(group=>{
   const links=sections.filter(item=>item[4]===group).map(([id,icon,sw,en])=>`<button type="button" data-zsd-section="${id}" class="${state.section===id?"active":""}"><span class="zsd-nav-icon">${icon}</span><span class="zsd-nav-label">${tr(sw,en)}</span></button>`).join("");
-  return `<div class="zsd-nav-group"><small>${group}</small>${links}</div>`;
+  return `<div class="zsd-nav-group"><small>${groupTitle(group)}</small>${links}</div>`;
  }).join("");
 }
 function shell(){
@@ -110,7 +111,7 @@ function renderOverview(){
  const best=state.products.map(p=>{const lines=state.orderItems.filter(x=>String(x.product_id)===String(p.id));return {...p,units:lines.reduce((n,x)=>n+(Number(x.quantity)||0),0),revenue:lines.reduce((n,x)=>n+(Number(x.quantity)||0)*(Number(x.price)||0),0)};}).filter(p=>p.units>0).sort((a,b)=>b.units-a.units).slice(0,5);
  const low=state.products.filter(p=>Number(p.stock_quantity)<=5).sort((a,b)=>Number(a.stock_quantity)-Number(b.stock_quantity)).slice(0,5);
  const quick=[["add-product","＋","Ongeza Bidhaa"],["orders","▤","Simamia Oda"],["finance","◈","Angalia Mapato"],["marketing","✦","Tengeneza Tangazo"]];
- return `<section class="zsd-stats zsd-stats-six">${metrics.map(([label,value,icon,desc])=>`<article class="zsd-stat"><span class="zsd-stat-icon">${icon}</span><small>${label}</small><strong>${value}</strong><span class="zsd-stat-desc">${desc}</span></article>`).join("")}</section>
+ return `<section class="zsd-stats zsd-stats-six" aria-label="${tr("Takwimu za biashara","Business metrics")}">${metrics.map(([label,value,icon,desc])=>`<article class="zsd-stat"><span class="zsd-stat-icon">${icon}</span><small>${label}</small><strong>${value}</strong><span class="zsd-stat-desc">${desc}</span></article>`).join("")}</section>
  <section class="zsd-card zsd-analytics-card"><div class="zsd-row"><div><div class="zsd-section-kicker">PERFORMANCE</div><h2>${tr("Sales Analytics","Sales Analytics")}</h2><p class="zsd-muted">${tr("Mwenendo wa mauzo kulingana na oda za duka lako.","Sales performance based on your store orders.")}</p></div><div class="zsd-periods">${[["today","Leo"],["7d","Siku 7"],["30d","Siku 30"],["12m","Miezi 12"]].map(([id,label])=>`<button type="button" data-zsd-period="${id}" class="${state.salesPeriod===id?"active":""}">${label}</button>`).join("")}</div></div><div class="zsd-chart-summary"><strong>${money(period.values.reduce((a,b)=>a+b,0))}</strong><small>${tr("Mauzo katika kipindi kilichochaguliwa","Sales in selected period")}</small></div><div class="zsd-chart">${chart}</div></section>
  <section class="zsd-quick-actions">${quick.map(([id,icon,label])=>`<button type="button" data-zsd-section="${id}"><span>${icon}</span>${label}<b>→</b></button>`).join("")}</section>
  <div class="zsd-overview-grid"><section class="zsd-card"><div class="zsd-row"><div><h2>${tr("Recent Orders","Recent Orders")}</h2><p class="zsd-muted">${tr("Oda za hivi karibuni za duka lako.","Latest orders for your store.")}</p></div><button class="zsd-text-btn" type="button" data-zsd-section="orders">${tr("Ona zote","View all")} →</button></div>${latest.length?`<div class="zsd-table-wrap"><table class="zsd-table"><thead><tr><th>Order ID</th><th>${tr("Tarehe","Date")}</th><th>Status</th><th>${tr("Kiasi","Amount")}</th></tr></thead><tbody>${latest.map(o=>`<tr><td>#${esc(String(o.id).slice(0,8))}</td><td>${o.created_at?new Date(o.created_at).toLocaleDateString():"—"}</td><td><span class="zsd-status ${esc(String(o.status||"").toLowerCase())}">${esc(String(o.status||"—").replaceAll("_"," "))}</span></td><td>${money(sellerOrderTotal(o.id))}</td></tr>`).join("")}</tbody></table></div>`:`<div class="zsd-empty">${tr("Bado hakuna oda za duka lako.","No orders for your store yet.")}</div>`}</section>
