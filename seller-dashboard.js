@@ -530,7 +530,7 @@ function renderPanel(){
  panel.querySelector("#zsd-refresh-locations")?.addEventListener("click",()=>loadSellerLocations(true));
  panel.querySelector("#zsd-withdrawal-form")?.addEventListener("submit",submitSellerWithdrawal);
  panel.querySelector("#zsd-refresh-withdrawals")?.addEventListener("click",()=>loadSellerWithdrawals(true));
- panel.querySelector("#zsd-settings-language")?.addEventListener("click",()=>{state.language=state.language==="sw"?"en":"sw";localStorage.setItem("zune_language",state.language);renderPanel();bindActiveNav();});
+ panel.querySelector("#zsd-settings-language")?.addEventListener("click",()=>{state.language=state.language==="sw"?"en":"sw";localStorage.setItem("zune_language",state.language);const app=document.getElementById("app");if(app)renderSellerDashboard({app,user:window.__zuneSellerUser,onBack:window.__zuneSellerBack});});
  panel.querySelectorAll("[data-seller-theme]").forEach(button=>button.addEventListener("click",()=>{const theme=button.dataset.sellerTheme;const allowed=["emerald","luxury","ocean","royal","nature","blossom","sunset","minimal"];if(!allowed.includes(theme))return;localStorage.setItem("zune_theme",theme);document.documentElement.setAttribute("data-theme",theme);renderPanel();}));
  if(state.section==="withdrawals"&&state.withdrawalsLoadedFor!==window.__zuneSellerUser?.id&&!state.withdrawalsLoading)loadSellerWithdrawals();
  panel.querySelector("#zsd-cancel-location")?.addEventListener("click",()=>{state.editingLocationId=null;renderPanel();});
