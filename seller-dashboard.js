@@ -229,12 +229,53 @@ async function submitSellerWithdrawal(event){
 }
 function renderStore(){
  const s=state.store, rows=state.sellerLocations||[], editing=rows.find(x=>x.id===state.editingLocationId)||null;
- const field=(name,label,value="",required=false)=>`<label>${label}<input class="zsd-input" name="${name}" value="${esc(value)}" ${required?"required":""} maxlength="180"></label>`;
- return `<section class="zsd-card"><h2>${tr("Wasifu wa duka","Store profile")}</h2>${s?`<p><strong>${esc(s.store_name)}</strong></p><p class="zsd-muted">${tr("Hali ya uthibitisho wa duka","Store verification")}: ${esc(s.verification_status||"pending")}</p>`:`<div class="zsd-empty">${tr("Taarifa za duka hazijapatikana bado.","Store details are not available yet.")}</div>`}<div class="zsd-alert">${tr("Jina la duka na hali ya uthibitisho hudhibitiwa na Admin Mkuu kwa sasa. Huwezi kubadilisha taarifa hizo hapa.","Store name and verification status are currently controlled by Admin Mkuu and cannot be changed here.")}</div></section>
+ const field=(name,label,value="",required=false,type="text")=>`<label>${label}<input class="zsd-input" type="${type}" name="${name}" value="${esc(value)}" ${required?"required":""} maxlength="180"></label>`;
+ const logo=s?.logo_url?`<img class="zsd-store-logo-preview" src="${esc(s.logo_url)}" alt="Store logo">`:`<div class="zsd-store-logo-placeholder">Ⓩ</div>`;
+ return `<section class="zsd-card"><div class="zsd-chat-heading"><div><h2>${tr("Wasifu wa duka","Store profile")}</h2><p class="zsd-muted">${tr("Badili taarifa na picha ya duka lako. Hali ya uthibitisho inadhibitiwa na Admin Mkuu.","Update your store information and logo. Verification status remains controlled by Admin Mkuu.")}</p></div><span class="zsd-pill ${["verified","approved"].includes(String(s?.verification_status||"").toLowerCase())?"green":"orange"}">${esc(s?.verification_status||"unverified")}</span></div>
+ ${s?`<form id="zsd-store-profile-form" class="zsd-form" enctype="multipart/form-data">
+ <div class="zsd-store-logo-editor"><div id="zsd-store-logo-preview">${logo}</div><label class="zsd-btn" for="zsd-store-logo-input">${tr("Badili picha ya duka","Change store logo")}</label><input id="zsd-store-logo-input" name="logo" type="file" accept="image/jpeg,image/png,image/webp" hidden><small>${tr("JPG, PNG au WEBP · hadi 8 MB","JPG, PNG or WEBP · up to 8 MB")}</small></div>
+ ${field("store_name",tr("Jina la duka","Store name"),s.store_name,true)}
+ ${field("category",tr("Aina ya biashara","Business category"),s.category||"")}
+ ${field("phone",tr("Simu ya biashara","Business phone"),s.phone||"",false,"tel")}
+ ${field("email",tr("Barua pepe","Business email"),s.email||"",false,"email")}
+ ${field("website",tr("Tovuti","Website"),s.website||"",false,"url")}
+ ${field("region",tr("Mkoa","Region"),s.region||"")}
+ ${field("district",tr("Wilaya","District"),s.district||"")}
+ ${field("address",tr("Anwani ya duka","Store address"),s.address||"")}
+ <label class="zsd-full">${tr("Maelezo ya duka","Store description")}<textarea class="zsd-input" name="description" maxlength="1200" rows="4">${esc(s.description||"")}</textarea></label>
+ <div class="zsd-full"><p id="zsd-store-profile-message" class="zsd-muted" role="status"></p><button class="zsd-btn primary" type="submit">${tr("Hifadhi taarifa za duka","Save store profile")}</button></div></form>`:`<div class="zsd-empty">${tr("Taarifa za duka hazijapatikana bado. Wasiliana na Admin Mkuu.","Store details are not available yet. Contact Admin Mkuu.")}</div>`}
+ </section>
  <section class="zsd-card"><div class="zsd-chat-heading"><div><h2>${tr("Maeneo ya duka na usafirishaji","Store locations & delivery")}</h2><p class="zsd-muted">${tr("Ongeza au hariri maeneo ambayo duka lako linaweza kuhudumia. Haya ni maeneo ya duka, si mabadiliko ya anwani ya mteja.","Add or edit the areas your store can serve. These are store service locations, not customer delivery addresses.")}</p></div><button class="zsd-btn" id="zsd-refresh-locations" type="button">${tr("Onyesha upya","Refresh")}</button></div>
  <form id="zsd-location-form" class="zsd-form">${field("country",tr("Nchi","Country"),editing?.country||"Tanzania",true)}${field("region",tr("Mkoa","Region"),editing?.region||"",true)}${field("district",tr("Wilaya","District"),editing?.district||"",true)}${field("ward",tr("Kata","Ward"),editing?.ward||"")}${field("address",tr("Anwani / eneo","Address / area"),editing?.address||"",true)}${field("maximum_distance_km",tr("Umbali wa juu wa huduma (km)","Maximum service distance (km)"),editing?.maximum_distance_km??"",false)}<label class="zsd-location-active"><input type="checkbox" name="is_active" ${editing?.is_active===false?"":"checked"}> ${tr("Eneo hili linatumika","This location is active")}</label><div class="zsd-full"><p id="zsd-location-message" class="zsd-muted" role="status"></p><button class="zsd-btn primary" type="submit">${editing?tr("Hifadhi mabadiliko","Save changes"):tr("Ongeza eneo","Add location")}</button> ${editing?'<button class="zsd-btn" type="button" id="zsd-cancel-location">Cancel</button>':""}</div></form>
  <div class="zsd-location-list">${rows.map(x=>`<article class="zsd-location-item"><div><strong>${esc([x.address,x.ward,x.district,x.region,x.country].filter(Boolean).join(", "))}</strong><small>${x.maximum_distance_km?esc(x.maximum_distance_km)+" km · ":""}${x.is_active?tr("Linafanya kazi","Active"):tr("Limesitishwa","Inactive")}</small></div><div><button class="zsd-btn" type="button" data-edit-location="${esc(x.id)}">${tr("Hariri","Edit")}</button> <button class="zsd-btn" type="button" data-delete-location="${esc(x.id)}">${tr("Futa","Delete")}</button></div></article>`).join("")||`<div class="zsd-empty">${tr("Bado hujaongeza eneo la duka.","You have not added a store location yet.")}</div>`}</div></section>`;
 }
+async function saveSellerStoreProfile(event){
+ event.preventDefault();
+ const form=event.currentTarget, message=form.querySelector("#zsd-store-profile-message"), button=form.querySelector('button[type="submit"]'), user=window.__zuneSellerUser, store=state.store;
+ if(!user?.id||!store?.id||state.busy)return;
+ const values=new FormData(form);
+ const storeName=String(values.get("store_name")||"").trim();
+ if(!storeName){message.textContent=tr("Jina la duka linahitajika.","Store name is required.");return;}
+ const payload={store_name:storeName,category:String(values.get("category")||"").trim()||null,phone:String(values.get("phone")||"").trim()||null,email:String(values.get("email")||"").trim()||null,website:String(values.get("website")||"").trim()||null,region:String(values.get("region")||"").trim()||null,district:String(values.get("district")||"").trim()||null,address:String(values.get("address")||"").trim()||null,description:String(values.get("description")||"").trim()||null,updated_at:new Date().toISOString()};
+ const file=form.querySelector("#zsd-store-logo-input")?.files?.[0];
+ if(file&&(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>8*1024*1024)){message.textContent=tr("Chagua picha ya JPG, PNG au WEBP isiyozidi 8 MB.","Choose a JPG, PNG or WEBP image no larger than 8 MB.");return;}
+ state.busy=true;button.disabled=true;message.textContent=tr("Inahifadhi taarifa...","Saving store profile...");
+ try{
+  if(file){
+   const ext=file.type==="image/png"?"png":file.type==="image/webp"?"webp":"jpg";
+   const path=user.id+"/store-logo-"+Date.now()+"-"+crypto.randomUUID()+"."+ext;
+   const upload=await supabase.storage.from("zune-store-assets").upload(path,file,{contentType:file.type,upsert:false});
+   if(upload.error)throw upload.error;
+   const {data}=supabase.storage.from("zune-store-assets").getPublicUrl(path);
+   payload.logo_url=data.publicUrl;
+  }
+  const result=await supabase.from("stores").update(payload).eq("id",store.id).eq("owner_id",user.id).select("id,owner_id,store_name,description,category,phone,region,district,address,verification_status,is_active,logo_url,email,website,updated_at").single();
+  if(result.error)throw result.error;
+  state.store=result.data;message.textContent=tr("Taarifa za duka zimehifadhiwa.","Store profile saved successfully.");renderPanel();
+ }catch(error){message.textContent=error.message||tr("Imeshindikana kuhifadhi taarifa za duka.","Could not save store profile.");}
+ finally{state.busy=false;button.disabled=false;}
+}
+
 async function loadSellerLocations(force=false){
  const user=window.__zuneSellerUser;if(!user?.id)return;
  if(!force&&state.locationsLoadedFor===user.id)return;
@@ -612,6 +653,8 @@ function renderPanel(){
  if(state.section==="customers"&&!state.customersLoadedFor&&!state.customersLoading)loadSellerCustomers();
  panel.querySelector("#zsd-support-form")?.addEventListener("submit",submitSellerSupport);
  panel.querySelector("#zsd-refresh-support")?.addEventListener("click",()=>loadSellerSupport(true));
+ panel.querySelector("#zsd-store-profile-form")?.addEventListener("submit",saveSellerStoreProfile);
+ panel.querySelector("#zsd-store-logo-input")?.addEventListener("change",event=>{const file=event.target.files?.[0];if(!file)return;const preview=panel.querySelector("#zsd-store-logo-preview");if(preview){const img=document.createElement("img");img.className="zsd-store-logo-preview";img.alt="Store logo preview";img.src=URL.createObjectURL(file);preview.replaceChildren(img);}});
  panel.querySelector("#zsd-location-form")?.addEventListener("submit",saveSellerLocation);
  panel.querySelector("#zsd-refresh-locations")?.addEventListener("click",()=>loadSellerLocations(true));
  panel.querySelector("#zsd-withdrawal-form")?.addEventListener("submit",submitSellerWithdrawal);
@@ -675,7 +718,7 @@ async function loadData(user){
   supabase.from("profiles").select("id,full_name,is_verified,role").eq("id",user.id).maybeSingle(),
   supabase.from("products").select("id,title,price,stock_quantity,created_at,moderation_status").eq("vendor_id",user.id).order("created_at",{ascending:false}).limit(50),
   supabase.from("order_items").select("order_id,product_id,product_name,price,quantity,created_at").eq("seller_id",user.id).limit(1000),
-  supabase.from("stores").select("id,store_name,verification_status").eq("owner_id",user.id).maybeSingle(),
+  supabase.from("stores").select("id,owner_id,store_name,description,category,phone,region,district,address,verification_status,is_active,logo_url,email,website,updated_at").eq("owner_id",user.id).maybeSingle(),
   supabase.from("verified_badge_requests").select("id,status,rejection_reason,document_path,created_at").eq("user_id",user.id).eq("verification_type","seller").order("created_at",{ascending:false}).limit(1).maybeSingle(),
   supabase.from("wallets").select("user_id,balance,updated_at").eq("user_id",user.id).maybeSingle(),
   supabase.from("wallet_ledger").select("id,amount,entry_type,reason,created_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(100)
