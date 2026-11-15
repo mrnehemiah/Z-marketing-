@@ -490,6 +490,7 @@ async function loadSellerMessages(force=false){
    if(result.error)throw result.error;
    state.chatMessages=result.data||[];
    await supabase.from("chat_messages").update({is_read:true}).eq("conversation_id",state.activeConversationId).neq("sender_id",user.id).eq("is_read",false);
+   state.conversations=state.conversations.map(x=>x.id===state.activeConversationId?{...x,unread_count:0}:x);
   }else state.chatMessages=[];
   state.messagesLoadedFor=user.id;
  }catch(error){console.error("ZUNE seller messages:",error);state.error=error.message||"Messages could not be loaded.";state.messagesLoadedFor=user.id;}
