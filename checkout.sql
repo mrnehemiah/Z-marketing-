@@ -177,3 +177,35 @@ $$;
 
 REVOKE ALL ON FUNCTION public.zune_create_checkout(jsonb,jsonb,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.zune_create_checkout(jsonb,jsonb,text) TO authenticated;
+
+
+-- Preview delivery quote before order placement
+CREATE OR REPLACE FUNCTION public.zune_quote_checkout(p_items jsonb,p_address jsonb)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+DECLARE
+ v_buyer uuid:=auth.uid(); v_item jsonb; v_product public.products%ROWTYPE;
+ v_qty integer; v_subtotal numeric:=0; v_vendors integer; v_quote record;
+ v_fee numeric; v_delivery numeric:=0; v_country text; v_region text; v_district text;
+BEGIN
+ IF v_buyer IS NULL THEN RAISE EXCEPTION 'Tafadhali ingia kwanza.'; END IF;
+ IF jsonb_typeof(p_items)<>'array' OR jsonb_array_length(p_items)<1 OR jsonb_array_length(p_items)>50 THEN RAISE EXCEPTION 'Kikapu hakina bidhaa sahihi.'; END IF;
+ v_country:=trim(coalesce(p_address->>'country',''));v_region:=trim(coalesce(p_address->>'region',''));v_district:=trim(coalesce(p_address->>'district',''));
+ IF v_country='' OR v_region='' OR v_district='' THEN RETURN jsonb_build_object('ready',false,'message','Jaza nchi, mkoa na wilaya ili kukokotoa delivery.'); END IF;
+ FOR v_item IN SELECT value FROM jsonb_array_elements(p_items) LOOP
+  IF coalesce(v_item->>'quantity','') !~ '^[0-9]+$' THEN RAISE EXCEPTION 'Idadi ya bidhaa si sahihi.'; END IF;
+  v_qty:=(v_item->>'quantity')::integer;
+  IF v_qty<1 OR v_qty>99 THEN RAISE EXCEPTION 'Idadi ya bidhaa si sahihi.'; END IF;
+  SELECT * INTO v_product FROM public.products WHERE id=(v_item->>'product_id')::uuid;
+  IF NOT FOUND OR v_product.moderation_status<>'approved' OR v_product.removed_at IS NOT NULL THEN RAISE EXCEPTION 'Bidhaa haipatikani tena.'; END IF;
+  IF coalesce(v_product.stock_quantity,0)<v_qty THEN RAISE EXCEPTION 'Stock haitoshi kwa bidhaa: %',v_product.title; END IF;
+  v_subtotal:=v_subtotal+v_product.price*v_qty;
+ END LOOP;
+ SELECT count(DISTINCT p.vendor_id) INTO v_vendors FROM jsonb_array_elements(p_items) i JOIN public.products p ON p.id=(i->>'product_id')::uuid;
+ SELECT * INTO v_quote FROM public.get_zune_delivery_quote(v_country,v_region,v_district);
+ IF NOT coalesce(v_quote.found,false) THEN RETURN jsonb_build_object('ready',false,'message','Gharama ya delivery haijawekwa kwa eneo hili. Tafadhali wasiliana na Support.'); END IF;
+ v_fee:=greatest(coalesce(v_quote.base_fee,0),coalesce(v_quote.minimum_fee,0));
+ v_delivery:=v_fee*v_vendors;
+ RETURN jsonb_build_object('ready',true,'subtotal',v_subtotal,'delivery_total',v_delivery,'grand_total',v_subtotal+v_delivery,'seller_count',v_vendors,'currency',coalesce(v_quote.currency,'TZS'));
+END; $$;
+REVOKE ALL ON FUNCTION public.zune_quote_checkout(jsonb,jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.zune_quote_checkout(jsonb,jsonb) TO authenticated;
