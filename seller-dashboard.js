@@ -183,7 +183,40 @@ function renderFinance(){
  const balance=Number(state.wallet?.balance)||0;
  return `<section class="zsd-stats"><div class="zsd-stat"><small>${tr("Salio la wallet","Wallet balance")}</small><strong style="font-size:17px">${money(balance)}</strong></div><div class="zsd-stat"><small>${tr("Miamala","Ledger entries")}</small><strong>${state.ledger.length}</strong></div></section>
  <section class="zsd-card"><h2>${tr("Historia ya miamala","Transaction history")}</h2>${state.ledger.length?`<div style="overflow:auto"><table class="zsd-table"><thead><tr><th>${tr("Tarehe","Date")}</th><th>${tr("Maelezo","Description")}</th><th>${tr("Kiasi","Amount")}</th></tr></thead><tbody>${state.ledger.map(x=>`<tr><td>${new Date(x.created_at).toLocaleDateString()}</td><td>${esc(x.reason||x.entry_type||"—")}</td><td>${money(x.amount)}</td></tr>`).join("")}</tbody></table></div>`:`<div class="zsd-empty">${tr("Bado hakuna miamala ya wallet.","No wallet transactions yet.")}</div>`}</section>
- <p class="zsd-muted">${tr("Ada za ZUNE, fedha zinazosubiri na utoaji wa fedha vitaonyeshwa baada ya sera za malipo na withdrawal kuunganishwa.","ZUNE fees, pending payouts and withdrawals will appear once payment and withdrawal workflows are connected.")}</p>`;
+ <p class="zsd-muted">${tr("Ombi la kutoa fedha linafuatiliwa kwenye sehemu ya Utoaji wa Fedha; malipo ya wallet yanathibitishwa na Admin Mkuu.","Withdrawal requests are tracked in the Withdrawals section; wallet payouts are verified by Admin Mkuu.")}</p>`;
+}
+function renderWithdrawals(){
+ const requests=state.withdrawalRequests||[],balance=Number(state.wallet?.balance)||0;
+ const reserved=requests.filter(x=>["pending","under_review","approved","processing"].includes(String(x.status||"").toLowerCase())).reduce((sum,x)=>sum+Number(x.amount||0),0);
+ const available=Math.max(0,balance-reserved);
+ const labels={pending:tr("Inasubiri","Pending"),under_review:tr("Inakaguliwa","Under review"),approved:tr("Imeidhinishwa","Approved"),processing:tr("Inachakatwa","Processing"),paid:tr("Imelipwa","Paid"),rejected:tr("Imekataliwa","Rejected"),cancelled:tr("Imeghairiwa","Cancelled")};
+ return `<section class="zsd-stats"><div class="zsd-stat"><small>${tr("Salio la wallet","Wallet balance")}</small><strong>${money(balance)}</strong></div><div class="zsd-stat"><small>${tr("Maombi yanayosubiri","Reserved requests")}</small><strong>${money(reserved)}</strong></div><div class="zsd-stat"><small>${tr("Salio linalokadiriwa kupatikana","Estimated available")}</small><strong>${money(available)}</strong></div></section>
+ <section class="zsd-card"><h2>${tr("Omba kutoa fedha","Request a withdrawal")}</h2><p class="zsd-muted">${tr("Ombi lako litatumwa kwa Admin Mkuu. Salio halikatwi hapa; Admin atakagua na kuthibitisha malipo.","Your request is sent to Admin Mkuu. Funds are not deducted here; Admin reviews and confirms payout.")}</p><form id="zsd-withdrawal-form" class="zsd-form">
+ <label>${tr("Kiasi (TZS)","Amount (TZS)")}<input class="zsd-input" name="amount" type="number" min="1" max="${Math.floor(available)}" step="1" required></label>
+ <label>${tr("Njia ya malipo","Payout method")}<select class="zsd-input" name="payout_method" required><option value="mobile_money">Mobile Money</option><option value="bank_transfer">${tr("Benki","Bank transfer")}</option></select></label>
+ <label>${tr("Jina la mwenye akaunti","Account holder name")}<input class="zsd-input" name="payout_account_name" maxlength="120" required></label>
+ <label>${tr("Namba ya simu / akaunti","Phone / account number")}<input class="zsd-input" name="payout_account_reference" maxlength="120" required></label>
+ <div class="zsd-full"><p id="zsd-withdrawal-message" class="zsd-muted" role="status"></p><button class="zsd-btn primary" type="submit" ${available<1?"disabled":""}>${tr("Tuma ombi","Submit request")}</button></div></form></section>
+ <section class="zsd-card"><div class="zsd-chat-heading"><h2>${tr("Historia ya maombi","Withdrawal history")}</h2><button class="zsd-btn" id="zsd-refresh-withdrawals" type="button">${tr("Onyesha upya","Refresh")}</button></div>${state.withdrawalsLoading?'<div class="zsd-empty">'+tr("Inapakia...","Loading...")+'</div>':requests.length?`<div class="zsd-table-wrap"><table class="zsd-table"><thead><tr><th>${tr("Tarehe","Date")}</th><th>${tr("Kiasi","Amount")}</th><th>${tr("Njia","Method")}</th><th>${tr("Hali","Status")}</th><th>${tr("Maelezo","Admin note")}</th></tr></thead><tbody>${requests.map(x=>`<tr><td>${x.created_at?new Date(x.created_at).toLocaleDateString(state.language==="sw"?"sw-TZ":"en-TZ"):"—"}</td><td>${money(x.amount)}</td><td>${esc(x.payout_method||"—")}<small>${esc(x.payout_account_reference||"")}</small></td><td>${esc(labels[x.status]||x.status||"—")}</td><td>${esc(x.admin_note||"—")}</td></tr>`).join("")}</tbody></table></div>`:'<div class="zsd-empty">'+tr("Bado hujaomba kutoa fedha.","No withdrawal requests yet.")+'</div>'}</section>`;
+}
+async function loadSellerWithdrawals(force=false){
+ const user=window.__zuneSellerUser;if(!user?.id||state.withdrawalsLoading)return;
+ if(!force&&state.withdrawalsLoadedFor===user.id)return;
+ state.withdrawalsLoading=true;
+ try{const {data,error}=await supabase.from("withdrawal_requests").select("id,user_id,amount,currency,payout_method,payout_account_name,payout_account_reference,status,admin_note,payout_reference,created_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(50);if(error)throw error;state.withdrawalRequests=data||[];state.withdrawalsLoadedFor=user.id;}
+ catch(error){console.error("ZUNE withdrawals:",error);state.error=error.message||"Withdrawals could not be loaded.";}
+ finally{state.withdrawalsLoading=false;if(state.section==="withdrawals")renderPanel();}
+}
+async function submitSellerWithdrawal(event){
+ event.preventDefault();const form=event.currentTarget,fd=new FormData(form),message=form.querySelector("#zsd-withdrawal-message"),button=form.querySelector('button[type="submit"]'),user=window.__zuneSellerUser;
+ const amount=Number(fd.get("amount")),method=String(fd.get("payout_method")||""),name=String(fd.get("payout_account_name")||"").trim(),reference=String(fd.get("payout_account_reference")||"").trim();
+ const reserved=state.withdrawalRequests.filter(x=>["pending","under_review","approved","processing"].includes(String(x.status||"").toLowerCase())).reduce((sum,x)=>sum+Number(x.amount||0),0),available=Math.max(0,(Number(state.wallet?.balance)||0)-reserved);
+ if(!Number.isInteger(amount)||amount<1||amount>available){message.textContent=tr("Kiasi kimezidi salio linalokadiriwa kupatikana.","Amount exceeds the estimated available balance.");return;}
+ if(!["mobile_money","bank_transfer"].includes(method)||!name||!reference){message.textContent=tr("Jaza taarifa zote za malipo.","Complete all payout details.");return;}
+ if(state.busy)return;state.busy=true;button.disabled=true;message.textContent=tr("Inatuma ombi...","Submitting request...");
+ try{const key=crypto.randomUUID();const {error}=await supabase.from("withdrawal_requests").insert({user_id:user.id,amount,currency:"TZS",payout_method:method,payout_account_name:name,payout_account_reference:reference,status:"pending",idempotency_key:key});if(error)throw error;form.reset();await loadSellerWithdrawals(true);}
+ catch(error){message.textContent=error.message||tr("Imeshindikana kutuma ombi.","Could not submit request.");}
+ finally{state.busy=false;button.disabled=false;}
 }
 function renderStore(){
  const s=state.store, rows=state.sellerLocations||[], editing=rows.find(x=>x.id===state.editingLocationId)||null;
