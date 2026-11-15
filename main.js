@@ -15,7 +15,7 @@ import {
   logoutCustomer
 } from "./auth.js";
 
-import { renderMarketplaceHome } from "./home.js?v=templates-2";
+import { renderMarketplaceHome } from "./home.js?v=20261115-foundation";
 
 const app = document.getElementById("app");
 
