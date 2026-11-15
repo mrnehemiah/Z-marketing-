@@ -26,3 +26,9 @@ create policy vendors_update_own_product_discounts
 on public.products for update to authenticated
 using (vendor_id = (select auth.uid()))
 with check (vendor_id = (select auth.uid()));
+
+-- Sellers need to read their own pending and approved product rows to manage discounts.
+drop policy if exists vendors_read_own_products on public.products;
+create policy vendors_read_own_products
+on public.products for select to authenticated
+using (vendor_id = (select auth.uid()));
