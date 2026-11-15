@@ -1483,9 +1483,9 @@ function openStoreDetails(ownerId, product = null) {
     if(productsResult.error)message.textContent=language()==="sw"?"Taarifa za duka zimepatikana, lakini bidhaa hazikuweza kupakiwa.":"Store details loaded, but products could not be loaded.";
     else if(!products.length)message.textContent=language()==="sw"?"Duka hili bado halijaweka bidhaa.":"This store has not listed any products yet.";
     else message.remove();
-    overlay.querySelectorAll("[data-open-store]").forEach(button=>button.addEventListener("click",()=>openStoreDetails(button.dataset.openStore)));
-    overlay.querySelectorAll("[data-add-cart]").forEach(button=>button.addEventListener("click",()=>{const item=products.find(p=>String(p.id)===button.dataset.addCart);if(item)addToCart(item.id);}));
-    overlay.querySelectorAll("[data-product-id]").forEach(button=>button.addEventListener("click",()=>{const item=products.find(p=>String(p.id)===button.dataset.productId);if(item)openProductDetails(item);}));
+    overlay.querySelectorAll("[data-open-store]").forEach(button=>button.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();openStoreDetails(button.dataset.openStore);}));
+    overlay.querySelectorAll("[data-save-product]").forEach(button=>button.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();toggleSaved(button.dataset.saveProduct);button.classList.toggle("is-saved");button.textContent=button.classList.contains("is-saved")?"♥":"♡";}));
+    overlay.querySelectorAll("[data-open-product]").forEach(card=>card.addEventListener("click",event=>{if(event.target.closest("[data-save-product]"))return;const item=products.find(p=>String(p.id)===card.dataset.openProduct);if(item)openProductDetails(item);}));
   }).catch(error=>{
     console.warn("ZUNE storefront:",error);
     const message=overlay.querySelector("#z-store-detail-message");
