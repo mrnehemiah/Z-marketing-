@@ -30,7 +30,7 @@ for (const name of htmlFiles) {
 
 for (const name of jsFiles) {
   const source = await readFile(path.join(root, name), "utf8");
-  const importPattern = /(?:from\s*|import\s*)["']\.\/([^"']+)["']/g;
+  const importPattern = /\b(?:from\s*|import\s*\(\s*)["']\.\/([^"']+)["']/g;
   for (const match of source.matchAll(importPattern)) {
     const target = match[1].split(/[?#]/, 1)[0];
     if (!target.endsWith(".js")) continue;

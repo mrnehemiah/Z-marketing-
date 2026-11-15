@@ -4,11 +4,12 @@
 // ============================================
 
 import { supabase } from "./supabase.js";
-import { renderCartPage as renderCartView, bindCartEvents as bindCartViewEvents, loadCartProducts } from "./cart.js";
 
 // --------------------------------------------
 // 1. SETTINGS AND STATE
 // --------------------------------------------
+
+let cartModule = null;
 
 const PAGE_SIZE = 12;
 
@@ -2355,7 +2356,8 @@ function bindExploreEvents() {
 // --------------------------------------------
 
 function renderCartPage() {
-  return renderCartView({
+  if (!cartModule) return `<section class="z-cart-loading" role="status" aria-live="polite"><p>Inapakia kikapu...</p></section>`;
+  return cartModule.renderCartPage({
     cart: homeState.cart,
     products: homeState.cartProducts,
     language: language(),
@@ -2365,7 +2367,8 @@ function renderCartPage() {
 }
 
 function bindCartEvents() {
-  bindCartViewEvents(document, {
+  if (!cartModule) return;
+  cartModule.bindCartEvents(document, {
     onQuantityChange: (productId, change) => {
       changeCartQuantity(productId, change);
       renderMarketplacePage("cart");
@@ -2383,7 +2386,7 @@ function bindCartEvents() {
 
   homeState.cartProductsLoading = true;
   homeState.cartProductsError = false;
-  loadCartProducts(homeState.cart).then(products => {
+  cartModule.loadCartProducts(homeState.cart).then(products => {
     homeState.cartProducts = products;
     homeState.cartProductsKey = key;
   }).catch(error => {
@@ -2841,6 +2844,18 @@ async function renderMarketplacePage(page) {
       break;
 
     case "cart":
+      if (!cartModule) {
+        app.innerHTML = '<section class="z-cart-loading" role="status" aria-live="polite"><div class="zune-wave"><span>Ⓩ</span><span>Ⓤ</span><span>Ⓝ</span><span>Ⓔ</span></div><p>Inapakia kikapu...</p></section>';
+        try {
+          cartModule = await import("./cart.js?v=20261115-cart-lazy-v1");
+        } catch (error) {
+          console.error("ZUNE cart module could not be loaded:", error);
+          app.innerHTML = '<section class="z-cart-loading" role="alert"><h2>Kikapu hakijafunguka</h2><p>Tafadhali jaribu tena.</p><button type="button" id="z-cart-retry">Jaribu tena</button></section>';
+          app.querySelector("#z-cart-retry")?.addEventListener("click", () => renderMarketplacePage("cart"));
+          return;
+        }
+        if (homeState.activeTab !== "cart") return;
+      }
       content = renderCartPage();
       break;
 
