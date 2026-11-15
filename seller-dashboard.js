@@ -467,6 +467,18 @@ async function loadSellerMessages(force=false){
   const {data,error}=await supabase.from("chat_conversations").select("id,buyer_id,seller_id,product_id,created_at,updated_at").eq("seller_id",user.id).order("updated_at",{ascending:false}).limit(50);
   if(error)throw error;
   state.conversations=data||[];
+  const conversationIds=state.conversations.map(x=>x.id).filter(Boolean);
+  if(conversationIds.length){
+   const recent=await supabase.from("chat_messages").select("id,conversation_id,sender_id,message,is_read,created_at").in("conversation_id",conversationIds).order("created_at",{ascending:false}).limit(500);
+   if(recent.error)throw recent.error;
+   const summary=new Map();
+   for(const message of recent.data||[]){
+    const item=summary.get(message.conversation_id)||{last_message:message.message,last_message_at:message.created_at,unread_count:0};
+    if(message.sender_id!==user.id&&!message.is_read)item.unread_count++;
+    summary.set(message.conversation_id,item);
+   }
+   state.conversations=state.conversations.map(x=>({...x,...(summary.get(x.id)||{last_message:"",unread_count:0})}));
+  }
   const buyerIds=[...new Set(state.conversations.map(x=>x.buyer_id).filter(Boolean))];
   const productIds=[...new Set(state.conversations.map(x=>x.product_id).filter(Boolean))];
   state.chatBuyers={};state.chatProducts={};
