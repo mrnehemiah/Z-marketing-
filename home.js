@@ -1701,7 +1701,7 @@ function renderFeaturedStores(){
  if(!stores.length)return `<div class="z-empty-state">${language()==="sw"?"Maduka yataonekana kadri bidhaa za wauzaji zinavyopakiwa.":"Stores will appear as seller products load."}</div>`;
  return stores.slice(0,10).map(store=>{
   const name=store.store_name||"ZUNE Store";
-  const initials=String(name).trim().split(/\\s+/).filter(Boolean).slice(0,2).map(part=>part.charAt(0).toUpperCase()).join("")||"Z";
+  const initials=String(name).trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part.charAt(0).toUpperCase()).join("")||"Z";
   const logo=store.logo_url||store.store_logo_url||store.logo||"";
   const logoMarkup=logo?`<img src="${safe(logo)}" alt="${safe(name)} logo" loading="lazy" onerror="this.remove()">`:safe(initials);
   return `<button type="button" class="z-featured-store" data-featured-store="${safe(store.owner_id)}" aria-label="${safe(name)}"><span class="z-featured-store-logo" aria-hidden="true">${logoMarkup}</span><strong>${safe(name)} ${["verified","approved"].includes(String(store.verification_status||"").toLowerCase())?`<span class="store-verified" title="Verified Store" aria-label="Verified Store">✓</span>`:""}</strong><small>${safe([store.district,store.region].filter(Boolean).join(", ")|| (language()==="sw"?"Duka la ZUNE":"ZUNE Store"))}</small></button>`;
@@ -1916,7 +1916,6 @@ function bindHomeEvents() {
     homeState.selectedCategory="";
     homeState.search="";
     renderMarketplacePage("explore");
-    loadProducts(true);
   }));
 
   document.querySelector("[data-open-cart]")
