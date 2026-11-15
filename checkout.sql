@@ -33,7 +33,7 @@ CREATE FUNCTION public.zune_create_checkout(
 ) RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = ''
 AS $$
 DECLARE
  v_buyer uuid := auth.uid();
@@ -230,7 +230,7 @@ GRANT EXECUTE ON FUNCTION public.zune_create_checkout(jsonb,jsonb,text,text) TO 
 DROP FUNCTION IF EXISTS public.zune_quote_checkout(jsonb,jsonb,text);
 DROP FUNCTION IF EXISTS public.zune_quote_checkout(jsonb,jsonb);
 CREATE FUNCTION public.zune_quote_checkout(p_items jsonb,p_address jsonb,p_coupon_code text DEFAULT NULL)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE
  v_buyer uuid:=auth.uid(); v_item jsonb; v_product public.products%ROWTYPE;
  v_qty integer; v_subtotal numeric:=0; v_vendors integer; v_quote record;
@@ -277,7 +277,7 @@ GRANT EXECUTE ON FUNCTION public.zune_quote_checkout(jsonb,jsonb,text) TO authen
 -- Track stock deducted by this atomic checkout and restore it on Admin cancellation.
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS stock_deducted boolean NOT NULL DEFAULT false;
 CREATE OR REPLACE FUNCTION public.zune_restore_stock_on_order_cancel()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $zune$
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $zune$
 DECLARE v_total integer; v_completed integer; v_cancelled integer; v_confirmed integer;
 BEGIN
  IF OLD.status::text IS DISTINCT FROM 'cancelled'
