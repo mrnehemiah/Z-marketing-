@@ -23,7 +23,7 @@ const sections = [
   ["settings","⚙","Mipangilio","Settings","MSAADA NA MIPANGILIO"]
 ];
 
-const state = { section:"overview", sidebarCollapsed:false, sidebarOpen:false, salesPeriod:"7d", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], adsEvents:[], conversations:[], activeConversationId:null, chatMessages:[], notifications:[], customers:[], customersLoading:false, customersLoadedFor:null, supportTickets:[], sellerLocations:[], locationsLoadedFor:null, editingLocationId:null, withdrawalRequests:[], withdrawalsLoadedFor:null, withdrawalsLoading:false, messagesLoadedFor:null, notificationsLoadedFor:null, supportLoadedFor:null, messagesLoading:false, notificationsLoading:false, supportLoading:false, loading:false, busy:false, error:"" };
+const state = { section:"overview", sidebarCollapsed:false, sidebarOpen:false, salesPeriod:"7d", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], orderDeliveries:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], adsEvents:[], conversations:[], activeConversationId:null, chatMessages:[], notifications:[], customers:[], customersLoading:false, customersLoadedFor:null, supportTickets:[], sellerLocations:[], locationsLoadedFor:null, editingLocationId:null, withdrawalRequests:[], withdrawalsLoadedFor:null, withdrawalsLoading:false, messagesLoadedFor:null, notificationsLoadedFor:null, supportLoadedFor:null, messagesLoading:false, notificationsLoading:false, supportLoading:false, loading:false, busy:false, error:"" };
 const tr = (sw,en) => state.language==="sw"?sw:en;
 const esc = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = value => new Intl.NumberFormat("sw-TZ",{style:"currency",currency:"TZS",maximumFractionDigits:0}).format(Number(value)||0);
@@ -174,42 +174,10 @@ function sellerOrderTotal(orderId){
  return lines.reduce((sum,item)=>sum+(Number(item.price)||0)*(Number(item.quantity)||0),0);
 }
 function renderOrders(){
- return `<section class="zsd-card"><h2>${tr("Oda za wateja","Customer orders")}</h2><p class="zsd-muted">${tr("Oda zinazoonyesha bidhaa zilizouzwa na duka lako.","Orders containing items sold by your store.")}</p>
- ${state.orders.length?`<div style="overflow:auto"><table class="zsd-table"><thead><tr><th>${tr("Oda","Order")}</th><th>${tr("Tarehe","Date")}</th><th>${tr("Hali","Status")}</th><th>${tr("Jumla ya bidhaa zako","Your item subtotal")}</th></tr></thead><tbody>${state.orders.map(o=>`<tr><td>${esc(String(o.id).slice(0,8))}</td><td>${o.created_at?new Date(o.created_at).toLocaleDateString():"—"}</td><td>${esc(o.status||"—")}</td><td>${money(sellerOrderTotal(o.id))}</td></tr>`).join("")}</tbody></table></div>`:`<div class="zsd-empty">${tr("Bado hakuna oda za duka lako.","There are no orders for your store yet.")}</div>`}
- </section>`;
-}
-function renderWithdrawals(){
- const requests=state.withdrawalRequests||[], balance=Number(state.wallet?.balance)||0;
- const reserved=requests.filter(x=>["pending","under_review","approved","processing"].includes(String(x.status||"").toLowerCase())).reduce((sum,x)=>sum+Number(x.amount||0),0);
- const available=Math.max(0,balance-reserved);
- const statusLabel=status=>({pending:tr("Inasubiri","Pending"),under_review:tr("Inakaguliwa","Under review"),approved:tr("Imeidhinishwa","Approved"),processing:tr("Inachakatwa","Processing"),paid:tr("Imelipwa","Paid"),rejected:tr("Imekataliwa","Rejected"),cancelled:tr("Imeghairiwa","Cancelled")}[status]||status||"—");
- return `<section class="zsd-stats"><div class="zsd-stat"><small>${tr("Salio la wallet","Wallet balance")}</small><strong>${money(balance)}</strong></div><div class="zsd-stat"><small>${tr("Maombi yanayosubiri / yanayochakatwa","Pending / processing requests")}</small><strong>${money(reserved)}</strong></div><div class="zsd-stat"><small>${tr("Kiasi kinachokadiriwa kupatikana","Estimated available")}</small><strong>${money(available)}</strong></div></section>
- <section class="zsd-card"><h2>${tr("Omba kutoa fedha","Request a withdrawal")}</h2><p class="zsd-muted">${tr("Ombi litatumwa kwa Admin Mkuu kwa ukaguzi. Kiasi hakikatwi kwenye wallet mpaka hatua ya malipo ithibitishwe na mfumo wa Admin.","Your request is sent to Admin Mkuu for review. Funds are not deducted here; the Admin payment workflow must verify and process the payout.")}</p><form id="zsd-withdrawal-form" class="zsd-form">
- <label>${tr("Kiasi (TZS)","Amount (TZS)")}<input class="zsd-input" name="amount" type="number" min="1" max="${available.toFixed(0)}" step="1" required></label>
- <label>${tr("Njia ya malipo","Payout method")}<select class="zsd-input" name="payout_method" required><option value="mobile_money">${tr("Mobile Money","Mobile Money")}</option><option value="bank_transfer">${tr("Benki","Bank transfer")}</option></select></label>
- <label>${tr("Jina la mpokeaji","Account holder name")}<input class="zsd-input" name="payout_account_name" maxlength="120" required></label>
- <label>${tr("Namba ya simu / akaunti","Phone / account number")}<input class="zsd-input" name="payout_account_reference" maxlength="120" required></label>
- <div class="zsd-full"><p id="zsd-withdrawal-message" class="zsd-muted" role="status"></p><button class="zsd-btn primary" type="submit" ${available<1?"disabled":""}>${tr("Tuma ombi","Submit request")}</button></div></form></section>
- <section class="zsd-card"><div class="zsd-chat-heading"><h2>${tr("Historia ya maombi ya kutoa fedha","Withdrawal request history")}</h2><button class="zsd-btn" id="zsd-refresh-withdrawals" type="button">${tr("Onyesha upya","Refresh")}</button></div>${state.withdrawalsLoading?'<div class="zsd-empty">'+tr("Inapakia...","Loading...")+'</div>':requests.length?`<div class="zsd-table-wrap"><table class="zsd-table"><thead><tr><th>${tr("Tarehe","Date")}</th><th>${tr("Kiasi","Amount")}</th><th>${tr("Njia","Method")}</th><th>${tr("Hali","Status")}</th><th>${tr("Maelezo ya Admin","Admin note")}</th></tr></thead><tbody>${requests.map(x=>`<tr><td>${new Date(x.created_at).toLocaleDateString(state.language==="sw"?"sw-TZ":"en-TZ")}</td><td>${money(x.amount)}</td><td>${esc(x.payout_method==="mobile_money"?"Mobile Money":x.payout_method||"—")}<small>${esc(x.payout_account_reference||"")}</small></td><td>${esc(statusLabel(x.status))}</td><td>${esc(x.admin_note||"—")}</td></tr>`).join("")}</tbody></table></div>`:'<div class="zsd-empty">'+tr("Bado hujatuma ombi la kutoa fedha.","You have not submitted a withdrawal request yet.")+'</div>'}</section>`;
-}
-async function loadSellerWithdrawals(force=false){
- const user=window.__zuneSellerUser;if(!user?.id||state.withdrawalsLoading)return;
- if(!force&&state.withdrawalsLoadedFor===user.id)return;
- state.withdrawalsLoading=true;
- try{const {data,error}=await supabase.from("withdrawal_requests").select("id,amount,currency,payout_method,payout_account_name,payout_account_reference,status,admin_note,payout_reference,created_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(50);if(error)throw error;state.withdrawalRequests=data||[];state.withdrawalsLoadedFor=user.id;}
- catch(error){console.error("ZUNE seller withdrawals:",error);state.error=error.message||"Withdrawals could not be loaded.";}
- finally{state.withdrawalsLoading=false;if(state.section==="withdrawals")renderPanel();}
-}
-async function submitSellerWithdrawal(event){
- event.preventDefault();const form=event.currentTarget,fd=new FormData(form),message=form.querySelector("#zsd-withdrawal-message"),button=form.querySelector('button[type="submit"]'),user=window.__zuneSellerUser;
- const amount=Number(fd.get("amount")),method=String(fd.get("payout_method")||""),name=String(fd.get("payout_account_name")||"").trim(),reference=String(fd.get("payout_account_reference")||"").trim();
- const reserved=state.withdrawalRequests.filter(x=>["pending","under_review","approved","processing"].includes(String(x.status||"").toLowerCase())).reduce((sum,x)=>sum+Number(x.amount||0),0),available=Math.max(0,(Number(state.wallet?.balance)||0)-reserved);
- if(!Number.isInteger(amount)||amount<1||amount>available){message.textContent=tr("Kiasi kimezidi salio linalokadiriwa kupatikana.","Amount exceeds the estimated available balance.");return;}
- if(!["mobile_money","bank_transfer"].includes(method)||!name||!reference){message.textContent=tr("Jaza taarifa zote za malipo.","Complete all payout details.");return;}
- if(state.busy)return;state.busy=true;button.disabled=true;message.textContent=tr("Inatuma ombi...","Submitting request...");
- try{const {error}=await supabase.from("withdrawal_requests").insert({user_id:user.id,amount,currency:"TZS",payout_method:method,payout_account_name:name,payout_account_reference:reference,status:"pending",idempotency_key:crypto.randomUUID()});if(error)throw error;form.reset();await loadSellerWithdrawals(true);}
- catch(error){message.textContent=error.message||tr("Imeshindikana kutuma ombi.","Could not submit request.");}
- finally{state.busy=false;button.disabled=false;}
+ const deliveries=new Map((state.orderDeliveries||[]).map(x=>[x.checkout_id,x]));
+ return `<section class="zsd-card"><h2>${tr("Oda za wateja","Customer orders")}</h2><p class="zsd-muted">${tr("Oda zinazoonyesha bidhaa zilizouzwa na duka lako pamoja na taarifa za usafirishaji zinazopatikana.","Orders containing items sold by your store, with available delivery updates.")}</p>
+ ${state.orders.length?`<div class="zsd-table-wrap"><table class="zsd-table"><thead><tr><th>${tr("Oda","Order")}</th><th>${tr("Tarehe","Date")}</th><th>${tr("Hali ya oda","Order status")}</th><th>${tr("Usafirishaji","Delivery")}</th><th>${tr("Eneo la mteja","Destination")}</th><th>${tr("Jumla ya bidhaa zako","Your item subtotal")}</th></tr></thead><tbody>${state.orders.map(o=>{const d=deliveries.get(o.checkout_id);const destination=[o.delivery_district,o.delivery_region].filter(Boolean).join(", ");return `<tr><td>${esc(String(o.id).slice(0,8).toUpperCase())}</td><td>${o.created_at?new Date(o.created_at).toLocaleDateString(state.language==="sw"?"sw-TZ":"en-TZ"):"—"}</td><td>${esc(o.status||"—")}</td><td><strong>${esc(d?.status||tr("Bado hakuna taarifa","No update yet"))}</strong><small>${d?.delivery_fee!=null?money(d.delivery_fee):""}</small></td><td>${esc(destination||"—")}</td><td>${money(sellerOrderTotal(o.id))}</td></tr>`;}).join("")}</tbody></table></div>`:`<div class="zsd-empty">${tr("Bado hakuna oda za duka lako.","There are no orders for your store yet.")}</div>`}
+ <p class="zsd-muted">${tr("Hali ya usafirishaji inaonyeshwa kwa taarifa zinazotumwa na Admin / mfumo wa delivery. Mabadiliko ya hali hayafanywi hapa.","Delivery status reflects updates from Admin / the delivery system. Status changes are not made here.")}</p></section>`;
 }
 function renderFinance(){
  const balance=Number(state.wallet?.balance)||0;
@@ -620,7 +588,12 @@ async function loadData(user){
  ]);
  state.profile=profile.data||null;state.products=products.data||[];state.orderItems=items.data||[];state.store=store.data||null;state.badgeRequest=badge.data||null;state.wallet=wallet.data||null;state.ledger=ledger.data||[];
  const orderIds=[...new Set((items.data||[]).map(x=>x.order_id).filter(Boolean))];
- if(orderIds.length){const {data}=await supabase.from("orders").select("id,status,total_price,created_at").in("id",orderIds);state.orders=data||[];}else state.orders=[];
+ if(orderIds.length){
+  const {data,error}=await supabase.from("orders").select("id,status,total_price,created_at,checkout_id,recipient_name,delivery_region,delivery_district,delivery_method,payment_status").in("id",orderIds);
+  if(error)throw error;state.orders=data||[];
+  const checkoutIds=[...new Set(state.orders.map(x=>x.checkout_id).filter(Boolean))];
+  if(checkoutIds.length){const deliveries=await supabase.from("order_deliveries").select("checkout_id,status,delivery_fee,currency,created_at").eq("vendor_id",user.id).in("checkout_id",checkoutIds);if(deliveries.error)throw deliveries.error;state.orderDeliveries=deliveries.data||[];}else state.orderDeliveries=[];
+ }else{state.orders=[];state.orderDeliveries=[];}
  state.loading=false;
 }
 export async function renderSellerDashboard({app,user,onBack}){
