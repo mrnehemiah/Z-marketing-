@@ -28,7 +28,15 @@ const tr = (sw,en) => state.language==="sw"?sw:en;
 const esc = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = value => new Intl.NumberFormat("sw-TZ",{style:"currency",currency:"TZS",maximumFractionDigits:0}).format(Number(value)||0);
 
-function styles(){ /* Dashboard styles are loaded from seller-dashboard.css. */ }
+function styles(){
+ let link=document.getElementById("zune-seller-dashboard-styles");
+ if(link)return;
+ link=document.createElement("link");
+ link.id="zune-seller-dashboard-styles";
+ link.rel="stylesheet";
+ link.href="./seller-dashboard.css?v=20261115-build";
+ document.head.appendChild(link);
+}
 
 function verifiedAccountMark(){
  return `<span class="zsd-verified-mark" title="Verified Account"><svg viewBox="-30 -30 60 60" role="img" aria-label="Verified Account"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Verified Account</span></span>`;
