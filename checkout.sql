@@ -279,7 +279,8 @@ GRANT EXECUTE ON FUNCTION public.zune_quote_checkout(jsonb,jsonb,text) TO authen
 -- Track stock deducted by this atomic checkout and restore it on Admin cancellation.
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS stock_deducted boolean NOT NULL DEFAULT false;
 CREATE OR REPLACE FUNCTION public.zune_restore_stock_on_order_cancel()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $
+DECLARE v_total integer; v_completed integer; v_cancelled integer; v_confirmed integer;
 BEGIN
  IF OLD.status::text IS DISTINCT FROM 'cancelled'
     AND NEW.status::text='cancelled'
@@ -288,8 +289,22 @@ BEGIN
    WHERE id=OLD.product_id;
   UPDATE public.orders SET stock_deducted=false WHERE id=OLD.id;
  END IF;
+ IF NEW.checkout_id IS NOT NULL THEN
+  SELECT count(*),
+   count(*) FILTER(WHERE status::text='completed'),
+   count(*) FILTER(WHERE status::text='cancelled'),
+   count(*) FILTER(WHERE status::text='confirmed')
+  INTO v_total,v_completed,v_cancelled,v_confirmed
+  FROM public.orders WHERE checkout_id=NEW.checkout_id;
+  UPDATE public.order_checkouts SET status=CASE
+   WHEN v_total>0 AND v_completed=v_total THEN 'completed'
+   WHEN v_total>0 AND v_cancelled=v_total THEN 'cancelled'
+   WHEN v_confirmed>0 OR v_completed>0 THEN 'confirmed'
+   ELSE 'pending' END
+  WHERE id=NEW.checkout_id;
+ END IF;
  RETURN NEW;
-END; $$;
+END; $;
 DROP TRIGGER IF EXISTS zune_restore_stock_on_order_cancel ON public.orders;
 CREATE TRIGGER zune_restore_stock_on_order_cancel
  AFTER UPDATE OF status ON public.orders
