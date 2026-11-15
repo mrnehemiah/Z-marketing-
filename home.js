@@ -417,7 +417,7 @@ function addHomeStyles() {
     .z-featured-stores::-webkit-scrollbar{display:none}
     .z-featured-store{flex:0 0 92px;min-height:132px;padding:7px 4px;border:0;border-radius:14px;background:transparent;color:var(--text);text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer}
     .z-featured-store-logo{width:76px;height:76px;flex:0 0 76px;border-radius:50%;display:grid;place-items:center;overflow:hidden;border:2px solid var(--border);background:var(--surface);color:var(--primary);font-size:23px;font-weight:900;letter-spacing:-1px;box-shadow:0 3px 12px rgba(0,0,0,.07)}
-    .z-featured-store-logo img{display:block;width:100%;height:100%;object-fit:contain;border-radius:50%}
+    .z-featured-store-logo img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%}
     .z-featured-store strong{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;font-size:11px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .z-featured-store small{display:block;max-width:100%;color:var(--text-muted);font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .z-featured-store .store-verified{display:inline-grid;place-items:center;width:14px;height:14px;flex:0 0 14px;border-radius:50%;background:var(--verified-store,#2586ce);color:#fff;font-size:9px;font-weight:900}
@@ -1149,7 +1149,7 @@ async function loadProducts(reset = false) {
 
     if (requestId !== homeState.requestId) return;
 
-    const products = data || [];
+    const products = await attachPublicProductRatings(data || []);
 
     // Attach public store details and account verification to product owners.
     const vendorIds = [...new Set(products.map(item => item.vendor_id).filter(Boolean))];
@@ -1394,6 +1394,20 @@ function productCard(product) {
   `;
 }
 
+async function attachPublicProductRatings(products){
+ if(!Array.isArray(products)||!products.length)return products;
+ const ids=[...new Set(products.map(p=>p.id).filter(Boolean))];
+ if(!ids.length)return products;
+ try{
+  const {data,error}=await supabase.from("product_reviews").select("product_id,rating").in("product_id",ids).eq("moderation_status","approved").eq("is_visible",true);
+  if(error)throw error;
+  const stats=new Map();
+  for(const row of data||[]){const x=stats.get(row.product_id)||{sum:0,count:0};x.sum+=Number(row.rating)||0;x.count++;stats.set(row.product_id,x);}
+  products.forEach(p=>{const x=stats.get(p.id);p.average_rating=x?Math.round((x.sum/x.count)*10)/10:0;p.review_count=x?.count||0;});
+ }catch(error){console.warn("ZUNE public product ratings:",error);}
+ return products;
+}
+
 // --------------------------------------------
 // 11. PRODUCT DETAILS QUICK VIEW
 // --------------------------------------------
@@ -1462,7 +1476,7 @@ function openStoreDetails(ownerId, product = null) {
     supabase.from("stores").select("owner_id,store_name,verification_status,region,district,address").eq("owner_id",ownerId).maybeSingle(),
     supabase.from("profiles").select("id,is_verified").eq("id",ownerId).maybeSingle(),
     supabase.from("products").select("*").eq("vendor_id",ownerId).order("created_at",{ascending:false}).limit(24)
-  ]).then(([storeResult,profileResult,productsResult])=>{
+  ]).then(async ([storeResult,profileResult,productsResult])=>{
     if(!overlay.isConnected)return;
     if(storeResult.error)throw storeResult.error;
     if(profileResult.error)throw profileResult.error;
@@ -1837,9 +1851,8 @@ function renderFeaturedStores(){
  return stores.slice(0,10).map(store=>{
   const name=store.store_name||"ZUNE Store";
   const initials=String(name).trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part.charAt(0).toUpperCase()).join("")||"Z";
-  const logo=store.logo_url||store.store_logo_url||store.logo||"";
-  const logoMarkup=logo?`<img src="${safe(logo)}" alt="${safe(name)} logo" loading="lazy" onerror="this.remove()">`:safe(initials);
-  return `<button type="button" class="z-featured-store" data-featured-store="${safe(store.owner_id)}" aria-label="${safe(name)}"><span class="z-featured-store-logo" aria-hidden="true">${logoMarkup}</span><strong>${safe(name)} ${["verified","approved"].includes(String(store.verification_status||"").toLowerCase())?`<span class="store-verified" title="Verified Store" aria-label="Verified Store">✓</span>`:""}</strong><small>${safe([store.district,store.region].filter(Boolean).join(", ")|| (language()==="sw"?"Duka la ZUNE":"ZUNE Store"))}</small></button>`;
+  const verified=["verified","approved"].includes(String(store.verification_status||"").toLowerCase());
+  return `<button type="button" class="z-featured-store" data-featured-store="${safe(store.owner_id)}" aria-label="${safe(name)}"><span class="z-featured-store-logo" aria-hidden="true">${safe(initials)}</span><strong>${safe(name)} ${verified?`<span class="store-verified" title="Verified Store" aria-label="Verified Store">✓</span>`:""}</strong><small>${safe([store.district,store.region].filter(Boolean).join(", ")|| (language()==="sw"?"Duka la ZUNE":"ZUNE Store"))}</small></button>`;
  }).join("");
 }
 
@@ -1920,7 +1933,6 @@ function renderHomePage() {
       <main class="z-home-content">
 
         ${renderHomeCarousel()}
-
 
         <section>
 
@@ -2044,15 +2056,7 @@ function bindHomeEvents() {
   startCarouselAutoplay();
   document.querySelector("[data-open-categories]")?.addEventListener("click", () => renderMarketplacePage("categories"));
   document.querySelector("[data-view-all-products]")?.addEventListener("click",()=>renderMarketplacePage("explore"));
-  document.querySelectorAll("[data-featured-store]").forEach(button=>button.addEventListener("click",()=>{
-    const ownerId=button.dataset.featuredStore;
-    if(!ownerId)return;
-    homeState.selectedVendor=ownerId;
-    homeState.selectedCategory="";
-    homeState.search="";
-    renderMarketplacePage("explore");
-    loadProducts(true);
-  }));
+  document.querySelectorAll("[data-featured-store]").forEach(button=>button.addEventListener("click",()=>{const ownerId=button.dataset.featuredStore;if(ownerId)openStoreDetails(ownerId);}));
 
   document.querySelector("[data-open-cart]")
     ?.addEventListener("click", () => {
