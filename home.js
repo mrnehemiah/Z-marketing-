@@ -1897,7 +1897,7 @@ function bindHomeEvents() {
   bindSearchEvents();
   bindCarouselEvents();
   startCarouselAutoplay();
-  document.querySelector("[data-open-categories]")?.addEventListener("click", () => renderMarketplacePage("explore"));
+  document.querySelector("[data-open-categories]")?.addEventListener("click", () => renderMarketplacePage("categories"));
   document.querySelector("[data-view-all-products]")?.addEventListener("click",()=>renderMarketplacePage("explore"));
 
   document.querySelector("[data-open-cart]")
@@ -2040,6 +2040,48 @@ function observeInfiniteScroll() {
 // --------------------------------------------
 // 25. EXPLORE PAGE
 // --------------------------------------------
+
+function renderCategoriesPage() {
+  const categories = homeState.categories || [];
+  return `
+    <section class="z-home">
+      <header class="z-home-header">
+        <div class="z-home-top">
+          <div class="zune-logo">ⓏⓊⓃⒺ</div>
+          <button type="button" class="z-all-categories" data-back-home>← ${tx("home")}</button>
+        </div>
+      </header>
+      <main class="z-home-content">
+        <h1 class="z-page-title">${tx("categories")}</h1>
+        <div class="z-categories-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px">
+          <button type="button" class="z-category" data-category-page="" style="min-height:76px;border-radius:14px;white-space:normal">${tx("all")}</button>
+          ${categories.map(category => `
+            <button type="button" class="z-category" data-category-page="${safe(category.id)}" style="min-height:76px;border-radius:14px;white-space:normal">${safe(category.name)}</button>
+          `).join("")}
+        </div>
+        ${categories.length ? "" : `<div class="z-empty-state" style="margin-top:14px">${tx("empty")}</div>`}
+      </main>
+    </section>
+  `;
+}
+
+function bindCategoriesPage() {
+  document.querySelectorAll("[data-category-page]").forEach(button => {
+    button.addEventListener("click", async () => {
+      homeState.selectedCategory = button.dataset.categoryPage || "";
+      homeState.selectedVendor = "";
+      homeState.search = "";
+      homeState.page = 0;
+      homeState.products = [];
+      homeState.hasMore = true;
+      renderMarketplacePage("explore");
+      await loadProducts(true);
+    });
+  });
+  document.querySelector("[data-back-home]")?.addEventListener("click", () => {
+    renderMarketplacePage("home");
+  });
+}
 
 function renderExplorePage() {
   return `
@@ -2597,6 +2639,10 @@ function renderMarketplacePage(page) {
       content = renderExplorePage();
       break;
 
+    case "categories":
+      content = renderCategoriesPage();
+      break;
+
     case "cart":
       content = renderCartPage();
       break;
@@ -2636,6 +2682,10 @@ function renderMarketplacePage(page) {
     case "explore":
       bindExploreEvents();
       observeInfiniteScroll();
+      break;
+
+    case "categories":
+      bindCategoriesPage();
       break;
 
     case "cart":
