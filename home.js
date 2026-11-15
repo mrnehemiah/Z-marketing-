@@ -1473,7 +1473,7 @@ function openStoreDetails(ownerId, product = null) {
     supabase.from("stores").select("owner_id,store_name,verification_status,region,district,address").eq("owner_id",ownerId).maybeSingle(),
     supabase.from("profiles").select("id,is_verified").eq("id",ownerId).maybeSingle(),
     supabase.from("products").select("*").eq("vendor_id",ownerId).order("created_at",{ascending:false}).limit(24)
-  ]).then(([storeResult,profileResult,productsResult])=>{
+  ]).then(async ([storeResult,profileResult,productsResult])=>{
     if(!overlay.isConnected)return;
     if(storeResult.error)throw storeResult.error;
     if(profileResult.error)throw profileResult.error;
