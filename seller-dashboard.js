@@ -206,15 +206,15 @@ async function publishSellerProduct(event){
 function renderMarketing(){
  const packages=state.adsPackages||[], campaigns=state.adsCampaigns||[], wallet=state.adsWallet||{};
  const typeLabel=x=>x==="sponsored_store"?"Sponsored Store":x==="sponsored_product"?"Sponsored Product":"Combo";
- const packageOptions=packages.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+' · '+money(p.price_tzs)+' · '+esc(p.duration_days)+' '+tr("siku","days")+'</option>').join("");
+ const packageOptions=packages.map(p=>'<option value="'+esc(p.id)+'" data-campaign-type="'+esc(p.campaign_type)+'">'+esc(p.name)+' · '+money(p.price_tzs)+' · '+esc(p.duration_days)+' '+tr("siku","days")+'</option>').join("");
  const products=state.products.filter(p=>p.moderation_status==="approved");
  return `
  <section class="zsd-stats"><div class="zsd-stat"><small>Ads Available</small><strong>${money(wallet.available_tzs||0)}</strong></div><div class="zsd-stat"><small>Pending</small><strong>${money(wallet.pending_tzs||0)}</strong></div><div class="zsd-stat"><small>Reserved</small><strong>${money(wallet.reserved_tzs||0)}</strong></div></section>
  <section class="zsd-card"><div class="zsd-section-kicker">ZUNE ADS</div><h2>${tr("Omba tangazo jipya","Create an ad campaign")}</h2><p class="zsd-muted">${tr("Chagua package inayopatikana. Kampeni itapitiwa na Admin Mkuu kabla haijaonekana sokoni. Bajeti itahifadhiwa kutoka Ads Wallet baada ya kuidhinishwa.","Choose an available package. Admin Mkuu reviews every campaign before it appears on the marketplace. The campaign budget is reserved from your Ads Wallet only after approval.")}</p>
  ${packages.length?`<form id="zsd-ad-campaign-form" class="zsd-form">
- <label>${tr("Aina ya tangazo","Campaign type")}<select class="zsd-input" name="campaign_type" required><option value="sponsored_store">Sponsored Store</option><option value="sponsored_product">Sponsored Product</option><option value="combo">Combo</option></select></label>
- <label>${tr("Package","Package")}<select class="zsd-input" name="package_id" required>${packageOptions}</select></label>
- <label class="zsd-full">${tr("Bidhaa ya kutangaza (inahitajika kwa Product na Combo)","Product to promote (required for Product and Combo)")}<select class="zsd-input" name="product_id"><option value="">${tr("Chagua bidhaa","Select a product")}</option>${products.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.title)+'</option>').join("")}</select></label>
+ <label>${tr("Aina ya tangazo","Campaign type")}<select class="zsd-input" name="campaign_type" id="zsd-ad-type" required><option value="sponsored_store">Sponsored Store</option><option value="sponsored_product">Sponsored Product</option><option value="combo">Combo</option></select></label>
+ <label>${tr("Package","Package")}<select class="zsd-input" name="package_id" id="zsd-ad-package" required>${packageOptions}</select></label>
+ <label class="zsd-full" id="zsd-ad-product-field">${tr("Bidhaa ya kutangaza (inahitajika kwa Product na Combo)","Product to promote (required for Product and Combo)")}<select class="zsd-input" name="product_id"><option value="">${tr("Chagua bidhaa","Select a product")}</option>${products.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.title)+'</option>').join("")}</select></label>
  <label class="zsd-full">${tr("Kichwa cha tangazo","Ad title")}<input name="title" maxlength="140" required></label>
  <label class="zsd-full">${tr("Kiungo cha picha ya tangazo (hiari)","Creative image URL (optional)")}<input name="creative_url" type="url" maxlength="1000" placeholder="https://..."></label>
  <label>${tr("Placement","Placement")}<select class="zsd-input" name="placement"><option value="home">Home</option><option value="category">Category</option><option value="search">Search</option><option value="recommendations">Recommendations</option></select></label>
@@ -282,7 +282,13 @@ function renderPanel(){
  panel.querySelector("#zsd-verification-form")?.addEventListener("submit",submitVerification);
  panel.querySelector("#zsd-gallery-input")?.addEventListener("change",event=>{if(event.target.files?.length)addSellerPhotos(event.target.files);event.target.value="";});
  panel.querySelector("#zsd-camera-input")?.addEventListener("change",event=>{if(event.target.files?.length)addSellerPhotos(event.target.files);event.target.value="";});
- if(state.section==="products"){renderPhotoSelection();panel.querySelector("#zsd-product-form")?.addEventListener("submit",publishSellerProduct);} if(state.section==="marketing"){panel.querySelector("#zsd-ad-campaign-form")?.addEventListener("submit",submitAdCampaign);panel.querySelector("#zsd-ads-deposit-form")?.addEventListener("submit",submitAdsDeposit);}
+ if(state.section==="products"){renderPhotoSelection();panel.querySelector("#zsd-product-form")?.addEventListener("submit",publishSellerProduct);} if(state.section==="marketing"){
+  panel.querySelector("#zsd-ad-campaign-form")?.addEventListener("submit",submitAdCampaign);
+  panel.querySelector("#zsd-ads-deposit-form")?.addEventListener("submit",submitAdsDeposit);
+  const type=panel.querySelector("#zsd-ad-type"),pkg=panel.querySelector("#zsd-ad-package"),product=panel.querySelector("#zsd-ad-product-field select"),productField=panel.querySelector("#zsd-ad-product-field");
+  const syncAdForm=()=>{const selected=type?.value||"sponsored_store";if(product){product.required=selected!=="sponsored_store";}if(productField)productField.hidden=selected==="sponsored_store";if(pkg){let first=null;Array.from(pkg.options).forEach(option=>{const allowed=option.dataset.campaignType===selected;option.hidden=!allowed;option.disabled=!allowed;if(allowed&&!first)first=option;});if(!pkg.selectedOptions[0]||pkg.selectedOptions[0].disabled){if(first)pkg.value=first.value;}}};
+  type?.addEventListener("change",syncAdForm);syncAdForm();
+ }
 }
 function bindActiveNav(){
  document.querySelectorAll("[data-zsd-section]").forEach(b=>b.classList.toggle("active",b.dataset.zsdSection===state.section));
