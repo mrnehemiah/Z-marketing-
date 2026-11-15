@@ -1262,9 +1262,9 @@ function recordSponsoredEvent(campaignId, eventType) {
 }
 
 function bindSponsoredAdEvents() {
-  const host = document.getElementById("z-sponsored-products");
-  if (!host) return;
-  host.querySelectorAll("[data-sponsored-campaign]").forEach(card => {
+  const hosts = [document.getElementById("z-sponsored-products"), document.getElementById("z-explore-sponsored-products")].filter(Boolean);
+  if (!hosts.length) return;
+  hosts.forEach(host => host.querySelectorAll("[data-sponsored-campaign]").forEach(card => {
     if (card.dataset.impressionBound) return;
     card.dataset.impressionBound = "1";
     const campaignId = card.dataset.sponsoredCampaign;
