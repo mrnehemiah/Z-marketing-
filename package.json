@@ -1,0 +1,14 @@
+{
+  "name": "zune-marketplace",
+  "private": true,
+  "version": "2.0.0",
+  "description": "ZUNE Marketplace 2.0 deployment and asset tooling",
+  "type": "module",
+  "scripts": {
+    "check": "node deployment-check.mjs",
+    "optimize": "node optimize-assets.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

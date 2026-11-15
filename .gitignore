@@ -1,0 +1,9 @@
+# Local tooling and generated build output
+node_modules/
+dist/
+.cache/
+*.log
+.DS_Store
+*.min.js
+*.min.css
+optimization-report.json
