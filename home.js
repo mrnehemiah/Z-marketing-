@@ -535,6 +535,27 @@ function addHomeStyles() {
       aspect-ratio: 4 / 4.6;
       background: var(--background);
     }
+    .z-product-gallery {
+      position: absolute; inset: 0; display: flex; overflow-x: auto; overflow-y: hidden;
+      scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain;
+      background: var(--background);
+    }
+    .z-product-gallery::-webkit-scrollbar { display: none; }
+    .z-product-gallery .z-product-image {
+      flex: 0 0 100%; width: 100%; min-width: 100%; height: 100%;
+      display: block; object-fit: cover; scroll-snap-align: start;
+    }
+    .z-product-image-count {
+      position: absolute; right: 9px; bottom: 9px; z-index: 1; padding: 5px 8px;
+      border: 1px solid rgb(255 255 255 / 25%); border-radius: 20px;
+      background: rgb(0 0 0 / 58%); color: #fff; font-size: 9px; font-weight: 800;
+      pointer-events: none;
+    }
+    .z-verified-account-mark {
+      flex: 0 0 auto; width: 17px; height: 17px; display: inline-grid; place-items: center;
+      vertical-align: middle;
+    }
+    .z-verified-account-mark svg { display: block; width: 100%; height: 100%; }
     .z-product-image,
     .z-product-placeholder {
       width: 100%;
@@ -1096,18 +1117,30 @@ async function loadProducts(reset = false) {
 
     const products = data || [];
 
-    // Attach public store details where available; keep product feed usable if a store row is hidden.
+    // Attach public store details and account verification to product owners.
     const vendorIds = [...new Set(products.map(item => item.vendor_id).filter(Boolean))];
     if (vendorIds.length) {
       try {
-        const { data: stores } = await supabase
+        const { data: stores, error: storesError } = await supabase
           .from("stores")
           .select("owner_id,store_name,verification_status,region,district,address")
           .in("owner_id", vendorIds);
+        if (storesError) throw storesError;
         const storeByOwner = new Map((stores || []).map(store => [String(store.owner_id), store]));
         products.forEach(item => { item.__zuneStore = storeByOwner.get(String(item.vendor_id)) || null; });
       } catch (storeError) {
         console.warn("ZUNE store details unavailable for product cards:", storeError);
+      }
+      try {
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id,is_verified,role")
+          .in("id", vendorIds);
+        if (profilesError) throw profilesError;
+        const profileById = new Map((profiles || []).map(profile => [String(profile.id), profile]));
+        products.forEach(item => { item.__zuneOwnerProfile = profileById.get(String(item.vendor_id)) || null; });
+      } catch (profileError) {
+        console.warn("ZUNE owner verification status unavailable for product cards:", profileError);
       }
     }
 
@@ -1149,24 +1182,33 @@ async function loadProducts(reset = false) {
 // --------------------------------------------
 
 function productImage(product) {
-  const image = product.image_url;
-
-  if (!image) {
-    return `
-      <div class="z-product-placeholder">
-        <span>📦</span>
-      </div>
-    `;
+  let images = Array.isArray(product.image_urls) ? product.image_urls : [];
+  if (typeof product.image_urls === "string") {
+    try {
+      const parsed = JSON.parse(product.image_urls);
+      if (Array.isArray(parsed)) images = parsed;
+    } catch (_) {
+      images = product.image_urls.trim() ? [product.image_urls.trim()] : [];
+    }
   }
-
+  images = images.map(item => {
+    if (typeof item === "string") return item;
+    if (item && typeof item === "object") return item.url || item.publicUrl || item.public_url || item.src || "";
+    return "";
+  }).filter(Boolean);
+  const primaryImage = product.image_url || "";
+  if (primaryImage && !images.includes(primaryImage)) images.unshift(primaryImage);
+  images = [...new Set(images)];
+  if (!images.length) {
+    return `<div class="z-product-placeholder"><span>📦</span></div>`;
+  }
   return `
-    <img
-      class="z-product-image"
-      src="${safe(image)}"
-      alt="${safe(product.title)}"
-      loading="lazy"
-      onerror="this.style.display='none'"
-    >
+    <div class="z-product-gallery" aria-label="${safe(product.title || tx("emptyName"))} — ${images.length} ${language()==="sw"?"picha":"photos"}">
+      ${images.map((image, index) => `
+        <img class="z-product-image" src="${safe(image)}" alt="${safe(product.title || tx("emptyName"))} — ${index + 1}" loading="lazy" onerror="this.style.display='none'">
+      `).join("")}
+      ${images.length > 1 ? `<span class="z-product-image-count">${images.length} ${language()==="sw"?"picha":"photos"}</span>` : ""}
+    </div>
   `;
 }
 
@@ -1178,6 +1220,8 @@ function productCard(product) {
   const id = String(product.id);
   const isSaved = homeState.saved.map(String).includes(id);
   const store = product.__zuneStore || null;
+  const ownerProfile = product.__zuneOwnerProfile || null;
+  const accountVerified = ownerProfile?.is_verified === true;
   const currentPrice = Number(product.price || 0);
   const oldPrice = Number(product.compare_at_price || product.original_price || 0);
   const rating = Number(product.average_rating || product.rating_average || product.rating || 0);
@@ -1220,6 +1264,7 @@ function productCard(product) {
         ${ratingMarkup}
         <div class="z-product-store">
           <span class="z-product-store-name">${safe(storeName)}</span>
+          ${accountVerified ? '<span class="z-verified-account-mark" title="Verified Account" aria-label="Verified Account"><svg viewBox="-30 -30 60 60" role="img"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' : ""}
           ${verified ? '<span class="z-verified-store-mark" title="Verified Store" aria-label="Verified Store">✓</span>' : ""}
         </div>
         ${location ? `<div class="z-product-location">⌖ ${safe(location)}</div>` : ""}
@@ -1236,6 +1281,8 @@ function productCard(product) {
 function openProductDetails(product) {
   document.getElementById("z-product-detail-overlay")?.remove();
   const store = product.__zuneStore || null;
+  const ownerProfile = product.__zuneOwnerProfile || null;
+  const accountVerified = ownerProfile?.is_verified === true;
   const verified = store?.verification_status === "verified";
   const storeName = store?.store_name || product.store_name || product.seller_name || (language()==="sw"?"Muuzaji wa ZUNE":"ZUNE Seller");
   const location = [store?.district || product.district, store?.region || product.region, store?.address || product.location].filter(Boolean).slice(0,2).join(", ");
@@ -1248,7 +1295,7 @@ function openProductDetails(product) {
       <button type="button" class="z-detail-close" aria-label="Close">×</button>
       <div class="z-detail-image-wrap">${productImage(product)}</div>
       <div class="z-detail-content">
-        <div class="z-product-store"><span class="z-product-store-name">${safe(storeName)}</span>${verified ? '<span class="z-verified-store-mark" aria-label="Verified Store">✓</span>' : ""}</div>
+        <div class="z-product-store"><span class="z-product-store-name">${safe(storeName)}</span>${accountVerified ? '<span class="z-verified-account-mark" title="Verified Account" aria-label="Verified Account"><svg viewBox="-30 -30 60 60" role="img"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' : ""}${verified ? '<span class="z-verified-store-mark" aria-label="Verified Store">✓</span>' : ""}</div>
         ${location ? `<div class="z-product-location">⌖ ${safe(location)}</div>` : ""}
         <h2>${safe(product.title || tx("emptyName"))}</h2>
         <p class="z-detail-price">${money(product.price)}</p>
