@@ -9,6 +9,11 @@ alter table public.stores
 
 grant select (owner_id,store_name,verification_status,is_active,logo_url,description,phone,email,website,region,district,address) on public.stores to anon, authenticated;
 
+drop policy if exists "ZUNE sellers read own store profile" on public.stores;
+create policy "ZUNE sellers read own store profile"
+on public.stores for select to authenticated
+using (owner_id = (select auth.uid()));
+
 drop policy if exists "ZUNE sellers update own store profile" on public.stores;
 create policy "ZUNE sellers update own store profile"
 on public.stores for update to authenticated
@@ -42,8 +47,8 @@ using (bucket_id='zune-store-assets' and (storage.foldername(name))[1]=(select a
 create or replace function public.zune_guard_seller_store_profile()
 returns trigger
 language plpgsql
-security definer
-set search_path = public
+security invoker
+set search_path = public, pg_catalog
 as $$
 begin
   if auth.uid() is not null and not public.zune_is_admin() then
