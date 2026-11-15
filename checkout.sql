@@ -132,13 +132,13 @@ BEGIN
   INSERT INTO public.orders(
    buyer_id,product_id,quantity,total_price,commission_fee,recipient_name,recipient_phone,
    delivery_address,delivery_region,delivery_district,payment_method,delivery_notes,
-   recipient_email,delivery_method,checkout_id,payment_status
+   recipient_email,delivery_method,checkout_id,payment_status,stock_deducted
   ) VALUES (
    v_buyer,v_product.id,v_quantity,v_product.price*v_quantity,0,v_recipient,v_phone,
    v_delivery_address,v_region,v_district,v_payment_method,
    nullif(trim(coalesce(p_address->>'delivery_notes','')),''),
    nullif(trim(coalesce(p_address->>'email','')),''),
-   'standard',v_checkout_id,'pending'
+   'standard',v_checkout_id,'pending',true
   ) RETURNING id INTO v_order_id;
   INSERT INTO public.order_items(order_id,product_id,product_name,price,quantity,seller_id)
   VALUES(v_order_id,v_product.id,v_product.title,v_product.price,v_quantity,v_product.vendor_id);
@@ -211,3 +211,23 @@ BEGIN
 END; $$;
 REVOKE ALL ON FUNCTION public.zune_quote_checkout(jsonb,jsonb) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.zune_quote_checkout(jsonb,jsonb) TO authenticated;
+
+
+-- Track stock deducted by this atomic checkout and restore it on Admin cancellation.
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS stock_deducted boolean NOT NULL DEFAULT false;
+CREATE OR REPLACE FUNCTION public.zune_restore_stock_on_order_cancel()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+BEGIN
+ IF OLD.status::text IS DISTINCT FROM 'cancelled'
+    AND NEW.status::text='cancelled'
+    AND coalesce(OLD.stock_deducted,false)=true THEN
+  UPDATE public.products SET stock_quantity=coalesce(stock_quantity,0)+OLD.quantity
+   WHERE id=OLD.product_id;
+  UPDATE public.orders SET stock_deducted=false WHERE id=OLD.id;
+ END IF;
+ RETURN NEW;
+END; $$;
+DROP TRIGGER IF EXISTS zune_restore_stock_on_order_cancel ON public.orders;
+CREATE TRIGGER zune_restore_stock_on_order_cancel
+ AFTER UPDATE OF status ON public.orders
+ FOR EACH ROW EXECUTE FUNCTION public.zune_restore_stock_on_order_cancel();
