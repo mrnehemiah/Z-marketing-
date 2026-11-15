@@ -365,7 +365,7 @@ async function loadSellerCustomers(){
   const {data,error}=await supabase.from("order_items").select("order_id").eq("seller_id",user.id).limit(2000);
   if(error)throw error;
   const ids=[...new Set((data||[]).map(x=>x.order_id).filter(Boolean))];
-  if(!ids.length){state.customers=[];return;}
+  if(!ids.length){state.customers=[];state.customersLoadedFor=user.id;return;}
   const ordersResult=await supabase.from("orders").select("id,buyer_id,created_at").in("id",ids);
   if(ordersResult.error)throw ordersResult.error;
   const byBuyer=new Map();
@@ -377,7 +377,7 @@ async function loadSellerCustomers(){
    byBuyer.set(order.buyer_id,item);
   }
   const buyers=[...byBuyer.values()];
-  if(!buyers.length){state.customers=[];return;}
+  if(!buyers.length){state.customers=[];state.customersLoadedFor=user.id;return;}
   const profiles=await supabase.from("profiles").select("id,full_name,phone_number").in("id",buyers.map(x=>x.id));
   if(profiles.error)throw profiles.error;
   const lookup=new Map((profiles.data||[]).map(x=>[x.id,x]));
