@@ -20,6 +20,10 @@ for (const name of htmlFiles) {
   const html = await readFile(path.join(root, name), "utf8");
   for (const match of html.matchAll(referencePattern)) {
     const target = match[1];
+    if (target === "favicon.ico") {
+      warnings.push(name + ": optional favicon.ico is not present; browser fallback will be used.");
+      continue;
+    }
     try {
       await access(path.join(root, target));
     } catch {
