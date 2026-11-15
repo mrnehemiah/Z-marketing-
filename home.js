@@ -13,7 +13,7 @@ import { renderCartPage as renderCartView, bindCartEvents as bindCartViewEvents,
 
 const PAGE_SIZE = 12;
 
-.z-sponsored-products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.z-sponsored-card{position:relative;min-width:0}.z-sponsored-label,.z-sponsored-note{display:inline-flex;align-items:center;background:#fff2df;color:#9a570c;border:1px solid #f2d4aa;border-radius:999px;padding:4px 9px;font-size:10px;font-weight:800;margin-bottom:6px}.z-sponsored-card .z-product-card{height:100%}.z-sponsored-empty{grid-column:1/-1;color:var(--z-muted,#777);font-size:13px;padding:12px 0}@media(min-width:700px){.z-sponsored-products{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
 
 
 function readStorage(key, fallback) {
@@ -535,6 +535,7 @@ function addHomeStyles() {
       align-items: stretch;
     }
 
+    .z-sponsored-products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.z-sponsored-card{position:relative;min-width:0}.z-sponsored-label,.z-sponsored-note{display:inline-flex;align-items:center;background:#fff2df;color:#9a570c;border:1px solid #f2d4aa;border-radius:999px;padding:4px 9px;font-size:10px;font-weight:800;margin-bottom:6px}.z-sponsored-card .z-product-card{height:100%}.z-sponsored-empty{grid-column:1/-1;color:var(--z-muted,#777);font-size:13px;padding:12px 0}@media(min-width:700px){.z-sponsored-products{grid-template-columns:repeat(4,minmax(0,1fr))}}
     .z-product-card {
       min-width: 0;
       overflow: hidden;
