@@ -23,7 +23,7 @@ const sections = [
   ["settings","⚙","Mipangilio","Settings","MSAADA NA MIPANGILIO"]
 ];
 
-const state = { section:"overview", sidebarCollapsed:false, sidebarOpen:false, salesPeriod:"7d", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], adsEvents:[], loading:false, busy:false, error:"" };
+const state = { section:"overview", sidebarCollapsed:false, sidebarOpen:false, salesPeriod:"7d", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], adsEvents:[], conversations:[], activeConversationId:null, chatMessages:[], notifications:[], messagesLoadedFor:null, notificationsLoadedFor:null, messagesLoading:false, notificationsLoading:false, loading:false, busy:false, error:"" };
 const tr = (sw,en) => state.language==="sw"?sw:en;
 const esc = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = value => new Intl.NumberFormat("sw-TZ",{style:"currency",currency:"TZS",maximumFractionDigits:0}).format(Number(value)||0);
@@ -345,17 +345,95 @@ async function loadAdsData(){
  state.adsPackages=packages.data||[];state.adsCampaigns=campaigns.data||[];state.adsWallet=wallet.data||null;state.adsTransactions=transactions.data||[];
 }
 
+function renderMessages(){
+ const active=state.conversations.find(x=>x.id===state.activeConversationId)||null;
+ const conversations=state.conversations.map(item=>{
+  const buyer=state.chatBuyers?.[item.buyer_id]||tr("Mteja wa ZUNE","ZUNE Customer");
+  const product=state.chatProducts?.[item.product_id]||tr("Bidhaa ya ZUNE","ZUNE Product");
+  const unread=Number(item.unread_count||0);
+  return `<button type="button" class="zsd-chat-thread ${active?.id===item.id?"active":""}" data-open-chat="${esc(item.id)}"><strong>${esc(buyer)}</strong><small>${esc(product)}</small><span>${esc(item.last_message||tr("Fungua mazungumzo","Open conversation"))}</span>${unread?'<i class="zsd-pill blue">'+unread+'</i>':""}</button>`;
+ }).join("");
+ const messageList=state.chatMessages.map(message=>`<div class="zsd-chat-message ${message.sender_id===window.__zuneSellerUser?.id?"mine":"theirs"}"><p>${esc(message.message)}</p><small>${new Date(message.created_at).toLocaleString(state.language==="sw"?"sw-TZ":"en-TZ")}</small></div>`).join("");
+ return `<section class="zsd-card zsd-chat-layout"><div class="zsd-chat-list"><div class="zsd-chat-heading"><h2>${tr("Ujumbe wa wateja","Customer messages")}</h2><button class="zsd-btn" type="button" id="zsd-refresh-messages">${tr("Onyesha upya","Refresh")}</button></div>${state.messagesLoading?'<div class="zsd-empty">'+tr("Inapakia ujumbe...","Loading messages...")+'</div>':conversations||'<div class="zsd-empty">'+tr("Bado hakuna mazungumzo na wateja.","No customer conversations yet.")+'</div>'}</div><div class="zsd-chat-view">${active?`<header><strong>${esc(state.chatBuyers?.[active.buyer_id]||tr("Mteja wa ZUNE","ZUNE Customer"))}</strong><small>${esc(state.chatProducts?.[active.product_id]||"")}</small></header><div class="zsd-chat-history" id="zsd-chat-history">${messageList||'<div class="zsd-empty">'+tr("Anza mazungumzo kwa kujibu mteja.","Reply to start the conversation.")+'</div>'}</div><form id="zsd-chat-form" class="zsd-chat-compose"><textarea name="message" maxlength="4000" required placeholder="${tr("Andika ujumbe...","Write a message...")}"></textarea><button class="zsd-btn primary" type="submit">${tr("Tuma","Send")} →</button></form>`:'<div class="zsd-empty">'+tr("Chagua mazungumzo upande wa kushoto.","Select a conversation on the left.")+'</div>'}</div></section>`;
+}
+async function loadSellerMessages(force=false){
+ const user=window.__zuneSellerUser;if(!user?.id||state.messagesLoading)return;
+ if(!force&&state.messagesLoadedFor===user.id)return;
+ state.messagesLoading=true;
+ try{
+  const {data,error}=await supabase.from("chat_conversations").select("id,buyer_id,seller_id,product_id,created_at,updated_at").eq("seller_id",user.id).order("updated_at",{ascending:false}).limit(50);
+  if(error)throw error;
+  state.conversations=data||[];
+  const buyerIds=[...new Set(state.conversations.map(x=>x.buyer_id).filter(Boolean))];
+  const productIds=[...new Set(state.conversations.map(x=>x.product_id).filter(Boolean))];
+  state.chatBuyers={};state.chatProducts={};
+  if(buyerIds.length){const result=await supabase.from("profiles").select("id,full_name").in("id",buyerIds);if(!result.error)(result.data||[]).forEach(x=>state.chatBuyers[x.id]=x.full_name||tr("Mteja wa ZUNE","ZUNE Customer"));}
+  if(productIds.length){const result=await supabase.from("products").select("id,title").in("id",productIds);if(!result.error)(result.data||[]).forEach(x=>state.chatProducts[x.id]=x.title||tr("Bidhaa ya ZUNE","ZUNE Product"));}
+  if(!state.conversations.some(x=>x.id===state.activeConversationId))state.activeConversationId=state.conversations[0]?.id||null;
+  if(state.activeConversationId){
+   const result=await supabase.from("chat_messages").select("id,conversation_id,sender_id,message,is_read,created_at").eq("conversation_id",state.activeConversationId).order("created_at",{ascending:true}).limit(100);
+   if(result.error)throw result.error;
+   state.chatMessages=result.data||[];
+   await supabase.from("chat_messages").update({is_read:true}).eq("conversation_id",state.activeConversationId).neq("sender_id",user.id).eq("is_read",false);
+  }else state.chatMessages=[];
+  state.messagesLoadedFor=user.id;
+ }catch(error){console.error("ZUNE seller messages:",error);state.error=error.message||"Messages could not be loaded.";}
+ finally{state.messagesLoading=false;if(state.section==="messages")renderPanel();}
+}
+async function sendSellerMessage(event){
+ event.preventDefault();const form=event.currentTarget;const message=String(new FormData(form).get("message")||"").trim();
+ if(!message||!state.activeConversationId||state.busy)return;
+ state.busy=true;const button=form.querySelector("button[type=submit]");if(button)button.disabled=true;
+ try{
+  const {error}=await supabase.from("chat_messages").insert({conversation_id:state.activeConversationId,sender_id:window.__zuneSellerUser.id,message});
+  if(error)throw error;
+  form.reset();await loadSellerMessages(true);
+ }catch(error){console.error("ZUNE send message:",error);alert(error.message||tr("Ujumbe haukutumwa. Jaribu tena.","Message was not sent. Please try again."));}
+ finally{state.busy=false;if(button)button.disabled=false;}
+}
+function renderNotifications(){
+ const rows=state.notifications.map(item=>{
+  const title=state.language==="sw"?(item.title_sw||item.title_en):(item.title_en||item.title_sw);
+  const body=state.language==="sw"?(item.body_sw||item.body_en):(item.body_en||item.body_sw);
+  return `<article class="zsd-notification ${item.is_read?"read":"unread"}"><div><strong>${esc(title||tr("Taarifa ya ZUNE","ZUNE notification"))}</strong><p>${esc(body||"")}</p><small>${new Date(item.created_at).toLocaleString(state.language==="sw"?"sw-TZ":"en-TZ")}</small></div>${item.is_read?"":'<button class="zsd-btn" type="button" data-read-notification="'+esc(item.id)+'">'+tr("Soma","Mark read")+'</button>'}</article>`;
+ }).join("");
+ return `<section class="zsd-card"><div class="zsd-chat-heading"><div><h2>${tr("Notifications","Notifications")}</h2><p class="zsd-muted">${tr("Taarifa za akaunti na biashara yako.","Updates about your account and business.")}</p></div><button class="zsd-btn" type="button" id="zsd-read-all-notifications">${tr("Soma zote","Mark all read")}</button></div>${state.notificationsLoading?'<div class="zsd-empty">'+tr("Inapakia taarifa...","Loading notifications...")+'</div>':rows||'<div class="zsd-empty">'+tr("Bado huna taarifa mpya.","You have no notifications yet.")+'</div>'}</section>`;
+}
+async function loadSellerNotifications(force=false){
+ const user=window.__zuneSellerUser;if(!user?.id||state.notificationsLoading)return;
+ if(!force&&state.notificationsLoadedFor===user.id)return;
+ state.notificationsLoading=true;
+ try{
+  const {data,error}=await supabase.from("notifications").select("id,type,title_sw,title_en,body_sw,body_en,action_url,is_read,created_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(50);
+  if(error)throw error;state.notifications=data||[];state.notificationsLoadedFor=user.id;
+ }catch(error){console.error("ZUNE seller notifications:",error);state.error=error.message||"Notifications could not be loaded.";}
+ finally{state.notificationsLoading=false;if(state.section==="notifications")renderPanel();}
+}
+async function markSellerNotification(id=null){
+ const user=window.__zuneSellerUser;if(!user?.id)return;
+ let query=supabase.from("notifications").update({is_read:true,read_at:new Date().toISOString()}).eq("user_id",user.id).eq("is_read",false);
+ if(id)query=query.eq("id",id);
+ const {error}=await query;if(error){alert(error.message);return;}
+ await loadSellerNotifications(true);
+}
 function renderPlaceholder(){
  const names=sections.find(s=>s[0]===state.section);
  return `<section class="zsd-card"><h2>${tr(names[2],names[3])}</h2><p class="zsd-muted">${tr("Sehemu hii imeongezwa kwenye muundo wa dashboard. Itaunganishwa na jedwali na ruhusa sahihi za Supabase kabla ya kuanza kutumia data halisi.","This section is included in the dashboard structure. It will be connected to the correct Supabase tables and permissions before handling live data.")}</p><div class="zsd-empty">${tr("Inaandaliwa — hakuna data ya majaribio iliyowekwa.","In preparation — no sample data has been inserted.")}</div></section>`;
 }
 function renderPanel(){
  const panel=document.getElementById("zsd-panel"); if(!panel)return;
- panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"||state.section==="add-product"?renderProducts():state.section==="orders"?renderOrders():state.section==="inventory"?renderInventory():state.section==="analytics"?renderAnalyticsPage():state.section==="product-performance"?renderProductPerformance():state.section==="finance"||state.section==="transactions"||state.section==="withdrawals"?renderFinance():state.section==="store"?renderStore():state.section==="verification"?renderVerification():state.section==="marketing"?renderMarketing():renderPlaceholder();
+ panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"||state.section==="add-product"?renderProducts():state.section==="orders"?renderOrders():state.section==="inventory"?renderInventory():state.section==="analytics"?renderAnalyticsPage():state.section==="product-performance"?renderProductPerformance():state.section==="finance"||state.section==="transactions"||state.section==="withdrawals"?renderFinance():state.section==="store"?renderStore():state.section==="verification"?renderVerification():state.section==="marketing"?renderMarketing():state.section==="messages"?renderMessages():state.section==="notifications"?renderNotifications():renderPlaceholder();
  const pageTitle=document.getElementById("zsd-page-title");if(pageTitle){const item=sections.find(x=>x[0]===state.section);pageTitle.textContent=item?tr(item[2],item[3]):tr("Muhtasari wa Biashara","Business Overview");}
  panel.querySelectorAll("[data-zsd-section]").forEach(b=>b.addEventListener("click",()=>{state.section=b.dataset.zsdSection;state.sidebarOpen=false;renderPanel();bindActiveNav();}));
  panel.querySelectorAll("[data-zsd-period]").forEach(b=>b.addEventListener("click",()=>{state.salesPeriod=b.dataset.zsdPeriod;renderPanel();bindActiveNav();}));
  panel.querySelector("#zsd-verification-form")?.addEventListener("submit",submitVerification);
+ panel.querySelector("#zsd-chat-form")?.addEventListener("submit",sendSellerMessage);
+ panel.querySelectorAll("[data-open-chat]").forEach(button=>button.addEventListener("click",async()=>{state.activeConversationId=button.dataset.openChat;state.chatMessages=[];await loadSellerMessages(true);}));
+ panel.querySelector("#zsd-refresh-messages")?.addEventListener("click",()=>loadSellerMessages(true));
+ panel.querySelector("#zsd-read-all-notifications")?.addEventListener("click",()=>markSellerNotification());
+ panel.querySelectorAll("[data-read-notification]").forEach(button=>button.addEventListener("click",()=>markSellerNotification(button.dataset.readNotification)));
+ if(state.section==="messages"&&state.messagesLoadedFor!==window.__zuneSellerUser?.id&&!state.messagesLoading)loadSellerMessages();
+ if(state.section==="notifications"&&state.notificationsLoadedFor!==window.__zuneSellerUser?.id&&!state.notificationsLoading)loadSellerNotifications();
  panel.querySelector("#zsd-gallery-input")?.addEventListener("change",event=>{if(event.target.files?.length)addSellerPhotos(event.target.files);event.target.value="";});
  panel.querySelector("#zsd-camera-input")?.addEventListener("change",event=>{if(event.target.files?.length)addSellerPhotos(event.target.files);event.target.value="";});
  if(state.section==="products"){renderPhotoSelection();panel.querySelector("#zsd-product-form")?.addEventListener("submit",publishSellerProduct);} if(state.section==="marketing"){
