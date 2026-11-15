@@ -40,7 +40,7 @@ async function getQuote(){
  finally{button.disabled=false;button.textContent=t("quote");}
 }
 async function placeOrder(){
- if(busy||!quote)return;const address=formData();if(!validAddress(address)){root.querySelector("#zc-hint").textContent=t("quoteNeeded");return;}
+ if(busy||!quote)return;const address=formData();address.save_address=!!root.querySelector('[name="save_address"]')?.checked;if(!validAddress(address)){root.querySelector("#zc-hint").textContent=t("quoteNeeded");return;}
  busy=true;const button=root.querySelector("#zc-place");button.disabled=true;button.textContent=t("placing");
  try{
   const {data,error}=await supabase.rpc("zune_create_checkout",{p_items:cart.map(x=>({product_id:x.productId,quantity:x.quantity})),p_address:address,p_idempotency_key:key});
