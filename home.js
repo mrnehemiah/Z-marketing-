@@ -1628,20 +1628,20 @@ function renderHomePage() {
             <button
               type="button"
               class="z-icon-button"
-              data-open-saved
-              aria-label="${tx("saved")}"
-            >
-              ${zIcon("saved")}
-            </button>
-
-            <button
-              type="button"
-              class="z-icon-button"
               data-open-cart
               aria-label="${tx("cart")}"
             >
               ${zIcon("cart")}
               <span class="z-cart-badge" data-cart-count hidden>0</span>
+            </button>
+
+            <button
+              type="button"
+              class="z-icon-button"
+              data-open-account
+              aria-label="${tx("me")}"
+            >
+              ${zIcon("account")}
             </button>
 
           </div>
@@ -1781,14 +1781,14 @@ function bindHomeEvents() {
   startCarouselAutoplay();
   document.querySelector("[data-open-categories]")?.addEventListener("click", () => renderMarketplacePage("explore"));
 
-  document.querySelector("[data-open-saved]")
-    ?.addEventListener("click", () => {
-      renderMarketplacePage("saved");
-    });
-
   document.querySelector("[data-open-cart]")
     ?.addEventListener("click", () => {
       renderMarketplacePage("cart");
+    });
+
+  document.querySelector("[data-open-account]")
+    ?.addEventListener("click", () => {
+      renderMarketplacePage("me");
     });
 
   updateProductArea();
