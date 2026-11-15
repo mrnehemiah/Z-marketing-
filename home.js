@@ -1371,7 +1371,6 @@ function productCard(product) {
         <div class="z-product-store">
           <span class="z-product-store-name">${safe(storeName)}</span>
           ${accountVerified ? '<span class="z-verified-account-mark" title="Verified Account" aria-label="Verified Account"><svg viewBox="-30 -30 60 60" role="img"><g fill="#F28C28"><rect x="-22" y="-22" width="44" height="44" rx="6"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(30)"/><rect x="-22" y="-22" width="44" height="44" rx="6" transform="rotate(60)"/></g><path d="M-9 0 L-3 6 L10 -7" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' : ""}
-          ${verified ? '<span class="z-verified-store-mark" title="Verified Store" aria-label="Verified Store">✓</span>' : ""}
         </div>
         ${location ? `<div class="z-product-location">⌖ ${safe(location)}</div>` : ""}
         ${stockMarkup}
