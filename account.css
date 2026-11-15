@@ -36,3 +36,56 @@
 @media(prefers-reduced-motion:reduce){.account-card,.account-spinner{transition:none;animation:none}}
 
 .account-hero-link{display:flex;text-decoration:none;color:inherit;cursor:pointer;transition:background .18s,border-color .18s}.account-hero-link:hover{background:color-mix(in srgb,var(--primary) 4%,transparent)}.account-hero-link:focus-visible{outline:2px solid var(--primary);outline-offset:4px;border-radius:12px}.account-hero-link:after{content:"›";margin-left:auto;align-self:center;color:var(--text-muted);font-size:24px}
+
+
+/* Account cards refresh — responsive, theme-aware */
+.account-shell{width:min(100% - 40px,820px)}
+.account-topbar{min-height:112px;margin-bottom:26px}
+.account-hero{padding:14px 4px 22px;gap:17px}
+.account-avatar{width:76px;height:76px;flex-basis:76px;border-radius:24px;background:color-mix(in srgb,var(--primary) 12%,var(--surface));color:var(--primary);font-size:25px}
+.account-identity h1{font-size:21px}
+.account-section{margin-top:28px}
+.account-section-head{margin-bottom:14px}
+.account-section-head h2{font-size:19px}
+.account-grid.account-shopping-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.account-shopping-grid .account-card{min-height:126px;padding:16px;gap:12px;border-radius:18px;background:var(--surface);box-shadow:0 5px 18px color-mix(in srgb,var(--text) 5%,transparent)}
+.account-shopping-grid .account-card-icon{width:46px;height:46px;flex-basis:46px;border-radius:15px;font-size:21px}
+.account-shopping-grid .account-card-copy strong{font-size:13px}
+.account-shopping-grid .account-card-copy small{font-size:10px;line-height:1.45}
+.account-shopping-grid .account-card-arrow{font-size:22px}
+.account-settings-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px!important;border:0!important}
+.account-settings-grid .account-card{min-height:76px;padding:13px;border:1px solid var(--border);border-radius:15px;background:var(--surface);gap:11px}
+.account-settings-grid .account-card-icon{width:41px;height:41px;flex-basis:41px;border-radius:13px}
+.account-settings-grid .account-card-copy strong{font-size:12px}
+.account-settings-grid .account-card-copy small{font-size:9px;line-height:1.4}
+.account-settings-grid .account-card-arrow{display:block}
+.account-panel{padding:21px;border-radius:19px}
+.account-note{margin-top:11px}
+.account-logout-wrap{margin-top:25px}
+.account-logout-wrap .account-button{min-height:46px;border-radius:13px}
+.account-card:focus-visible,.account-hero-link:focus-visible,.account-button:focus-visible{outline:2px solid var(--primary);outline-offset:3px}
+@media(max-width:600px){
+ .account-shell{width:calc(100% - 28px)}
+ .account-topbar{margin:0 -14px 20px;padding:14px 14px;min-height:94px}
+ .account-hero{padding:8px 2px 18px;gap:12px}
+ .account-avatar{width:62px;height:62px;flex-basis:62px;border-radius:20px;font-size:21px}
+ .account-identity h1{font-size:17px}
+ .account-section{margin-top:23px}
+ .account-section-head h2{font-size:17px}
+ .account-grid.account-shopping-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+ .account-shopping-grid .account-card{min-height:112px;padding:10px 8px;gap:8px;border-radius:15px;align-items:flex-start}
+ .account-shopping-grid .account-card-icon{width:36px;height:36px;flex-basis:36px;border-radius:12px;font-size:18px}
+ .account-shopping-grid .account-card-copy strong{font-size:10px;line-height:1.3}
+ .account-shopping-grid .account-card-copy small{font-size:8px;line-height:1.35}
+ .account-shopping-grid .account-card-arrow{display:none}
+ .account-settings-grid{grid-template-columns:1fr;gap:8px!important}
+ .account-settings-grid .account-card{min-height:64px;padding:10px 12px;border-radius:14px;flex-direction:row;align-items:center}
+ .account-settings-grid .account-card-icon{width:39px;height:39px;flex-basis:39px}
+ .account-settings-grid .account-card-copy strong{font-size:11px}
+ .account-settings-grid .account-card-copy small{font-size:9px}
+ .account-settings-grid .account-card-arrow{display:block}
+ .account-panel{padding:16px;border-radius:17px}
+}
+@media(min-width:601px) and (max-width:760px){
+ .account-settings-grid{grid-template-columns:1fr}
+}
