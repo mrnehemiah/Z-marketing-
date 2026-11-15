@@ -1409,7 +1409,7 @@ function openStoreDetails(ownerId, product = null) {
   overlay.className = "z-product-detail-overlay";
   overlay.innerHTML = `<section class="z-product-detail-sheet z-storefront-sheet" role="dialog" aria-modal="true" aria-label="${safe(fallback)}">
     <button type="button" class="z-detail-close" aria-label="Close">×</button>
-    <div class="z-storefront-banner"><span class="z-storefront-brand">ⓏⓊⓃⒺ MARKETPLACE</span><div class="z-storefront-heading"><h2 id="z-store-detail-name">${safe(fallback)}</h2><div id="z-store-detail-status" class="z-product-store"></div><p id="z-store-detail-location" class="z-product-location"></p></div></div>
+    <div class="z-storefront-banner"><span class="z-storefront-brand">ⓏⓊⓃⒺ MARKETPLACE</span><div class="z-storefront-logo" id="z-store-detail-logo" aria-label="Store logo"></div><div class="z-storefront-heading"><h2 id="z-store-detail-name">${safe(fallback)}</h2><div id="z-store-detail-status" class="z-product-store"></div><p id="z-store-detail-location" class="z-product-location"></p></div></div>
     <div class="z-storefront-content"><div class="z-storefront-section-head"><div><span class="z-account-eyebrow">${language()==="sw"?"DUKA LA SELLER":"SELLER STOREFRONT"}</span><h3>${language()==="sw"?"Bidhaa za duka":"Store products"}</h3></div><span id="z-storefront-count" class="z-storefront-count"></span></div>
     <p id="z-store-detail-message" class="z-account-message">${language()==="sw"?"Inapakia taarifa na bidhaa za duka...":"Loading store information and products..."}</p>
     <div id="z-storefront-products" class="z-storefront-product-grid"></div></div>
@@ -1431,7 +1431,7 @@ function openStoreDetails(ownerId, product = null) {
     style.id="zuneStorefrontTemplateStyles";
     style.textContent=`
       .z-storefront-sheet{width:min(760px,100%);max-height:92vh;overflow:auto;padding:0!important;background:var(--surface,#fff)}
-      .z-storefront-banner{padding:24px 22px 20px;background:linear-gradient(135deg,#087a55,#064d39);color:#fff}
+      .z-storefront-logo{width:76px;height:76px;display:grid;place-items:center;overflow:hidden;border:3px solid rgba(255,255,255,.9);border-radius:22px;background:#e8f5ed;color:#087a50;font-size:23px;font-weight:900;box-shadow:0 8px 24px rgba(0,0,0,.12)}.z-storefront-logo img{width:100%;height:100%;object-fit:cover}.z-storefront-banner{padding:24px 22px 20px;background:linear-gradient(135deg,#087a55,#064d39);color:#fff}
       .z-storefront-brand{font-size:10px;font-weight:800;letter-spacing:2px;opacity:.8}
       .z-storefront-heading h2{margin:12px 0 8px;color:inherit;font-size:25px}
       .z-storefront-heading .z-product-store{color:inherit;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
@@ -1477,6 +1477,8 @@ function openStoreDetails(ownerId, product = null) {
     const sheet=overlay.querySelector(".z-storefront-sheet");
     sheet.setAttribute("data-zune-store-template",template);
     overlay.querySelector("#z-store-detail-name").textContent=store?.store_name||fallback;
+    const logoHolder=overlay.querySelector("#z-store-detail-logo");
+    if(logoHolder){const logo=store?.logo_url||store?.store_logo_url||store?.logo||"";const initials=String(store?.store_name||fallback).trim().split(/\\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase()||"Z";logoHolder.innerHTML=logo?`<img src="${safe(logo)}" alt="${safe(store?.store_name||fallback)} logo">`:safe(initials);}
     overlay.querySelector("#z-store-detail-location").textContent=[store?.district,store?.region,store?.address].filter(Boolean).join(", ");
     overlay.querySelector("#z-store-detail-status").innerHTML=badgeMarkup(store,profile);
     overlay.querySelector("#z-storefront-count").textContent=products.length+" "+(language()==="sw"?"bidhaa":"products");
