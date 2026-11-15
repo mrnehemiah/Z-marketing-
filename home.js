@@ -4,7 +4,6 @@
 // ============================================
 
 import { supabase } from "./supabase.js";
-import { renderSellerDashboard } from "./seller-dashboard.js?v=20261115-store-profile-v1";
 import { renderCartPage as renderCartView, bindCartEvents as bindCartViewEvents, loadCartProducts } from "./cart.js";
 
 // --------------------------------------------
@@ -2797,7 +2796,7 @@ function applyMarketplaceTemplate() {
   document.head.appendChild(style);
 }
 
-function renderMarketplacePage(page) {
+async function renderMarketplacePage(page) {
   homeState.activeTab = page;
   if (page !== "home" && homeState.carouselTimer) {
     clearInterval(homeState.carouselTimer);
@@ -2814,7 +2813,15 @@ function renderMarketplacePage(page) {
   if (!app) return;
 
   if (page === "seller") {
-    renderSellerDashboard({app,user:homeState.user,onBack:()=>renderMarketplacePage("me")});
+    app.innerHTML = '<section class="z-seller-loading" role="status" aria-live="polite"><div class="zune-wave"><span>Ⓩ</span><span>Ⓤ</span><span>Ⓝ</span><span>Ⓔ</span></div><p>Inapakia Seller Center...</p></section>';
+    try {
+      const { renderSellerDashboard } = await import("./seller-dashboard.js?v=20261115-store-profile-v1");
+      renderSellerDashboard({app,user:homeState.user,onBack:()=>renderMarketplacePage("me")});
+    } catch (error) {
+      console.error("ZUNE Seller Center could not be loaded:", error);
+      app.innerHTML = '<section class="z-seller-loading" role="alert"><h2>Seller Center haijafunguka</h2><p>Tafadhali hakikisha una intaneti kisha ujaribu tena.</p><button type="button" id="z-seller-retry">Jaribu tena</button></section>';
+      app.querySelector("#z-seller-retry")?.addEventListener("click", () => renderMarketplacePage("seller"));
+    }
     return;
   }
 
