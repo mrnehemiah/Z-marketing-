@@ -780,7 +780,7 @@ function addHomeStyles() {
       color: var(--text);
       font-size: 25px;
     }
-    .z-detail-image-wrap { aspect-ratio: 1 / .82; overflow: hidden; background: var(--background); }
+    .z-detail-image-wrap { position: relative; aspect-ratio: 1 / .82; overflow: hidden; background: var(--background); }
     .z-detail-image-wrap .z-product-image { width: 100%; height: 100%; object-fit: contain; }
     .z-detail-content { padding: 18px; }
     .z-detail-content h2 { margin: 13px 0 8px; font-size: 20px; line-height: 1.3; }
