@@ -402,6 +402,9 @@ function addHomeStyles() {
     .z-search-suggestion{width:100%;display:flex;align-items:center;gap:10px;padding:10px;border:0;border-radius:9px;background:transparent;color:var(--text);text-align:left;font-size:12px;cursor:pointer}
     .z-search-suggestion:hover{background:var(--background)}
     .z-search-suggestion small{display:block;color:var(--text-muted);margin-top:3px}
+    .z-product-row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(155px,43%);gap:11px;overflow-x:auto;padding:2px 1px 13px;scroll-snap-type:x mandatory;scrollbar-width:none}
+    .z-product-row>.z-product-card{scroll-snap-align:start}
+    @media(min-width:700px){.z-product-row{grid-auto-columns:minmax(190px,24%)}}
     .z-featured-stores{display:flex;gap:11px;overflow-x:auto;padding:3px 1px 12px;scrollbar-width:none}
     .z-featured-stores::-webkit-scrollbar{display:none}
     .z-featured-store{flex:0 0 175px;min-height:84px;padding:13px;border:1px solid var(--border);border-radius:15px;background:var(--surface);color:var(--text);text-align:left}
@@ -1446,51 +1449,33 @@ function removeCartItem(productId) {
 // 15. UPDATE PRODUCT AREA
 // --------------------------------------------
 
-function updateProductArea() {
-  const area = document.getElementById("z-product-area");
-
-  if (!area) return;
-
-  if (homeState.products.length) {
-    area.innerHTML = `
-      <div class="z-product-grid">
-        ${homeState.products.map(productCard).join("")}
-      </div>
-    `;
-  } else if (!homeState.loading && !homeState.loadError) {
-    area.innerHTML = `
-      <div class="z-empty-state">
-        <div class="z-empty-icon">📦</div>
-        <strong>${tx("empty")}</strong>
-      </div>
-    `;
-  }
-
-  area.querySelectorAll("[data-save-product]").forEach(button => {
-    button.addEventListener("click", event => {
-      event.stopPropagation();
-      toggleSaved(button.dataset.saveProduct);
-    });
-  });
-
-  area.querySelectorAll("[data-open-product]").forEach(card => {
-    const open = () => {
-      const product = homeState.products.find(item => String(item.id) === card.dataset.openProduct);
-      if (product) openProductDetails(product);
-    };
-    card.addEventListener("click", event => {
-      if (event.target.closest("[data-save-product]")) return;
-      open();
-    });
-    card.addEventListener("keydown", event => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        open();
-      }
-    });
+function bindProductCards(root){
+  if(!root)return;
+  root.querySelectorAll("[data-save-product]").forEach(button=>button.addEventListener("click",event=>{event.stopPropagation();toggleSaved(button.dataset.saveProduct);}));
+  root.querySelectorAll("[data-open-product]").forEach(card=>{
+    const open=()=>{const product=homeState.products.find(item=>String(item.id)===card.dataset.openProduct);if(product)openProductDetails(product);};
+    card.addEventListener("click",event=>{if(event.target.closest("[data-save-product]"))return;open();});
+    card.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();open();}});
   });
 }
-
+function renderProductCards(products,gridClass="z-product-grid"){
+ return products.length ? '<div class="'+gridClass+'">'+products.map(productCard).join("")+"</div>" : '<div class="z-empty-state"><strong>'+tx("empty")+"</strong></div>";
+}
+function updateProductArea() {
+  const area=document.getElementById("z-product-area");
+  if(area)area.innerHTML=renderProductCards(homeState.products);
+  const arrivals=document.getElementById("z-new-arrivals");
+  if(arrivals)arrivals.innerHTML=homeState.products.length?homeState.products.slice(0,6).map(productCard).join(""):'<div class="z-empty-state">'+tx("empty")+"</div>";
+  const trending=document.getElementById("z-trending-products");
+  if(trending){
+    const ranked=[...homeState.products].sort((a,b)=>{
+      const score=p=>Number(p.sold_count||p.sales_count||p.total_sold||0)*3+Number(p.average_rating||p.rating_average||p.rating||0)*2+Number(p.review_count||p.reviews_count||0)*.1;
+      return score(b)-score(a);
+    }).slice(0,8);
+    trending.innerHTML=renderProductCards(ranked);
+  }
+  document.querySelectorAll(".z-home-content #z-product-area,.z-home-content #z-new-arrivals,.z-home-content #z-trending-products").forEach(bindProductCards);
+}
 // --------------------------------------------
 // 16. LOADING STATUS AND RETRY
 // --------------------------------------------
@@ -1701,32 +1686,17 @@ function renderHomePage() {
         </section>
 
         <section>
-
-          <div class="z-section-heading">
-            <h2>${tx("latest")}</h2>
-          </div>
-
-          <div id="z-product-area">
-
-            ${
-              homeState.products.length
-                ? `
-                  <div class="z-product-grid">
-                    ${homeState.products.map(productCard).join("")}
-                  </div>
-                `
-                : ""
-            }
-
-          </div>
-
-          <div
-            class="z-load-status"
-            id="z-load-status"
-          ></div>
-
-          <div id="z-scroll-trigger"></div>
-
+          <div class="z-section-heading"><h2>${language()==="sw"?"Bidhaa Mpya":"New Arrivals"}</h2><button type="button" class="z-all-categories" data-view-all-products>${language()==="sw"?"Zote":"View All"} →</button></div>
+          <div id="z-new-arrivals" class="z-product-row">${homeState.products.slice(0,6).map(productCard).join("")}</div>
+        </section>
+        <section>
+          <div class="z-section-heading"><h2>Trending Products</h2></div>
+          <div id="z-trending-products" class="z-product-grid"></div>
+        </section>
+        <section>
+          <div class="z-section-heading"><h2>${language()==="sw"?"Smart Hybrid — Imependekezwa kwako":"Smart Hybrid — Recommended for You"}</h2></div>
+          <div id="z-product-area">${homeState.products.length?`<div class="z-product-grid">${homeState.products.map(productCard).join("")}</div>`:""}</div>
+          <div class="z-load-status" id="z-load-status"></div><div id="z-scroll-trigger"></div>
         </section>
 
       </main>
@@ -1811,6 +1781,7 @@ function bindHomeEvents() {
   bindCarouselEvents();
   startCarouselAutoplay();
   document.querySelector("[data-open-categories]")?.addEventListener("click", () => renderMarketplacePage("explore"));
+  document.querySelector("[data-view-all-products]")?.addEventListener("click",()=>renderMarketplacePage("explore"));
 
   document.querySelector("[data-open-notifications]")?.addEventListener("click",()=>{
     window.dispatchEvent(new CustomEvent("zune:open-notifications"));
