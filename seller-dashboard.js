@@ -23,7 +23,7 @@ const sections = [
   ["settings","⚙","Mipangilio","Settings","MSAADA NA MIPANGILIO"]
 ];
 
-const state = { section:"overview", sidebarCollapsed:false, sidebarOpen:false, salesPeriod:"7d", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], adsEvents:[], conversations:[], activeConversationId:null, chatMessages:[], notifications:[], supportTickets:[], messagesLoadedFor:null, notificationsLoadedFor:null, supportLoadedFor:null, messagesLoading:false, notificationsLoading:false, supportLoading:false, loading:false, busy:false, error:"" };
+const state = { section:"overview", sidebarCollapsed:false, sidebarOpen:false, salesPeriod:"7d", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], adsEvents:[], conversations:[], activeConversationId:null, chatMessages:[], notifications:[], customers:[], customersLoading:false, customersLoadedFor:null, supportTickets:[], messagesLoadedFor:null, notificationsLoadedFor:null, supportLoadedFor:null, messagesLoading:false, notificationsLoading:false, supportLoading:false, loading:false, busy:false, error:"" };
 const tr = (sw,en) => state.language==="sw"?sw:en;
 const esc = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = value => new Intl.NumberFormat("sw-TZ",{style:"currency",currency:"TZS",maximumFractionDigits:0}).format(Number(value)||0);
@@ -353,6 +353,39 @@ async function loadAdsData(){
  state.adsPackages=packages.data||[];state.adsCampaigns=campaigns.data||[];state.adsWallet=wallet.data||null;state.adsTransactions=transactions.data||[];
 }
 
+function renderCustomers(){
+ const rows=state.customers||[];
+ const total=rows.reduce((sum,x)=>sum+Number(x.orders_count||0),0);
+ return `<section class="zsd-card"><div class="zsd-chat-heading"><div><h2>${tr("Wateja wa duka","Store customers")}</h2><p class="zsd-muted">${tr("Wateja waliowahi kuagiza bidhaa zako.","Customers who have ordered your products.")}</p></div><button class="zsd-btn" type="button" id="zsd-refresh-customers">${tr("Onyesha upya","Refresh")}</button></div><div class="zsd-customer-stats"><article><small>${tr("Wateja","Customers")}</small><strong>${rows.length}</strong></article><article><small>${tr("Oda zilizowekwa","Orders placed")}</small><strong>${total}</strong></article></div><div class="zsd-table-wrap"><table class="zsd-table"><thead><tr><th>${tr("Mteja","Customer")}</th><th>${tr("Oda","Orders")}</th><th>${tr("Mara ya mwisho","Last order")}</th></tr></thead><tbody>${rows.map(x=>`<tr><td><strong>${esc(x.name||tr("Mteja wa ZUNE","ZUNE Customer"))}</strong><small>${esc(x.phone||"")}</small></td><td>${Number(x.orders_count)||0}</td><td>${x.last_order?new Date(x.last_order).toLocaleDateString(state.language==="sw"?"sw-TZ":"en-TZ"):"—"}</td></tr>`).join("")||`<tr><td colspan="3"><div class="zsd-empty">${tr("Bado hakuna wateja wenye oda.","No customers with orders yet.")}</div></td></tr>`}</tbody></table></div></section>`;
+}
+async function loadSellerCustomers(){
+ const user=window.__zuneSellerUser;if(!user?.id||state.customersLoading)return;
+ state.customersLoading=true;
+ try{
+  const {data,error}=await supabase.from("order_items").select("order_id").eq("seller_id",user.id).limit(2000);
+  if(error)throw error;
+  const ids=[...new Set((data||[]).map(x=>x.order_id).filter(Boolean))];
+  if(!ids.length){state.customers=[];return;}
+  const ordersResult=await supabase.from("orders").select("id,buyer_id,created_at").in("id",ids);
+  if(ordersResult.error)throw ordersResult.error;
+  const byBuyer=new Map();
+  for(const order of ordersResult.data||[]){
+   if(!order.buyer_id)continue;
+   const item=byBuyer.get(order.buyer_id)||{id:order.buyer_id,orders_count:0,last_order:null};
+   item.orders_count++;
+   if(!item.last_order||new Date(order.created_at)>new Date(item.last_order))item.last_order=order.created_at;
+   byBuyer.set(order.buyer_id,item);
+  }
+  const buyers=[...byBuyer.values()];
+  if(!buyers.length){state.customers=[];return;}
+  const profiles=await supabase.from("profiles").select("id,full_name,phone_number").in("id",buyers.map(x=>x.id));
+  if(profiles.error)throw profiles.error;
+  const lookup=new Map((profiles.data||[]).map(x=>[x.id,x]));
+  state.customers=buyers.map(x=>({...x,name:lookup.get(x.id)?.full_name||tr("Mteja wa ZUNE","ZUNE Customer"),phone:lookup.get(x.id)?.phone_number||""})).sort((a,b)=>new Date(b.last_order)-new Date(a.last_order));
+  state.customersLoadedFor=user.id;
+ }catch(error){console.error("ZUNE seller customers:",error);state.error=error.message||"Customers could not be loaded.";}
+ finally{state.customersLoading=false;if(state.section==="customers")renderPanel();}
+}
 function renderMessages(){
  const active=state.conversations.find(x=>x.id===state.activeConversationId)||null;
  const conversations=state.conversations.map(item=>{
@@ -450,12 +483,14 @@ function renderPlaceholder(){
 }
 function renderPanel(){
  const panel=document.getElementById("zsd-panel"); if(!panel)return;
- panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"||state.section==="add-product"?renderProducts():state.section==="orders"?renderOrders():state.section==="inventory"?renderInventory():state.section==="analytics"?renderAnalyticsPage():state.section==="product-performance"?renderProductPerformance():state.section==="finance"||state.section==="transactions"||state.section==="withdrawals"?renderFinance():state.section==="store"?renderStore():state.section==="verification"?renderVerification():state.section==="marketing"?renderMarketing():state.section==="messages"?renderMessages():state.section==="notifications"?renderNotifications():state.section==="support"?renderSupport():renderPlaceholder();
+ panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"||state.section==="add-product"?renderProducts():state.section==="orders"?renderOrders():state.section==="inventory"?renderInventory():state.section==="analytics"?renderAnalyticsPage():state.section==="product-performance"?renderProductPerformance():state.section==="finance"||state.section==="transactions"||state.section==="withdrawals"?renderFinance():state.section==="store"?renderStore():state.section==="verification"?renderVerification():state.section==="marketing"?renderMarketing():state.section==="customers"?renderCustomers():state.section==="messages"?renderMessages():state.section==="notifications"?renderNotifications():state.section==="support"?renderSupport():renderPlaceholder();
  const pageTitle=document.getElementById("zsd-page-title");if(pageTitle){const item=sections.find(x=>x[0]===state.section);pageTitle.textContent=item?tr(item[2],item[3]):tr("Muhtasari wa Biashara","Business Overview");}
  panel.querySelectorAll("[data-zsd-section]").forEach(b=>b.addEventListener("click",()=>{state.section=b.dataset.zsdSection;state.sidebarOpen=false;renderPanel();bindActiveNav();}));
  panel.querySelectorAll("[data-zsd-period]").forEach(b=>b.addEventListener("click",()=>{state.salesPeriod=b.dataset.zsdPeriod;renderPanel();bindActiveNav();}));
  panel.querySelector("#zsd-verification-form")?.addEventListener("submit",submitVerification);
  panel.querySelector("#zsd-chat-form")?.addEventListener("submit",sendSellerMessage);
+ panel.querySelector("#zsd-refresh-customers")?.addEventListener("click",()=>loadSellerCustomers());
+ if(state.section==="customers"&&!state.customersLoadedFor&&!state.customersLoading)loadSellerCustomers();
  panel.querySelector("#zsd-support-form")?.addEventListener("submit",submitSellerSupport);
  panel.querySelector("#zsd-refresh-support")?.addEventListener("click",()=>loadSellerSupport(true));
  if(state.section==="support"&&state.supportLoadedFor!==window.__zuneSellerUser?.id&&!state.supportLoading)loadSellerSupport();
