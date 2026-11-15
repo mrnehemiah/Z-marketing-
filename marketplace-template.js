@@ -70,7 +70,7 @@ async function apply(){
  let template="classic";
  try{
   const {data:{user}}=await supabase.auth.getUser();
-  if(user?.id)template=localStorage.getItem("zune_template_customer:"+user.id)||user.user_metadata?.zune_template_customer||"classic";
+  if(user?.id)template=user.user_metadata?.zune_template_customer||localStorage.getItem("zune_template_customer:"+user.id)||"classic";
  }catch(error){console.warn("ZUNE customer template:",error);}
  if(!templates.includes(template))template="classic";
  const p=palettes[template];
