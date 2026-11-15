@@ -38,10 +38,11 @@ DECLARE
  v_seller_location uuid;
 BEGIN
  IF v_buyer IS NULL THEN RAISE EXCEPTION 'Tafadhali ingia kwanza.'; END IF;
+ IF p_address IS NULL OR jsonb_typeof(p_address) <> 'object' THEN RAISE EXCEPTION 'Anwani ya kufikishiwa si sahihi.'; END IF;
  IF p_idempotency_key IS NULL OR length(trim(p_idempotency_key)) < 12 OR length(p_idempotency_key) > 120 THEN
   RAISE EXCEPTION 'Checkout reference si sahihi.';
  END IF;
- IF jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) < 1 OR jsonb_array_length(p_items) > 50 THEN
+ IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) < 1 OR jsonb_array_length(p_items) > 50 THEN
   RAISE EXCEPTION 'Kikapu hakina bidhaa sahihi.';
  END IF;
  v_recipient := trim(coalesce(p_address->>'recipient_name',''));
@@ -188,7 +189,8 @@ DECLARE
  v_fee numeric; v_delivery numeric:=0; v_country text; v_region text; v_district text;
 BEGIN
  IF v_buyer IS NULL THEN RAISE EXCEPTION 'Tafadhali ingia kwanza.'; END IF;
- IF jsonb_typeof(p_items)<>'array' OR jsonb_array_length(p_items)<1 OR jsonb_array_length(p_items)>50 THEN RAISE EXCEPTION 'Kikapu hakina bidhaa sahihi.'; END IF;
+ IF p_address IS NULL OR jsonb_typeof(p_address) <> 'object' THEN RAISE EXCEPTION 'Anwani ya kufikishiwa si sahihi.'; END IF;
+ IF p_items IS NULL OR jsonb_typeof(p_items)<>'array' OR jsonb_array_length(p_items)<1 OR jsonb_array_length(p_items)>50 THEN RAISE EXCEPTION 'Kikapu hakina bidhaa sahihi.'; END IF;
  v_country:=trim(coalesce(p_address->>'country',''));v_region:=trim(coalesce(p_address->>'region',''));v_district:=trim(coalesce(p_address->>'district',''));
  IF v_country='' OR v_region='' OR v_district='' THEN RETURN jsonb_build_object('ready',false,'message','Jaza nchi, mkoa na wilaya ili kukokotoa delivery.'); END IF;
  FOR v_item IN SELECT value FROM jsonb_array_elements(p_items) LOOP
