@@ -23,7 +23,7 @@ const sections = [
   ["settings","⚙","Mipangilio","Settings","MSAADA NA MIPANGILIO"]
 ];
 
-const state = { section:"overview", sidebarCollapsed:false, sidebarOpen:false, salesPeriod:"7d", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], orderDeliveries:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], adsEvents:[], conversations:[], activeConversationId:null, chatMessages:[], notifications:[], customers:[], customersLoading:false, customersLoadedFor:null, supportTickets:[], sellerLocations:[], locationsLoadedFor:null, editingLocationId:null, withdrawalRequests:[], withdrawalsLoadedFor:null, withdrawalsLoading:false, messagesLoadedFor:null, notificationsLoadedFor:null, supportLoadedFor:null, messagesLoading:false, notificationsLoading:false, supportLoading:false, loading:false, busy:false, error:"" };
+const state = { section:"overview", sidebarCollapsed:false, sidebarOpen:false, salesPeriod:"7d", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], orderDeliveries:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], adsEvents:[], conversations:[], activeConversationId:null, chatMessages:[], notifications:[], customers:[], customersLoading:false, customersLoadedFor:null, supportTickets:[], sellerLocations:[], locationsLoadedFor:null, editingLocationId:null, withdrawalRequests:[], withdrawalsLoadedFor:null, withdrawalsLoading:false, messagesLoadedFor:null, notificationsLoadedFor:null, supportLoadedFor:null, messagesLoading:false, notificationsLoading:false, supportLoading:false, reviews:[], reviewsLoading:false, reviewsLoadedFor:null, loading:false, busy:false, error:"" };
 const tr = (sw,en) => state.language==="sw"?sw:en;
 const esc = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = value => new Intl.NumberFormat("sw-TZ",{style:"currency",currency:"TZS",maximumFractionDigits:0}).format(Number(value)||0);
@@ -560,19 +560,81 @@ function renderSettings(){
  const current=localStorage.getItem("zune_theme")||"emerald",user=window.__zuneSellerUser;
  return `<section class="zsd-card"><h2>${tr("Mapendeleo ya Seller Center","Seller Center preferences")}</h2><p class="zsd-muted">${tr("Badilisha rangi ya dashboard na lugha. Theme hii inatumika pia kwenye Marketplace ili mwonekano ubaki thabiti kwenye akaunti yako.","Change the dashboard color theme and language. The selected theme is shared with the Marketplace so your account has a consistent appearance.")}</p><div class="zsd-setting-row"><div><strong>${tr("Lugha","Language")}</strong><small>${tr("Chagua lugha ya dashboard","Choose dashboard language")}</small></div><button class="zsd-btn" id="zsd-settings-language" type="button">${state.language==="sw"?"Kiswahili / English":"English / Kiswahili"}</button></div><div class="zsd-setting-row"><div><strong>${tr("Muonekano / Theme","Appearance / Theme")}</strong><small>${tr("Chagua rangi unayopendelea","Choose your preferred color theme")}</small></div></div><div class="zsd-theme-grid">${themes.map(([id,name,color])=>`<button class="zsd-theme-option ${current===id?"active":""}" type="button" data-seller-theme="${id}" aria-pressed="${current===id}"><i style="background:${color}"></i><span>${name}</span>${current===id?"✓":""}</button>`).join("")}</div><p id="zsd-settings-message" class="zsd-muted" role="status"></p></section><section class="zsd-card"><h2>${tr("Taarifa za akaunti","Account information")}</h2><p><strong>${esc(state.profile?.full_name||user?.email||"Seller")}</strong></p><p class="zsd-muted">${esc(user?.email||"")} · ${tr("Wasifu na nenosiri hubadilishwa kwenye Mipangilio ya Akaunti.","Profile and password are managed in Account Settings.")}</p><a class="zsd-btn" href="./settings.html">${tr("Fungua Mipangilio ya Akaunti","Open Account Settings")}</a></section>`;
 }
+async function loadSellerReviews(force=false){
+ const user=window.__zuneSellerUser;
+ if(!user?.id||state.reviewsLoading||(!force&&state.reviewsLoadedFor===user.id))return;
+ state.reviewsLoading=true;
+ try{
+  const {data,error}=await supabase.from("product_reviews").select("id,product_id,buyer_id,order_id,rating,review_text,moderation_status,is_visible,created_at,products!inner(id,title,vendor_id)").eq("products.vendor_id",user.id).order("created_at",{ascending:false}).limit(100);
+  if(error)throw error;
+  state.reviews=data||[];state.reviewsLoadedFor=user.id;
+ }catch(error){console.error("ZUNE seller reviews:",error);state.error=error.message||tr("Imeshindikana kupakia maoni.","Could not load reviews.");}
+ finally{state.reviewsLoading=false;if(state.section==="reviews")renderPanel();}
+}
+function renderReviews(){
+ const rows=state.reviews||[],visible=rows.filter(r=>r.moderation_status==="approved"&&r.is_visible);
+ const average=visible.length?visible.reduce((sum,r)=>sum+Number(r.rating||0),0)/visible.length:0;
+ const productName=r=>{const p=Array.isArray(r.products)?r.products[0]:r.products;return p?.title||tr("Bidhaa ya duka lako","Your store product");};
+ const items=rows.map(r=>{
+  const rating=Math.max(0,Math.min(5,Number(r.rating)||0));
+  const product=esc(productName(r)),comment=esc(r.review_text||tr("Hakuna maelezo yaliyoandikwa.","No written comment."));
+  const status=esc(String(r.moderation_status||"pending").replaceAll("_"," "));
+  const date=r.created_at?new Date(r.created_at).toLocaleDateString(state.language==="sw"?"sw-TZ":"en-TZ"):"—";
+  return '<article class="zsd-review-item"><div class="zsd-review-head"><strong>'+product+'</strong><span class="zsd-review-rating" aria-label="'+rating+' out of 5">'+"★".repeat(rating)+'<span>'+"☆".repeat(5-rating)+'</span></span></div><p>'+comment+'</p><div class="zsd-review-meta"><span>'+date+'</span><span class="zsd-pill '+(r.moderation_status==="approved"&&r.is_visible?"green":r.moderation_status==="rejected"?"orange":"blue")+'">'+status+'</span></div></article>';
+ }).join("");
+ return '<section class="zsd-stats zsd-review-stats"><article class="zsd-stat"><small>'+tr("Wastani wa alama","Average rating")+'</small><strong>'+(visible.length?average.toFixed(1)+" / 5":"—")+'</strong><span class="zsd-stat-desc">'+tr("Maoni yaliyoidhinishwa","Approved reviews")+'</span></article><article class="zsd-stat"><small>'+tr("Maoni yote","All reviews")+'</small><strong>'+rows.length+'</strong><span class="zsd-stat-desc">'+tr("Yaliyopo kwenye bidhaa zako","Across your products")+'</span></article><article class="zsd-stat"><small>'+tr("Yanasubiri","Pending moderation")+'</small><strong>'+rows.filter(r=>r.moderation_status==="pending").length+'</strong><span class="zsd-stat-desc">'+tr("Yanasubiri ukaguzi wa Admin","Awaiting Admin review")+'</span></article></section>'+
+ '<section class="zsd-card"><div class="zsd-row"><div><h2>'+tr("Maoni ya wateja","Customer reviews")+'</h2><p class="zsd-muted">'+tr("Maoni ya bidhaa zako. Ni maoni yaliyoidhinishwa tu yanayoonekana kwa umma.","Reviews for your products. Only approved reviews are public.")+'</p></div><button class="zsd-btn" id="zsd-refresh-reviews" type="button">'+tr("Onyesha upya","Refresh")+'</button></div>'+
+ (state.reviewsLoading?'<div class="zsd-empty">'+tr("Inapakia maoni...","Loading reviews...")+'</div>':items||'<div class="zsd-empty">'+tr("Bado hakuna maoni ya bidhaa zako.","There are no reviews for your products yet.")+'</div>')+'</section>';
+}
+async function saveSellerDiscount(event){
+ event.preventDefault();
+ const form=event.currentTarget,button=form.querySelector("button[type=submit]"),message=form.querySelector("#zsd-discount-message");
+ const user=window.__zuneSellerUser,fd=new FormData(form),productId=String(fd.get("product_id")||"");
+ const percent=Number(fd.get("discount_percent"));
+ if(!user?.id||!productId||!Number.isFinite(percent)||percent<0||percent>100){if(message)message.textContent=tr("Chagua bidhaa na weka punguzo kati ya 0 na 100.","Choose a product and enter a discount from 0 to 100.");return;}
+ if(button){button.disabled=true;button.textContent=tr("Inahifadhi...","Saving...");}
+ try{
+  const {data,error}=await supabase.from("products").update({discount_percent:percent,is_deal:percent>0}).eq("id",productId).eq("vendor_id",user.id).select("id").maybeSingle();
+  if(error)throw error;
+  if(!data)throw new Error(tr("Bidhaa haikupatikana au huna ruhusa ya kuibadili.","Product not found or you are not allowed to update it."));
+  const item=state.products.find(p=>String(p.id)===productId);if(item){item.discount_percent=percent;item.is_deal=percent>0;}
+  renderPanel();
+  const next=document.getElementById("zsd-discount-message");if(next)next.textContent=tr("Punguzo limehifadhiwa na litaonekana sokoni.","Discount saved and will appear in the marketplace.");
+ }catch(error){if(message)message.textContent=error.message||tr("Imeshindikana kuhifadhi punguzo.","Could not save discount.");}
+ finally{if(button){button.disabled=false;button.textContent=tr("Hifadhi punguzo","Save discount");}}
+}
+
+function renderPromotions(){
+ const campaigns=state.adsCampaigns||[];
+ const active=campaigns.filter(x=>x.status==="active"||x.status==="approved");
+ const pending=campaigns.filter(x=>x.status==="pending_review");
+ const products=state.products||[];
+ const productOptions=products.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.title)+'</option>').join("");
+ const discounted=products.filter(p=>Number(p.discount_percent)>0);
+ const items=campaigns.map(x=>'<div class="zsd-review-item"><div class="zsd-review-head"><strong>'+esc(x.title||tr("Kampeni bila jina","Untitled campaign"))+'</strong><span class="zsd-pill blue">'+esc(String(x.status||"pending").replaceAll("_"," "))+'</span></div><p>'+esc(x.placement||"—")+' · '+money(x.budget_tzs||0)+'</p><div class="zsd-review-meta"><span>'+(x.starts_at?new Date(x.starts_at).toLocaleDateString():"—")+'</span><span>'+(x.ends_at?new Date(x.ends_at).toLocaleDateString():"—")+'</span></div></div>').join("");
+ return '<section class="zsd-stats"><article class="zsd-stat"><small>'+tr("Kampeni zote","All campaigns")+'</small><strong>'+campaigns.length+'</strong></article><article class="zsd-stat"><small>'+tr("Zinazoendelea","Running")+'</small><strong>'+active.length+'</strong></article><article class="zsd-stat"><small>'+tr("Zinasubiri review","Pending review")+'</small><strong>'+pending.length+'</strong></article></section>'+
+ '<section class="zsd-card"><div class="zsd-section-kicker">PRODUCT DEALS</div><h2>'+tr("Weka punguzo la bidhaa","Set product discounts")+'</h2><p class="zsd-muted">'+tr("Punguzo hili linaunganishwa na bidhaa yako na litaonekana kwenye kadi za bidhaa sokoni. Weka 0 kuondoa punguzo.","This discount is applied to your product and shown on marketplace product cards. Set 0 to remove a discount.")+'</p>'+(products.length?'<form id="zsd-discount-form" class="zsd-form"><label class="zsd-full">'+tr("Bidhaa","Product")+'<select name="product_id" required><option value="">'+tr("Chagua bidhaa","Select a product")+'</option>'+productOptions+'</select></label><label>'+tr("Punguzo (%)","Discount (%)")+'<input name="discount_percent" type="number" min="0" max="100" step="1" value="10" required></label><div class="zsd-full"><p id="zsd-discount-message" class="zsd-muted" role="status"></p><button class="zsd-btn primary" type="submit">'+tr("Hifadhi punguzo","Save discount")+'</button></div></form>':'<div class="zsd-empty">'+tr("Ongeza bidhaa kwanza ili kuweka punguzo.","Add a product before creating a discount.")+'</div>')+(discounted.length?'<h3 style="margin-top:18px">'+tr("Bidhaa zenye punguzo","Discounted products")+'</h3>'+discounted.map(p=>'<div class="zsd-review-item"><div class="zsd-review-head"><strong>'+esc(p.title)+'</strong><span class="zsd-pill green">-'+Number(p.discount_percent)+'%</span></div><p>'+money(p.price)+' · '+tr("Punguzo limewashwa","Deal enabled")+'</p></div>').join(""):'')+'</section>'+
+ '<section class="zsd-card"><div class="zsd-section-kicker">ZUNE ADS</div><h2>'+tr("Matangazo yanayolipiwa","Paid advertising campaigns")+'</h2><p class="zsd-muted">'+tr("Tengeneza Sponsored Store au Sponsored Product kupitia Ads & Marketing. Kampeni zitapitiwa na Admin Mkuu.","Create Sponsored Store or Sponsored Product campaigns in Ads & Marketing. Campaigns are reviewed by Admin Mkuu.")+'</p><button class="zsd-btn primary" type="button" data-zsd-section="marketing">'+tr("Fungua Ads & Marketing","Open Ads & Marketing")+' →</button></section>'+
+ '<section class="zsd-card"><h2>'+tr("Historia ya kampeni","Campaign history")+'</h2>'+(items||'<div class="zsd-empty">'+tr("Bado hujatengeneza kampeni.","You have not created a campaign yet.")+'</div>')+'</section>';
+}
+
 function renderPlaceholder(){
  const names=sections.find(s=>s[0]===state.section);
  return `<section class="zsd-card"><h2>${tr(names[2],names[3])}</h2><p class="zsd-muted">${tr("Sehemu hii imeongezwa kwenye muundo wa dashboard. Itaunganishwa na jedwali na ruhusa sahihi za Supabase kabla ya kuanza kutumia data halisi.","This section is included in the dashboard structure. It will be connected to the correct Supabase tables and permissions before handling live data.")}</p><div class="zsd-empty">${tr("Inaandaliwa — hakuna data ya majaribio iliyowekwa.","In preparation — no sample data has been inserted.")}</div></section>`;
 }
 function renderPanel(){
  const panel=document.getElementById("zsd-panel"); if(!panel)return;
- panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"||state.section==="add-product"?renderProducts():state.section==="orders"?renderOrders():state.section==="inventory"?renderInventory():state.section==="analytics"?renderAnalyticsPage():state.section==="product-performance"?renderProductPerformance():state.section==="finance"||state.section==="transactions"?renderFinance():state.section==="withdrawals"?renderWithdrawals():state.section==="store"?renderStore():state.section==="verification"?renderVerification():state.section==="marketing"?renderMarketing():state.section==="customers"?renderCustomers():state.section==="messages"?renderMessages():state.section==="notifications"?renderNotifications():state.section==="support"?renderSupport():state.section==="settings"?renderSettings():renderPlaceholder();
+ panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"||state.section==="add-product"?renderProducts():state.section==="orders"?renderOrders():state.section==="inventory"?renderInventory():state.section==="analytics"?renderAnalyticsPage():state.section==="product-performance"?renderProductPerformance():state.section==="finance"||state.section==="transactions"?renderFinance():state.section==="withdrawals"?renderWithdrawals():state.section==="store"?renderStore():state.section==="verification"?renderVerification():state.section==="marketing"?renderMarketing():state.section==="customers"?renderCustomers():state.section==="messages"?renderMessages():state.section==="notifications"?renderNotifications():state.section==="reviews"?renderReviews():state.section==="promotions"?renderPromotions():state.section==="support"?renderSupport():state.section==="settings"?renderSettings():renderPlaceholder();
  const pageTitle=document.getElementById("zsd-page-title");if(pageTitle){const item=sections.find(x=>x[0]===state.section);pageTitle.textContent=item?tr(item[2],item[3]):tr("Muhtasari wa Biashara","Business Overview");}
  panel.querySelectorAll("[data-zsd-section]").forEach(b=>b.addEventListener("click",()=>{state.section=b.dataset.zsdSection;state.sidebarOpen=false;renderPanel();bindActiveNav();}));
  panel.querySelectorAll("[data-zsd-period]").forEach(b=>b.addEventListener("click",()=>{state.salesPeriod=b.dataset.zsdPeriod;renderPanel();bindActiveNav();}));
  panel.querySelector("#zsd-verification-form")?.addEventListener("submit",submitVerification);
  panel.querySelector("#zsd-chat-form")?.addEventListener("submit",sendSellerMessage);
  panel.querySelector("#zsd-refresh-customers")?.addEventListener("click",()=>loadSellerCustomers());
+ panel.querySelector("#zsd-discount-form")?.addEventListener("submit",saveSellerDiscount);
+ panel.querySelector("#zsd-refresh-reviews")?.addEventListener("click",()=>loadSellerReviews(true));
+ if(state.section==="reviews"&&state.reviewsLoadedFor!==window.__zuneSellerUser?.id&&!state.reviewsLoading)loadSellerReviews();
+ if(state.section==="promotions"&&!state.adsCampaigns.length)loadAdsData();
  if(state.section==="customers"&&!state.customersLoadedFor&&!state.customersLoading)loadSellerCustomers();
  panel.querySelector("#zsd-support-form")?.addEventListener("submit",submitSellerSupport);
  panel.querySelector("#zsd-refresh-support")?.addEventListener("click",()=>loadSellerSupport(true));

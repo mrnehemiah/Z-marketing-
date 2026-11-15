@@ -1157,7 +1157,7 @@ async function loadProducts(reset = false) {
       try {
         const { data: stores, error: storesError } = await supabase
           .from("stores")
-          .select("owner_id,store_name,verification_status,logo_url,description,phone,email,website,region,district,address")
+          .select("owner_id,store_name,verification_status,logo_url,description,phone,email,website,region,district,address,storefront_template")
           .in("owner_id", vendorIds);
         if (storesError) throw storesError;
         const storeByOwner = new Map((stores || []).map(store => [String(store.owner_id), store]));
@@ -1240,7 +1240,7 @@ async function loadSponsoredCampaigns() {
     let stores = [], profiles = [];
     if (vendorIds.length) {
       const [storeResult, profileResult] = await Promise.all([
-        supabase.from("stores").select("owner_id,store_name,verification_status,logo_url,description,phone,email,website,region,district,address").in("owner_id", vendorIds),
+        supabase.from("stores").select("owner_id,store_name,verification_status,logo_url,description,phone,email,website,region,district,address,storefront_template").in("owner_id", vendorIds),
         supabase.from("profiles").select("id,is_verified,role").in("id", vendorIds)
       ]);
       if (!storeResult.error) stores = storeResult.data || [];
@@ -1459,7 +1459,7 @@ function openStoreDetails(ownerId, product = null) {
   }
 
   Promise.all([
-    supabase.from("stores").select("owner_id,store_name,verification_status,logo_url,description,phone,email,website,region,district,address").eq("owner_id",ownerId).maybeSingle(),
+    supabase.from("stores").select("owner_id,store_name,verification_status,logo_url,description,phone,email,website,region,district,address,storefront_template").eq("owner_id",ownerId).maybeSingle(),
     supabase.from("profiles").select("id,is_verified").eq("id",ownerId).maybeSingle(),
     supabase.from("products").select("*").eq("vendor_id",ownerId).order("created_at",{ascending:false}).limit(24)
   ]).then(([storeResult,profileResult,productsResult])=>{
@@ -1471,7 +1471,7 @@ function openStoreDetails(ownerId, product = null) {
     const products=productsResult.error?[]:(productsResult.data||[]);
     const templateKey="zune_template_store:"+ownerId;
     let selectedTemplate="classic";
-    try{selectedTemplate=localStorage.getItem(templateKey)||"classic";}catch(_){}
+    try{selectedTemplate=store?.storefront_template||localStorage.getItem(templateKey)||"classic";}catch(_){}
     const allowed=["classic","editorial","hero","compact","boutique","catalog","stories","minimal","deals","showcase"];
     const template=allowed.includes(selectedTemplate)?selectedTemplate:"classic";
     const sheet=overlay.querySelector(".z-storefront-sheet");
