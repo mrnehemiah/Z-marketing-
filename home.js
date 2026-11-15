@@ -1518,6 +1518,7 @@ function openProductDetails(product) {
         ${product.category ? `<p class="z-detail-category">${safe(product.category)}</p>` : ""}
         ${stock !== null ? `<p class="z-detail-stock">${stock > 0 ? (language()==="sw" ? "Stock iliyopo: " : "Available stock: ") + stock : (language()==="sw" ? "Bidhaa imeisha stock" : "Out of stock")}</p>` : ""}
         <button type="button" class="z-primary-button z-detail-add" ${stock !== null && stock <= 0 ? "disabled" : ""}>${tx("addCart")}</button>
+        ${product.vendor_id && String(product.vendor_id)!==String(homeState.user?.id) ? `<button type="button" class="z-primary-button z-detail-message" style="margin-top:9px;background:transparent;color:var(--primary);border:1px solid var(--border)">${language()==="sw"?"Wasiliana na Seller":"Message Seller"}</button>` : ""}
       </div>
     </section>`;
   document.body.appendChild(overlay);
@@ -1526,11 +1527,60 @@ function openProductDetails(product) {
   overlay.querySelector(".z-detail-close")?.addEventListener("click", close);
   overlay.querySelector("[data-open-store]")?.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();openStoreDetails(event.currentTarget.dataset.openStore,product);});
   overlay.querySelector(".z-detail-add")?.addEventListener("click", () => {
-    addToCart(String(product.id));
+    addToCart(String(product.id),product);
     close();
   });
+  overlay.querySelector(".z-detail-message")?.addEventListener("click",()=>openBuyerSellerChat(product));
   const onKey = event => { if (event.key === "Escape") { close(); document.removeEventListener("keydown", onKey); } };
   document.addEventListener("keydown", onKey);
+}
+
+async function openBuyerSellerChat(product){
+ const user=homeState.user, sellerId=product?.vendor_id;
+ if(!user?.id||!sellerId)return;
+ if(String(user.id)===String(sellerId))return;
+ document.getElementById("z-buyer-chat-overlay")?.remove();
+ const overlay=document.createElement("div");overlay.id="z-buyer-chat-overlay";overlay.className="z-product-detail-overlay";
+ overlay.innerHTML=`<section class="z-product-detail-sheet z-buyer-chat-sheet" role="dialog" aria-modal="true" aria-label="Seller messages"><button type="button" class="z-detail-close" aria-label="Close">×</button><div class="z-detail-content"><span class="z-account-eyebrow">${language()==="sw"?"MAZUNGUMZO YA BIDHAA":"PRODUCT CONVERSATION"}</span><h2>${safe(product.title||tx("emptyName"))}</h2><p class="z-product-location">${language()==="sw"?"Unazungumza na":"Chatting with"} ${safe(product.__zuneStore?.store_name||product.store_name||"ZUNE Seller")}</p><div id="z-buyer-chat-history" class="z-buyer-chat-history"><p>${language()==="sw"?"Inafungua mazungumzo...":"Opening conversation..."}</p></div><form id="z-buyer-chat-form" class="z-buyer-chat-compose"><textarea name="message" maxlength="4000" required placeholder="${language()==="sw"?"Andika ujumbe kwa Seller...":"Write a message to the Seller..."}"></textarea><button type="submit" class="z-primary-button">${language()==="sw"?"Tuma":"Send"} →</button></form></div></section>`;
+ document.body.appendChild(overlay);
+ const close=()=>{overlay.remove();document.removeEventListener("keydown",onKey);};
+ const onKey=event=>{if(event.key==="Escape")close();};
+ overlay.addEventListener("click",event=>{if(event.target===overlay)close();});
+ overlay.querySelector(".z-detail-close")?.addEventListener("click",close);
+ document.addEventListener("keydown",onKey);
+ if(!document.getElementById("zuneBuyerChatStyles")){
+  const style=document.createElement("style");style.id="zuneBuyerChatStyles";style.textContent=`.z-buyer-chat-sheet{max-width:620px}.z-buyer-chat-history{display:flex;flex-direction:column;gap:9px;max-height:48vh;min-height:180px;overflow:auto;padding:12px;background:var(--background,#f5f8f6);border:1px solid var(--border);border-radius:14px}.z-buyer-chat-message{max-width:84%;align-self:flex-start;padding:9px 12px;border-radius:13px;background:var(--surface,#fff);overflow-wrap:anywhere}.z-buyer-chat-message.mine{align-self:flex-end;background:color-mix(in srgb,var(--primary) 14%,white)}.z-buyer-chat-message p{margin:0;font-size:13px;white-space:pre-wrap}.z-buyer-chat-message small{display:block;margin-top:5px;font-size:9px;color:var(--text-muted)}.z-buyer-chat-compose{display:flex;gap:9px;margin-top:12px}.z-buyer-chat-compose textarea{flex:1;min-width:0;min-height:44px;max-height:110px;padding:10px;border:1px solid var(--border);border-radius:12px;font:inherit}.z-buyer-chat-compose button{white-space:nowrap}@media(max-width:480px){.z-buyer-chat-compose{flex-direction:column}}`;
+  document.head.appendChild(style);
+ }
+ let conversationId=null;
+ const history=overlay.querySelector("#z-buyer-chat-history");
+ const renderMessages=rows=>{
+  history.innerHTML=rows.length?rows.map(message=>`<div class="z-buyer-chat-message ${message.sender_id===user.id?"mine":""}"><p>${safe(message.message)}</p><small>${new Date(message.created_at).toLocaleString(language()==="sw"?"sw-TZ":"en-TZ")}</small></div>`).join(""):'<p class="z-muted">'+(language()==="sw"?"Anza mazungumzo kwa kutuma ujumbe.":"Start the conversation by sending a message.")+'</p>';
+  history.scrollTop=history.scrollHeight;
+ };
+ const refresh=async()=>{
+  const result=await supabase.from("chat_messages").select("id,sender_id,message,is_read,created_at").eq("conversation_id",conversationId).order("created_at",{ascending:true}).limit(100);
+  if(result.error)throw result.error;
+  renderMessages(result.data||[]);
+  await supabase.from("chat_messages").update({is_read:true}).eq("conversation_id",conversationId).neq("sender_id",user.id).eq("is_read",false);
+ };
+ try{
+  let result=await supabase.from("chat_conversations").select("id").eq("buyer_id",user.id).eq("seller_id",sellerId).eq("product_id",product.id).maybeSingle();
+  if(result.error)throw result.error;
+  if(result.data)conversationId=result.data.id;
+  else{
+   result=await supabase.from("chat_conversations").insert({buyer_id:user.id,seller_id:sellerId,product_id:product.id}).select("id").single();
+   if(result.error)throw result.error;conversationId=result.data.id;
+  }
+  await refresh();
+  overlay.querySelector("#z-buyer-chat-form")?.addEventListener("submit",async event=>{
+   event.preventDefault();const form=event.currentTarget,message=String(new FormData(form).get("message")||"").trim(),button=form.querySelector("button[type=submit]");
+   if(!message||!conversationId||button.disabled)return;button.disabled=true;
+   try{const sent=await supabase.from("chat_messages").insert({conversation_id:conversationId,sender_id:user.id,message});if(sent.error)throw sent.error;form.reset();await refresh();}
+   catch(error){alert(error.message|| (language()==="sw"?"Ujumbe haukutumwa.":"Message could not be sent."));}
+   finally{button.disabled=false;}
+  });
+ }catch(error){console.error("ZUNE buyer-seller chat:",error);history.textContent=error.message||(language()==="sw"?"Imeshindikana kufungua mazungumzo.":"Unable to open this conversation.");}
 }
 
 // --------------------------------------------
@@ -1562,12 +1612,12 @@ function toggleSaved(productId) {
 // 12. ADD TO CART
 // --------------------------------------------
 
-function addToCart(productId) {
+function addToCart(productId, productOverride = null) {
   const id = String(productId);
 
-  const product = homeState.products.find(
-    item => String(item.id) === id
-  );
+  const product = productOverride && String(productOverride.id)===id
+    ? productOverride
+    : homeState.products.find(item => String(item.id) === id);
 
   if (!product) {
     alert(
