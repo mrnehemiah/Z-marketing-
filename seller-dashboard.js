@@ -23,7 +23,7 @@ const sections = [
   ["settings","⚙","Mipangilio","Settings","MSAADA NA MIPANGILIO"]
 ];
 
-const state = { section:"overview", sidebarCollapsed:false, sidebarOpen:false, salesPeriod:"7d", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], adsEvents:[], conversations:[], activeConversationId:null, chatMessages:[], notifications:[], messagesLoadedFor:null, notificationsLoadedFor:null, messagesLoading:false, notificationsLoading:false, loading:false, busy:false, error:"" };
+const state = { section:"overview", sidebarCollapsed:false, sidebarOpen:false, salesPeriod:"7d", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], adsEvents:[], conversations:[], activeConversationId:null, chatMessages:[], notifications:[], supportTickets:[], messagesLoadedFor:null, notificationsLoadedFor:null, supportLoadedFor:null, messagesLoading:false, notificationsLoading:false, supportLoading:false, loading:false, busy:false, error:"" };
 const tr = (sw,en) => state.language==="sw"?sw:en;
 const esc = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = value => new Intl.NumberFormat("sw-TZ",{style:"currency",currency:"TZS",maximumFractionDigits:0}).format(Number(value)||0);
@@ -399,6 +399,26 @@ async function sendSellerMessage(event){
  }catch(error){console.error("ZUNE send message:",error);alert(error.message||tr("Ujumbe haukutumwa. Jaribu tena.","Message was not sent. Please try again."));}
  finally{state.busy=false;if(button)button.disabled=false;}
 }
+function renderSupport(){
+ const rows=state.supportTickets.map(ticket=>`<article class="zsd-notification"><div><strong>${esc(ticket.category||tr("Msaada wa Seller","Seller support"))}</strong><p>${esc(ticket.message||"")}</p><small>${new Date(ticket.created_at).toLocaleString(state.language==="sw"?"sw-TZ":"en-TZ")} · ${esc(ticket.status||"open")}</small>${ticket.admin_reply?`<p><strong>${tr("Jibu la Admin","Admin reply")}:</strong> ${esc(ticket.admin_reply)}</p>`:""}</div><span class="zsd-pill blue">${esc(ticket.status||"open")}</span></article>`).join("");
+ return `<section class="zsd-card"><h2>${tr("Msaada wa Seller","Seller Support")}</h2><p class="zsd-muted">${tr("Tuma ombi kwa timu ya ZUNE na fuatilia majibu hapa.","Contact the ZUNE team and follow replies here.")}</p><form id="zsd-support-form" class="zsd-form"><label>${tr("Aina ya tatizo","Issue category")}<select name="category" required><option value="">${tr("Chagua aina","Choose a category")}</option><option value="account">${tr("Akaunti","Account")}</option><option value="products">${tr("Bidhaa na stock","Products and inventory")}</option><option value="orders">${tr("Oda na usafirishaji","Orders and delivery")}</option><option value="ads">${tr("Ads na matangazo","Ads and promotions")}</option><option value="wallet">${tr("Wallet na fedha","Wallet and finance")}</option><option value="other">${tr("Nyingine","Other")}</option></select></label><label class="zsd-full">${tr("Eleza changamoto yako","Describe your issue")}<textarea name="message" rows="4" maxlength="4000" required placeholder="${tr("Andika maelezo...","Write details...")}"></textarea></label><div class="zsd-full"><p id="zsd-support-message" class="zsd-muted" role="status"></p><button type="submit" class="zsd-btn primary">${tr("Tuma ombi la msaada","Submit support request")}</button></div></form><div class="zsd-chat-heading"><h3>${tr("Maombi yangu ya msaada","My support requests")}</h3><button class="zsd-btn" id="zsd-refresh-support" type="button">${tr("Onyesha upya","Refresh")}</button></div>${state.supportLoading?'<div class="zsd-empty">'+tr("Inapakia maombi...","Loading requests...")+'</div>':rows||'<div class="zsd-empty">'+tr("Bado hujatuma ombi la msaada.","You have not submitted a support request yet.")+'</div>'}</section>`;
+}
+async function loadSellerSupport(force=false){
+ const user=window.__zuneSellerUser;if(!user?.id||state.supportLoading)return;
+ if(!force&&state.supportLoadedFor===user.id)return;
+ state.supportLoading=true;
+ try{const {data,error}=await supabase.from("support_tickets").select("id,category,message,status,admin_reply,created_at,updated_at").eq("user_id",user.id).order("created_at",{ascending:false}).limit(50);if(error)throw error;state.supportTickets=data||[];state.supportLoadedFor=user.id;}
+ catch(error){console.error("ZUNE seller support:",error);state.error=error.message||"Support requests could not be loaded.";}
+ finally{state.supportLoading=false;if(state.section==="support")renderPanel();}
+}
+async function submitSellerSupport(event){
+ event.preventDefault();const form=event.currentTarget,values=new FormData(form),category=String(values.get("category")||"").trim(),message=String(values.get("message")||"").trim(),status=form.querySelector("#zsd-support-message"),button=form.querySelector("button[type=submit]");
+ if(!category||!message||state.busy)return;
+ state.busy=true;button.disabled=true;status.textContent=tr("Inatuma ombi...","Submitting request...");
+ try{const {error}=await supabase.from("support_tickets").insert({user_id:window.__zuneSellerUser.id,customer_name:state.profile?.full_name||window.__zuneSellerUser.email||"Seller",category,message});if(error)throw error;form.reset();await loadSellerSupport(true);}
+ catch(error){console.error("ZUNE support ticket:",error);status.textContent=error.message||tr("Imeshindikana kutuma ombi.","Could not submit request.");}
+ finally{state.busy=false;button.disabled=false;}
+}
 function renderNotifications(){
  const rows=state.notifications.map(item=>{
   const title=state.language==="sw"?(item.title_sw||item.title_en):(item.title_en||item.title_sw);
@@ -430,12 +450,15 @@ function renderPlaceholder(){
 }
 function renderPanel(){
  const panel=document.getElementById("zsd-panel"); if(!panel)return;
- panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"||state.section==="add-product"?renderProducts():state.section==="orders"?renderOrders():state.section==="inventory"?renderInventory():state.section==="analytics"?renderAnalyticsPage():state.section==="product-performance"?renderProductPerformance():state.section==="finance"||state.section==="transactions"||state.section==="withdrawals"?renderFinance():state.section==="store"?renderStore():state.section==="verification"?renderVerification():state.section==="marketing"?renderMarketing():state.section==="messages"?renderMessages():state.section==="notifications"?renderNotifications():renderPlaceholder();
+ panel.innerHTML=state.section==="overview"?renderOverview():state.section==="products"||state.section==="add-product"?renderProducts():state.section==="orders"?renderOrders():state.section==="inventory"?renderInventory():state.section==="analytics"?renderAnalyticsPage():state.section==="product-performance"?renderProductPerformance():state.section==="finance"||state.section==="transactions"||state.section==="withdrawals"?renderFinance():state.section==="store"?renderStore():state.section==="verification"?renderVerification():state.section==="marketing"?renderMarketing():state.section==="messages"?renderMessages():state.section==="notifications"?renderNotifications():state.section==="support"?renderSupport():renderPlaceholder();
  const pageTitle=document.getElementById("zsd-page-title");if(pageTitle){const item=sections.find(x=>x[0]===state.section);pageTitle.textContent=item?tr(item[2],item[3]):tr("Muhtasari wa Biashara","Business Overview");}
  panel.querySelectorAll("[data-zsd-section]").forEach(b=>b.addEventListener("click",()=>{state.section=b.dataset.zsdSection;state.sidebarOpen=false;renderPanel();bindActiveNav();}));
  panel.querySelectorAll("[data-zsd-period]").forEach(b=>b.addEventListener("click",()=>{state.salesPeriod=b.dataset.zsdPeriod;renderPanel();bindActiveNav();}));
  panel.querySelector("#zsd-verification-form")?.addEventListener("submit",submitVerification);
  panel.querySelector("#zsd-chat-form")?.addEventListener("submit",sendSellerMessage);
+ panel.querySelector("#zsd-support-form")?.addEventListener("submit",submitSellerSupport);
+ panel.querySelector("#zsd-refresh-support")?.addEventListener("click",()=>loadSellerSupport(true));
+ if(state.section==="support"&&state.supportLoadedFor!==window.__zuneSellerUser?.id&&!state.supportLoading)loadSellerSupport();
  panel.querySelectorAll("[data-open-chat]").forEach(button=>button.addEventListener("click",async()=>{state.activeConversationId=button.dataset.openChat;state.chatMessages=[];await loadSellerMessages(true);}));
  panel.querySelector("#zsd-refresh-messages")?.addEventListener("click",()=>loadSellerMessages(true));
  panel.querySelector("#zsd-read-all-notifications")?.addEventListener("click",()=>markSellerNotification());
