@@ -18,7 +18,7 @@ const sections = [
   ["assistant","✧","ZUNE AI","ZUNE AI"]
 ];
 
-const state = { section:"overview", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], loading:false, busy:false, error:"" };
+const state = { section:"overview", publishing:false, language:localStorage.getItem("zune_language")==="en"?"en":"sw", products:[], photos:[], orders:[], orderItems:[], wallet:null, ledger:[], store:null, badgeRequest:null, profile:null, adsPackages:[], adsCampaigns:[], adsWallet:null, adsTransactions:[], adsEvents:[], loading:false, busy:false, error:"" };
 const tr = (sw,en) => state.language==="sw"?sw:en;
 const esc = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = value => new Intl.NumberFormat("sw-TZ",{style:"currency",currency:"TZS",maximumFractionDigits:0}).format(Number(value)||0);
@@ -209,7 +209,7 @@ function renderMarketing(){
  const packageOptions=packages.map(p=>'<option value="'+esc(p.id)+'" data-campaign-type="'+esc(p.campaign_type)+'">'+esc(p.name)+' · '+money(p.price_tzs)+' · '+esc(p.duration_days)+' '+tr("siku","days")+'</option>').join("");
  const products=state.products.filter(p=>p.moderation_status==="approved");
  return `
- <section class="zsd-stats"><div class="zsd-stat"><small>Ads Available</small><strong>${money(wallet.available_tzs||0)}</strong></div><div class="zsd-stat"><small>Pending</small><strong>${money(wallet.pending_tzs||0)}</strong></div><div class="zsd-stat"><small>Reserved</small><strong>${money(wallet.reserved_tzs||0)}</strong></div></section>
+ <section class="zsd-stats"><div class="zsd-stat"><small>Impressions</small><strong>${state.adsEvents.filter(x=>x.event_type==="impression").length}</strong></div><div class="zsd-stat"><small>Clicks</small><strong>${state.adsEvents.filter(x=>x.event_type==="click").length}</strong></div><div class="zsd-stat"><small>Store Visits</small><strong>${state.adsEvents.filter(x=>x.event_type==="store_visit").length}</strong></div><div class="zsd-stat"><small>Ads Available</small><strong>${money(wallet.available_tzs||0)}</strong></div><div class="zsd-stat"><small>Pending</small><strong>${money(wallet.pending_tzs||0)}</strong></div><div class="zsd-stat"><small>Reserved</small><strong>${money(wallet.reserved_tzs||0)}</strong></div></section>
  <section class="zsd-card"><div class="zsd-section-kicker">ZUNE ADS</div><h2>${tr("Omba tangazo jipya","Create an ad campaign")}</h2><p class="zsd-muted">${tr("Chagua package inayopatikana. Kampeni itapitiwa na Admin Mkuu kabla haijaonekana sokoni. Bajeti itahifadhiwa kutoka Ads Wallet baada ya kuidhinishwa.","Choose an available package. Admin Mkuu reviews every campaign before it appears on the marketplace. The campaign budget is reserved from your Ads Wallet only after approval.")}</p>
  ${packages.length?`<form id="zsd-ad-campaign-form" class="zsd-form">
  <label>${tr("Aina ya tangazo","Campaign type")}<select class="zsd-input" name="campaign_type" id="zsd-ad-type" required><option value="sponsored_store">Sponsored Store</option><option value="sponsored_product">Sponsored Product</option><option value="combo">Combo</option></select></label>
