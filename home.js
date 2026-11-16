@@ -1076,11 +1076,14 @@ function addHomeStyles() {
 
 async function loadCategories() {
   try {
+    // Marketplace displays the main categories; each product stores its
+    // selected subcategory ID and the matching main category name.
     const { data, error } = await supabase
-      .from("categories")
-      .select("*")
-      .in("status", ["active", "approved"])
-      .order("display_order", { ascending: true });
+      .from("product_categories")
+      .select("id,name,parent_id,sort_order")
+      .eq("is_active", true)
+      .is("parent_id", null)
+      .order("sort_order", { ascending: true });
 
     if (error) throw error;
 
@@ -1125,10 +1128,7 @@ async function loadProducts(reset = false) {
       );
 
     if (homeState.selectedCategory) {
-      query = query.eq(
-        "category_id",
-        homeState.selectedCategory
-      );
+      query = query.eq("category", homeState.selectedCategory);
     }
 
     if (homeState.selectedVendor) query = query.eq("vendor_id", homeState.selectedVendor);
@@ -1343,15 +1343,23 @@ function productCard(product) {
   const store = product.__zuneStore || null;
   const ownerProfile = product.__zuneOwnerProfile || null;
   const accountVerified = ownerProfile?.is_verified === true;
-  const currentPrice = Number(product.price || 0);
-  const oldPrice = Number(product.compare_at_price || product.original_price || 0);
+  const basePrice = Number(product.price || 0);
+  const discountPercent = Math.min(100, Math.max(0, Number(product.discount_percent || 0)));
+  const currentPrice = discountPercent > 0
+    ? basePrice * (1 - discountPercent / 100)
+    : basePrice;
+  const oldPrice = discountPercent > 0
+    ? basePrice
+    : Number(product.compare_at_price || product.original_price || 0);
   const rating = Number(product.average_rating || product.rating_average || product.rating || 0);
   const reviews = Number(product.review_count || product.reviews_count || 0);
   const stock = product.stock_quantity == null ? null : Number(product.stock_quantity);
   const createdAt = product.created_at ? new Date(product.created_at).getTime() : 0;
   const isNew = createdAt > 0 && Date.now() - createdAt < 7 * 24 * 60 * 60 * 1000;
-  const discount = oldPrice > currentPrice && currentPrice > 0
-    ? Math.round((1 - currentPrice / oldPrice) * 100) : 0;
+  const discount = discountPercent > 0
+    ? Math.round(discountPercent)
+    : (oldPrice > currentPrice && currentPrice > 0
+      ? Math.round((1 - currentPrice / oldPrice) * 100) : 0);
   const flags = [
     discount ? `<span class="z-product-flag discount">-${discount}%</span>` : "",
     product.is_featured || product.featured ? `<span class="z-product-flag featured">${language()==="sw"?"Featured":"Featured"}</span>` : "",
@@ -1855,7 +1863,7 @@ function renderCategories() {
   return `
     <div class="z-category-directory">
       ${categories.slice(0,8).map(category => `
-        <button type="button" class="z-category ${String(homeState.selectedCategory)===String(category.id)?"active":""}" data-category="${safe(category.id)}">${safe(category.name)}</button>
+        <button type="button" class="z-category ${String(homeState.selectedCategory)===String(category.name)?"active":""}" data-category="${safe(category.name)}">${safe(category.name)}</button>
       `).join("")}
     </div>
   `;
@@ -2212,7 +2220,7 @@ function renderCategoriesPage() {
         <div class="z-categories-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px">
           <button type="button" class="z-category" data-category-page="" style="min-height:76px;border-radius:14px;white-space:normal">${tx("all")}</button>
           ${categories.map(category => `
-            <button type="button" class="z-category" data-category-page="${safe(category.id)}" style="min-height:76px;border-radius:14px;white-space:normal">${safe(category.name)}</button>
+            <button type="button" class="z-category" data-category-page="${safe(category.name)}" style="min-height:76px;border-radius:14px;white-space:normal">${safe(category.name)}</button>
           `).join("")}
         </div>
         ${categories.length ? "" : `<div class="z-empty-state" style="margin-top:14px">${tx("empty")}</div>`}
@@ -2271,7 +2279,7 @@ function renderExplorePage() {
         </h1>
         <section><div class="z-section-heading"><h2>${tx("categories")}</h2></div>
           <div id="z-explore-category-area" class="z-category-directory">
-            ${(homeState.categories || []).map(category => `<button type="button" class="z-category ${String(homeState.selectedCategory)===String(category.id)?"active":""}" data-category="${safe(category.id)}">${safe(category.name)}</button>`).join("")}
+            ${(homeState.categories || []).map(category => `<button type="button" class="z-category ${String(homeState.selectedCategory)===String(category.name)?"active":""}" data-category="${safe(category.name)}">${safe(category.name)}</button>`).join("")}
           </div>
         </section>
 
@@ -2313,7 +2321,7 @@ function bindExploreEvents() {
   categoryArea?.querySelectorAll("[data-category]").forEach(button=>button.addEventListener("click",async()=>{
     homeState.selectedCategory=button.dataset.category||"";homeState.selectedVendor="";
     homeState.products=[];homeState.page=0;homeState.hasMore=true;
-    categoryArea.innerHTML=(homeState.categories||[]).map(category=>`<button type="button" class="z-category ${String(homeState.selectedCategory)===String(category.id)?"active":""}" data-category="${safe(category.id)}">${safe(category.name)}</button>`).join("");
+    categoryArea.innerHTML=(homeState.categories||[]).map(category=>`<button type="button" class="z-category ${String(homeState.selectedCategory)===String(category.name)?"active":""}" data-category="${safe(category.name)}">${safe(category.name)}</button>`).join("");
     bindExploreEvents();await loadProducts(true);
   }));
   const input = document.getElementById("z-explore-search");
