@@ -2850,15 +2850,6 @@ async function renderMarketplacePage(page) {
   if (page === "seller") {
     window.location.assign("https://mrnehemiah.github.io/zuneacts/");
     return;
-    try {
-      const { renderSellerDashboard } = await import("./seller-dashboard.js?v=20261115-store-profile-v1");
-      renderSellerDashboard({app,user:homeState.user,onBack:()=>renderMarketplacePage("me")});
-    } catch (error) {
-      console.error("ZUNE Seller Center could not be loaded:", error);
-      app.innerHTML = '<section class="z-seller-loading" role="alert"><h2>Seller Center haijafunguka</h2><p>Tafadhali hakikisha una intaneti kisha ujaribu tena.</p><button type="button" id="z-seller-retry">Jaribu tena</button></section>';
-      app.querySelector("#z-seller-retry")?.addEventListener("click", () => renderMarketplacePage("seller"));
-    }
-    return;
   }
 
   let content;
