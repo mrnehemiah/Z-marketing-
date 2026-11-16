@@ -1722,7 +1722,7 @@ function updateProductArea() {
   if(area){
     const savedIds=new Set((homeState.saved||[]).map(String));
     const hybrid=[...homeState.products].sort((a,b)=>{
-      const score=p=>Number(savedIds.has(String(p.id)))*-2+Number(String(p.category_id||"")===String(homeState.selectedCategory||"")&&homeState.selectedCategory?2:0)+Number(p.average_rating||p.rating_average||p.rating||0)*2+Number(p.sold_count||p.sales_count||p.total_sold||0)*.25;
+      const score=p=>Number(savedIds.has(String(p.id)))*-2+Number(String(p.category||"")===String(homeState.selectedCategory||"")&&homeState.selectedCategory?2:0)+Number(p.average_rating||p.rating_average||p.rating||0)*2+Number(p.sold_count||p.sales_count||p.total_sold||0)*.25;
       return score(b)-score(a);
     });
     area.innerHTML=renderProductCards(hybrid);
