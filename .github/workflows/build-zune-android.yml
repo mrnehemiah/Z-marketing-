@@ -40,6 +40,7 @@ jobs:
         run: |
           test -n "$ZUNE_RELEASE_KEY_BASE64"
           echo "$ZUNE_RELEASE_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/zune-release.jks"
+          test -s "$RUNNER_TEMP/zune-release.jks"
           echo "ZUNE_KEYSTORE_PATH=$RUNNER_TEMP/zune-release.jks" >> "$GITHUB_ENV"
 
       - name: Build signed release APK
@@ -47,7 +48,12 @@ jobs:
           ZUNE_KEYSTORE_PASSWORD: ${{ secrets.ZUNE_KEYSTORE_PASSWORD }}
           ZUNE_KEY_ALIAS: ${{ secrets.ZUNE_KEY_ALIAS }}
           ZUNE_KEY_PASSWORD: ${{ secrets.ZUNE_KEY_PASSWORD }}
-        run: gradle -p android-app :app:assembleRelease
+        run: |
+          test -n "$ZUNE_KEYSTORE_PASSWORD"
+          test -n "$ZUNE_KEY_ALIAS"
+          test -n "$ZUNE_KEY_PASSWORD"
+          gradle -p android-app :app:assembleRelease
+          cp android-app/app/build/outputs/apk/release/app-release.apk android-app/app/build/outputs/apk/release/ZUNE.apk
 
       - name: Publish versioned GitHub Release
         uses: softprops/action-gh-release@v2
@@ -60,6 +66,6 @@ jobs:
             - ZUNE checks for app updates when it opens.
             - Shows release notes and lets users download and install updates.
             - Marketplace content loads from the latest hosted version.
-          files: android-app/app/build/outputs/apk/release/app-release.apk
+          files: android-app/app/build/outputs/apk/release/ZUNE.apk
           fail_on_unmatched_files: true
           make_latest: true
