@@ -2803,6 +2803,30 @@ function applyMarketplaceTemplate() {
     .z-marketplace[data-zune-template="stories"] .z-category{border-radius:22px}
     @media(prefers-reduced-motion:reduce){.z-marketplace .z-category{transition:none}}
 
+    /* Animated Tanzania flag edge for Marketplace product cards. */
+    .z-marketplace .z-product-card,
+    .z-storefront-sheet .z-product-card{
+      border:2px solid transparent !important;
+      background-color:transparent !important;
+      background-image:
+        linear-gradient(var(--surface,#fff),var(--surface,#fff)),
+        linear-gradient(135deg,#159447 0 34%,#f6d21a 34% 40%,#171717 40% 60%,#f6d21a 60% 66%,#168bd2 66% 100%) !important;
+      background-origin:padding-box,border-box !important;
+      background-clip:padding-box,border-box !important;
+      background-size:100% 100%,260% 260% !important;
+      background-position:center,0% 50% !important;
+      animation:zuneTanzaniaFlagEdge 7s ease-in-out infinite !important;
+    }
+    @keyframes zuneTanzaniaFlagEdge{
+      0%,100%{background-position:center,0% 50%}
+      50%{background-position:center,100% 50%}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .z-marketplace .z-product-card,
+      .z-storefront-sheet .z-product-card{animation:none !important}
+    }
+
+
   `;
   document.head.appendChild(style);
 }
