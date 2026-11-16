@@ -2661,7 +2661,7 @@ function bindAccountEvents() {
       });
     });
   });
-  document.querySelector("[data-open-seller-dashboard]")?.addEventListener("click",()=>navigateWithZuneWave(()=>window.location.assign("./seller-dashboard.html")));
+  document.querySelector("[data-open-seller-dashboard]")?.addEventListener("click",()=>navigateWithZuneWave(()=>window.location.assign("https://mrnehemiah.github.io/zuneacts/")));
   document.querySelector("[data-account-profile]")?.addEventListener("click",()=>navigateWithZuneWave(()=>window.location.assign("./settings.html?section=personal")));
   document.querySelector("[data-account-profile]")?.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();navigateWithZuneWave(()=>window.location.assign("./settings.html?section=personal"));}});
   document.querySelectorAll("[data-open-settings]").forEach(button=>button.addEventListener("click",()=>navigateWithZuneWave(()=>window.location.assign("./settings.html?section="+encodeURIComponent(button.dataset.openSettings||"personal")))));
@@ -2848,7 +2848,8 @@ async function renderMarketplacePage(page) {
   if (!app) return;
 
   if (page === "seller") {
-    app.innerHTML = '<section class="z-seller-loading" role="status" aria-live="polite"><div class="zune-wave"><span>Ⓩ</span><span>Ⓤ</span><span>Ⓝ</span><span>Ⓔ</span></div><p>Inapakia Seller Center...</p></section>';
+    window.location.assign("https://mrnehemiah.github.io/zuneacts/");
+    return;
     try {
       const { renderSellerDashboard } = await import("./seller-dashboard.js?v=20261115-store-profile-v1");
       renderSellerDashboard({app,user:homeState.user,onBack:()=>renderMarketplacePage("me")});
