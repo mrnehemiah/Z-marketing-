@@ -1,4 +1,4 @@
-name: Build ZUNE Android APK
+name: Build and Publish ZUNE Android APK
 
 on:
   workflow_dispatch:
@@ -6,6 +6,9 @@ on:
     paths:
       - 'android-app/**'
       - '.github/workflows/build-zune-android.yml'
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -25,12 +28,32 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build APK
-        run: gradle -p android-app :app:assembleDebug
+      - name: Prepare release signing key
+        env:
+          ZUNE_RELEASE_KEY_BASE64: ${{ secrets.ZUNE_RELEASE_KEY_BASE64 }}
+        run: |
+          test -n "$ZUNE_RELEASE_KEY_BASE64"
+          echo "$ZUNE_RELEASE_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/zune-release.jks"
+          echo "ZUNE_KEYSTORE_PATH=$RUNNER_TEMP/zune-release.jks" >> "$GITHUB_ENV"
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Build signed release APK
+        env:
+          ZUNE_KEYSTORE_PASSWORD: ${{ secrets.ZUNE_KEYSTORE_PASSWORD }}
+          ZUNE_KEY_ALIAS: ${{ secrets.ZUNE_KEY_ALIAS }}
+          ZUNE_KEY_PASSWORD: ${{ secrets.ZUNE_KEY_PASSWORD }}
+        run: gradle -p android-app :app:assembleRelease
+
+      - name: Publish versioned GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: ZUNE-Android-APK
-          path: android-app/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          tag_name: v1.1.0
+          name: ZUNE v1.1.0
+          body: |
+            versionCode=2
+
+            - ZUNE now checks for app updates on launch.
+            - Shows release notes and lets users download and install updates.
+            - Marketplace content continues to load from the latest hosted version.
+          files: android-app/app/build/outputs/apk/release/app-release.apk
+          fail_on_unmatched_files: true
+          make_latest: true
