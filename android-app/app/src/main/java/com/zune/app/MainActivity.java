@@ -40,6 +40,8 @@ public class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
+        // Always request the latest hosted Market / Seller Portal assets.
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         settings.setLoadsImagesAutomatically(true);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
@@ -77,8 +79,10 @@ public class MainActivity extends Activity {
             }
         });
 
-        if (savedInstanceState != null) webView.restoreState(savedInstanceState);
-        else webView.loadUrl(MARKET);
+        // Avoid restoring a stale WebView snapshot after a new GitHub Pages deployment.
+        // Cookies and DOM storage remain enabled to preserve existing login sessions.
+        webView.clearCache(false);
+        webView.loadUrl(MARKET);
     }
 
     private void openExternal(String url) {
