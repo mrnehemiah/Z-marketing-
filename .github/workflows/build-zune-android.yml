@@ -28,6 +28,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Calculate app version
+        run: |
+          echo "ZUNE_VERSION_CODE=$((${GITHUB_RUN_NUMBER}+1))" >> "$GITHUB_ENV"
+          echo "ZUNE_VERSION_NAME=1.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          echo "ZUNE_TAG=v1.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+
       - name: Prepare release signing key
         env:
           ZUNE_RELEASE_KEY_BASE64: ${{ secrets.ZUNE_RELEASE_KEY_BASE64 }}
@@ -46,14 +52,14 @@ jobs:
       - name: Publish versioned GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.1.0
-          name: ZUNE v1.1.0
+          tag_name: ${{ env.ZUNE_TAG }}
+          name: ZUNE ${{ env.ZUNE_VERSION_NAME }}
           body: |
-            versionCode=2
+            versionCode=${{ env.ZUNE_VERSION_CODE }}
 
-            - ZUNE now checks for app updates on launch.
+            - ZUNE checks for app updates when it opens.
             - Shows release notes and lets users download and install updates.
-            - Marketplace content continues to load from the latest hosted version.
+            - Marketplace content loads from the latest hosted version.
           files: android-app/app/build/outputs/apk/release/app-release.apk
           fail_on_unmatched_files: true
           make_latest: true
