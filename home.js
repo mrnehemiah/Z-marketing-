@@ -1653,8 +1653,8 @@ async function toggleSaved(productId) {
       const result = await supabase.from("wishlists").delete().eq("user_id", userId).eq("product_id", id);
       if (result.error) throw result.error;
     } else {
-      const result = await supabase.from("wishlists").upsert({ user_id: userId, product_id: id }, { onConflict: "user_id,product_id" });
-      if (result.error) throw result.error;
+      const result = await supabase.from("wishlists").insert({ user_id: userId, product_id: id });
+      if (result.error && result.error.code !== "23505") throw result.error;
     }
   } catch (error) {
     console.warn("ZUNE wishlist cloud sync:", error.message);
@@ -3028,14 +3028,22 @@ export async function renderMarketplaceHome({
       if (cloudCart.error) throw cloudCart.error;
       if (cloudSaved.error) throw cloudSaved.error;
       if (localStorage.getItem(marker) !== "1") {
-        if (!(cloudCart.data || []).length && homeState.cart.length) await saveCart();
-        else homeState.cart = (cloudCart.data || []).map(row => ({ productId: row.product_id, quantity: row.quantity }));
-        if (!(cloudSaved.data || []).length && homeState.saved.length) {
-          for (const id of homeState.saved) {
-            const result = await supabase.from("wishlists").upsert({ user_id: userId, product_id: id }, { onConflict: "user_id,product_id" });
-            if (result.error) throw result.error;
-          }
-        } else homeState.saved = (cloudSaved.data || []).map(row => row.product_id);
+        const cartMap = new Map((cloudCart.data || []).map(row => [String(row.product_id), { productId: row.product_id, quantity: Number(row.quantity) || 1 }]));
+        homeState.cart.forEach(item => {
+          const id = String(item.productId), existing = cartMap.get(id);
+          cartMap.set(id, { productId: item.productId, quantity: Math.max(Number(item.quantity) || 1, existing?.quantity || 1) });
+        });
+        homeState.cart = [...cartMap.values()];
+        await saveCart();
+
+        const savedSet = new Set((cloudSaved.data || []).map(row => String(row.product_id)));
+        homeState.saved.forEach(id => savedSet.add(String(id)));
+        homeState.saved = [...savedSet];
+        const cloudSavedSet = new Set((cloudSaved.data || []).map(row => String(row.product_id)));
+        for (const id of homeState.saved.filter(value => !cloudSavedSet.has(String(value)))) {
+          const result = await supabase.from("wishlists").insert({ user_id: userId, product_id: id });
+          if (result.error && result.error.code !== "23505") throw result.error;
+        }
         localStorage.setItem(marker, "1");
       } else {
         homeState.cart = (cloudCart.data || []).map(row => ({ productId: row.product_id, quantity: row.quantity }));
