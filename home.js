@@ -2843,7 +2843,28 @@ function applyMarketplaceTemplate() {
   document.head.appendChild(style);
 }
 
+/* Robust animated Tanzania-flag border overlay for all Marketplace product cards. */
+function ensureZuneProductFlagMotion(){
+  if(document.getElementById("zune-product-flag-motion"))return;
+  const style=document.createElement("style");
+  style.id="zune-product-flag-motion";
+  style.textContent=`
+    .z-product-card{position:relative!important;isolation:isolate!important;overflow:hidden!important}
+    .z-product-card::after{
+      content:"";position:absolute;inset:0;z-index:20;pointer-events:none;
+      border:3px solid transparent;border-radius:inherit;
+      background:conic-gradient(from 0deg,#159447 0deg 105deg,#f6d21a 105deg 125deg,#171717 125deg 145deg,#f6d21a 145deg 165deg,#168bd2 165deg 270deg,#159447 270deg 360deg) border-box;
+      -webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);
+      -webkit-mask-composite:xor;mask-composite:exclude;
+      animation:zuneFlagBorderSpin 5s linear infinite!important;will-change:transform
+    }
+    @keyframes zuneFlagBorderSpin{to{transform:rotate(360deg)}}
+  `;
+  document.head.appendChild(style);
+}
+
 async function renderMarketplacePage(page) {
+  ensureZuneProductFlagMotion();
   homeState.activeTab = page;
   if (page !== "home" && homeState.carouselTimer) {
     clearInterval(homeState.carouselTimer);
