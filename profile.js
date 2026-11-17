@@ -33,7 +33,7 @@ function render(){
  $("#share-profile").onclick=shareProfile;
  $("#download-qr").onclick=downloadQr;
  bindPersonalSection();
- $("#add-address").onclick=()=>{location.href="./addresses.html";};
+ 
  loadActivity();
  loadSecurityHistory();
  loadNotifications();
@@ -58,7 +58,7 @@ function renderPersonalOnly(){
 
 function addressMarkup(){
  if(!addresses.length)return '<div class="profile-empty">Bado hujahifadhi anwani. Ongeza anwani ya kupokea oda.</div>';
- return addresses.map(a=>'<div class="profile-address"><div class="profile-nav-icon">📍</div><div class="profile-address-copy"><b>'+esc(a.recipient_name)+(a.is_default?'<span class="profile-default">ANWANI KUU</span>':'')+'</b><p>'+esc([a.phone,a.street,a.ward,a.district,a.region,a.country].filter(Boolean).join(", "))+(a.landmark?" · "+esc(a.landmark):"")+'</p><div class="profile-address-actions"><button type="button" data-edit-address="'+a.id+'">Hariri</button><button type="button" data-default-address="'+a.id+'">Weka kuu</button><button type="button" data-delete-address="'+a.id+'">Futa</button></div></div></div>').join("");
+ return addresses.map(a=>'<div class="profile-address"><div class="profile-nav-icon">📍</div><div class="profile-address-copy"><b>'+esc(a.recipient_name)+(a.is_default?'<span class="profile-default">ANWANI KUU</span>':'')+'</b><p>'+esc([a.phone,a.street,a.ward,a.district,a.region,a.country].filter(Boolean).join(", "))+(a.landmark?" · "+esc(a.landmark):"")+'</p></div></div>').join("");
 }
 function bindAddressActions(){
  root.querySelectorAll("[data-edit-address]").forEach(b=>b.onclick=()=>showAddressForm(addresses.find(a=>a.id===b.dataset.editAddress)));
