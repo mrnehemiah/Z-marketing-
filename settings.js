@@ -73,7 +73,7 @@ const loadSecurity=async()=>{
   sessionsEl.innerHTML='<h3 class="settings-security-heading">'+(lang==="sw"?"Vifaa vilivyoingia":"Signed-in devices")+'</h3>'+(sessions.length?sessions.map(s=>{
    const d=deviceText(s.user_agent),isCurrent=!!sessionId&&s.id===sessionId;
    return '<article class="settings-session-card"><div class="settings-session-top"><b>'+esc(d.os)+' · '+esc(d.browser)+'</b><span class="settings-session-badge '+(isCurrent?"current":"")+'">'+(isCurrent?(lang==="sw"?"Kifaa hiki":"This device"):(lang==="sw"?"Session nyingine":"Other session"))+'</span></div><small>'+(lang==="sw"?"Mara ya mwisho: ":"Last active: ")+esc(dateText(s.updated_at))+'</small><small>'+(lang==="sw"?"Ilianza: ":"Started: ")+esc(dateText(s.created_at))+'</small>'+(s.ip?'<small>IP: '+esc(s.ip)+'</small>':'')+'</article>';
-  }).join(""):'<p class="settings-note">'+(lang==="sw"?"Hakuna session inayotumika iliyoripotiwa.":"No active sessions were reported.")+'</p>';
+  }).join(""):'<p class="settings-note">'+(lang==="sw"?"Hakuna session inayotumika iliyoripotiwa.":"No active sessions were reported.")+'</p>');
   eventsEl.innerHTML=events.length?events.map(e=>{
    const action=e.action==="login"?(lang==="sw"?"Kuingia kwenye akaunti":"Sign-in"):e.action==="logout"?(lang==="sw"?"Kutoka kwenye akaunti":"Sign-out"):(lang==="sw"?"Ombi la kurejesha akaunti":"Account recovery request");
    return '<article class="settings-history-item"><b>'+action+'</b><small>'+esc(dateText(e.created_at))+(e.provider?' · '+esc(e.provider):'')+(e.ip?' · IP: '+esc(e.ip):'')+'</small></article>';
