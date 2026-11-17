@@ -325,12 +325,18 @@ export async function mountStandaloneCart(root) {
   try {
     const cloud = await supabase.from("cart_items").select("product_id,quantity").eq("user_id", userId);
     if (cloud.error) throw cloud.error;
-    if (localStorage.getItem(cloudReadyKey) === "1" || (cloud.data || []).length) {
+    if (localStorage.getItem(cloudReadyKey) === "1") {
       cart = (cloud.data || []).map(row => ({ productId: row.product_id, quantity: row.quantity }));
-      localStorage.setItem(cartStorageKey(userId), JSON.stringify(cart));
-    } else if (cart.length) {
+    } else {
+      const merged = new Map((cloud.data || []).map(row => [String(row.product_id), { productId: row.product_id, quantity: Number(row.quantity) || 1 }]));
+      cart.forEach(item => {
+        const id = String(item.productId), existing = merged.get(id);
+        merged.set(id, { productId: item.productId, quantity: Math.max(Number(item.quantity) || 1, existing?.quantity || 1) });
+      });
+      cart = [...merged.values()];
       await persistCartToCloud(cart, userId);
     }
+    localStorage.setItem(cartStorageKey(userId), JSON.stringify(cart));
     localStorage.setItem(cloudReadyKey, "1");
   } catch (error) {
     console.warn("ZUNE cart cloud load; using device cache:", error.message);
