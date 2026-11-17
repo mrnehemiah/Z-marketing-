@@ -1,7 +1,7 @@
 import { supabase } from "./supabase.js";
 
 const app=document.getElementById("orders-app");
-let currentFilter="all",orders=[],checkouts=[],deliveries=[],items=[];
+let currentFilter="all",orders=[],checkouts=[],deliveries=[],items=[],deliveryEvents=[];
 const lang=localStorage.getItem("zune_language")==="en"?"en":"sw";
 const sw={
  title:"Oda zangu",subtitle:"Orodha ya manunuzi yako na hali ya kila oda.",all:"Zote",pending:"Inasubiri",confirmed:"Imethibitishwa",completed:"Imekamilika",cancelled:"Imeghairiwa",empty:"Bado huna oda",emptyText:"Bidhaa utakazonunua zitaonekana hapa pamoja na taarifa za ufuatiliaji.",shop:"Endelea kununua",loading:"Inapakia oda zako...",error:"Imeshindikana kupakia oda zako.",retry:"Jaribu tena",order:"Oda",placed:"Tarehe ya oda",qty:"Idadi",total:"Jumla ya oda",payment:"Malipo",paymentStatus:"Hali ya malipo",delivery:"Usafirishaji",address:"Anwani ya kufikishiwa",recipient:"Mpokeaji",phone:"Simu",method:"Njia ya malipo",tracking:"Hali ya usafirishaji",details:"Taarifa zaidi",hide:"Ficha taarifa",noPayment:"Haijawekwa",notAvailable:"Bado hakuna taarifa",paid:"Imelipwa",failed:"Imeshindikana",shipped:"Imesafirishwa",delivered:"Imefikishwa",inTransit:"Inaendelea",notFound:"Hakuna oda katika kundi hili."
@@ -21,11 +21,15 @@ function render(){
  app.querySelectorAll("[data-filter]").forEach(b=>b.addEventListener("click",()=>{currentFilter=b.dataset.filter;render();}));
  app.querySelectorAll("[data-order-toggle]").forEach(b=>b.addEventListener("click",()=>{const panel=document.getElementById("details-"+b.dataset.orderToggle);const opening=panel.hidden;panel.hidden=!opening;b.textContent=opening?t("hide"):t("details");}));
 }
+function deliveryEventLabel(type){
+ const map={driver_assigned:"Dereva amechaguliwa",seller_handover_confirmed:"Muuzaji amekabidhi mzigo",driver_pickup_confirmed:"Dereva amepokea mzigo",in_transit:"Mzigo uko njiani",driver_marked_delivered:"Dereva amefikisha mzigo",buyer_confirmed_received:"Mnunuzi amethibitisha kupokea",location_updated:"Eneo la dereva limesasishwa"};
+ return map[type]||type;
+}
 function orderCard(o){
  const checkout=checkouts.find(c=>c.id===o.checkout_id)||{};
- const delivery=deliveries.find(d=>d.checkout_id===o.checkout_id)||{};
  const itemRows=items.filter(i=>i.order_id===o.id);
  const item=itemRows[0]||{};
+ const delivery=deliveries.find(d=>d.checkout_id===o.checkout_id&&(!item.seller_id||d.vendor_id===item.seller_id))||{};
  const product=o.products||{};
  const name=item.product_name||product.title||"ZUNE Product";
  const image=product.image_url||"";
@@ -36,8 +40,11 @@ function orderCard(o){
  const recipient=checkout.recipient_name||o.recipient_name||"—";
  const phone=checkout.recipient_phone||o.recipient_phone||"—";
  const deliveryStatus=String(delivery.status||"").toLowerCase();
- const deliveryText=deliveryStatus==="delivered"?t("delivered"):["shipped","dispatched"].includes(deliveryStatus)?t("shipped"):deliveryStatus?t("inTransit"):t("notAvailable");
- return '<article class="order-card"><header class="order-card-head"><div><div class="order-reference">'+t("order")+' #'+esc(o.id.slice(0,8).toUpperCase())+'</div><div class="order-date">'+date(o.created_at)+'</div></div><span class="order-status '+status+'">'+statusLabel(status)+'</span></header><div class="order-product">'+(image?'<img class="order-product-image" src="'+esc(image)+'" alt="" loading="lazy">':'<div class="order-product-image order-product-placeholder">📦</div>')+'<div class="order-product-info"><h3>'+esc(name)+'</h3><p>'+t("qty")+': '+quantity+' × '+money(unitPrice)+'</p></div><div class="order-total"><small>'+t("total")+'</small><strong>'+money(o.total_price)+'</strong></div></div><footer class="order-card-foot"><span class="order-payment">'+t("payment")+': '+esc(o.payment_method||checkout.payment_method||t("noPayment"))+'</span><button class="order-details-toggle" type="button" data-order-toggle="'+esc(o.id)+'">'+t("details")+' ↓</button></footer><section class="order-details" id="details-'+esc(o.id)+'" hidden><div class="order-detail-grid"><div class="order-detail"><small>'+t("recipient")+'</small><strong>'+esc(recipient)+'</strong></div><div class="order-detail"><small>'+t("phone")+'</small><strong>'+esc(phone)+'</strong></div><div class="order-detail"><small>'+t("address")+'</small><strong>'+esc(address||"—")+'</strong></div><div class="order-detail"><small>'+t("paymentStatus")+'</small><strong>'+esc(payment==="paid"?t("paid"):payment==="failed"?t("failed"):payment)+'</strong></div><div class="order-detail"><small>'+t("tracking")+'</small><strong>'+esc(deliveryText)+'</strong></div><div class="order-detail"><small>'+t("method")+'</small><strong>'+esc(o.delivery_method||checkout.payment_method||"—")+'</strong></div></div><div class="order-timeline">'+t("placed")+': '+date(o.created_at)+' · '+t("tracking")+': '+esc(deliveryText)+'</div></section></article>';
+ const deliveryText=deliveryStatus==="completed"?"Mnunuzi amethibitisha kupokea":deliveryStatus==="delivered"?"Dereva amefikisha · thibitisha kupokea":deliveryStatus==="in_transit"?"Mzigo uko njiani":deliveryStatus==="picked_up"?"Dereva amepokea mzigo":deliveryStatus==="ready_for_pickup"?"Muuzaji amekabidhi mzigo":deliveryStatus==="assigned"?"Dereva amechaguliwa":deliveryStatus||t("notAvailable");
+ const timeline=deliveryEvents.filter(e=>e.delivery_id===delivery.id).map(e=>'<div class="order-timeline">'+esc(deliveryEventLabel(e.event_type))+' · '+date(e.created_at)+'</div>').join("");
+ const gps=delivery.last_latitude!=null&&delivery.last_longitude!=null?'<a target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat='+delivery.last_latitude+'&mlon='+delivery.last_longitude+'#map=16/'+delivery.last_latitude+'/'+delivery.last_longitude+'">Angalia eneo la dereva kwenye ramani ↗</a>':'';
+ const confirm=deliveryStatus==="delivered"?'<button class="orders-primary" type="button" data-confirm-delivery="'+esc(delivery.id)+'">Nimem pokea bidhaa · Thibitisha</button>':"";
+ return '<article class="order-card"><header class="order-card-head"><div><div class="order-reference">'+t("order")+' #'+esc(o.id.slice(0,8).toUpperCase())+'</div><div class="order-date">'+date(o.created_at)+'</div></div><span class="order-status '+status+'">'+statusLabel(status)+'</span></header><div class="order-product">'+(image?'<img class="order-product-image" src="'+esc(image)+'" alt="" loading="lazy">':'<div class="order-product-image order-product-placeholder">📦</div>')+'<div class="order-product-info"><h3>'+esc(name)+'</h3><p>'+t("qty")+': '+quantity+' × '+money(unitPrice)+'</p></div><div class="order-total"><small>'+t("total")+'</small><strong>'+money(o.total_price)+'</strong></div></div><footer class="order-card-foot"><span class="order-payment">'+t("payment")+': '+esc(o.payment_method||checkout.payment_method||t("noPayment"))+'</span><button class="order-details-toggle" type="button" data-order-toggle="'+esc(o.id)+'">'+t("details")+' ↓</button></footer><section class="order-details" id="details-'+esc(o.id)+'" hidden><div class="order-detail-grid"><div class="order-detail"><small>'+t("recipient")+'</small><strong>'+esc(recipient)+'</strong></div><div class="order-detail"><small>'+t("phone")+'</small><strong>'+esc(phone)+'</strong></div><div class="order-detail"><small>'+t("address")+'</small><strong>'+esc(address||"—")+'</strong></div><div class="order-detail"><small>'+t("paymentStatus")+'</small><strong>'+esc(payment==="paid"?t("paid"):payment==="failed"?t("failed"):payment)+'</strong></div><div class="order-detail"><small>'+t("tracking")+'</small><strong>'+esc(deliveryText)+'</strong></div><div class="order-detail"><small>Gharama ya delivery</small><strong>'+money(delivery.delivery_fee||0)+'</strong></div></div><div class="order-timeline">Ufuatiliaji wa mzigo · '+esc(deliveryText)+'</div>'+timeline+(gps?'<p>'+gps+'</p>':"")+(confirm?'<p>'+confirm+'</p>':"")+'</section></article>';
 }
 async function load(){
  app.innerHTML='<div class="orders-loading"><span class="orders-spinner"></span><p>'+t("loading")+'</p></div>';
@@ -52,7 +59,7 @@ async function load(){
  const orderIds=orders.map(o=>o.id);
  const [checkoutResult,deliveryResult,itemResult]=await Promise.all([
   checkoutIds.length?supabase.from("order_checkouts").select("id,recipient_name,recipient_phone,recipient_email,country,region,district,ward,delivery_address,grand_total,payment_method,status,created_at").in("id",checkoutIds):Promise.resolve({data:[],error:null}),
-  checkoutIds.length?supabase.from("order_deliveries").select("id,checkout_id,vendor_id,delivery_fee,currency,status,created_at").in("checkout_id",checkoutIds):Promise.resolve({data:[],error:null}),
+  checkoutIds.length?supabase.from("order_deliveries").select("id,checkout_id,vendor_id,delivery_fee,currency,status,assigned_driver_id,seller_handover_confirmed_at,driver_pickup_confirmed_at,driver_delivered_at,buyer_confirmed_at,last_latitude,last_longitude,last_location_at,created_at").in("checkout_id",checkoutIds):Promise.resolve({data:[],error:null}),
   orderIds.length?supabase.from("order_items").select("id,order_id,product_name,price,quantity,seller_id").in("order_id",orderIds):Promise.resolve({data:[],error:null})
  ]);
  if(checkoutResult.error)throw checkoutResult.error;
