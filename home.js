@@ -2706,7 +2706,7 @@ function bindAccountEvents() {
   document.querySelector("[data-account-cart]")?.addEventListener("click",()=>navigateWithZuneWave(()=>renderMarketplacePage("cart")));
   document.getElementById("z-logout-button")?.addEventListener("click",async()=>{
     if (typeof homeState.onLogout === "function") { await homeState.onLogout(); return; }
-    const {error} = await supabase.auth.signOut(); if (error) alert(error.message);
+    const {error} = await supabase.auth.signOut({scope: "local"}); if (error) alert(error.message);
   });
   document.getElementById("z-customer-verification-form")?.addEventListener("submit",async event=>{
     event.preventDefault();
