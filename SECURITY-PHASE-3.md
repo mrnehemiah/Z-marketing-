@@ -17,8 +17,8 @@ The function is unsafe for client-side account removal. It attempts to delete or
 
 Read-only inspection of the live database found:
 
-- 49 public `SECURITY DEFINER` functions executable by `authenticated`.
-- 0 such functions executable by `anon`.
+- Before the account-delete hardening, 49 public `SECURITY DEFINER` functions were executable by `authenticated`; after applying this phase's grant change, 48 remain.
+- 0 public `SECURITY DEFINER` functions are executable by `anon`.
 - All 49 have an explicit, pinned `search_path`.
 - 42 reference `auth.uid()`; administrative operations reviewed use the `zune_is_admin()` or `zune_assert_admin()` guard.
 - The dispute eligibility helpers compare supplied identities with order/product ownership and the authenticated user.
@@ -54,8 +54,8 @@ Leaked-password protection is reported as disabled and is not available on the c
 
 ## Deployment and verification
 
-- This PR adds a reviewed SQL script; it does not execute it against the live database.
-- Apply the SQL script only after reviewing it in the Supabase project.
-- Run the post-apply privilege query included at the bottom of the SQL file.
-- Re-run the Supabase Security Advisor.
+- The grant restriction was applied to the live Supabase project as migration `20261117093835` (`security_phase_3_restrict_account_delete`).
+- Post-apply verification returned: `anon_can_execute = false`, `authenticated_can_execute = false`, `service_role_can_execute = true`.
+- Security Advisor was re-run: the authenticated SECURITY DEFINER warning count decreased from 49 to 48; the remaining findings are retained for per-function caller/authorization validation rather than blanket-revoked. The three private-table notices remain INFO because client roles have no direct table grants. The Free-plan leaked-password warning remains.
+- The source-validation workflow initially exposed a pre-existing syntax error in the password-reset handler in `main.js`; the handler was corrected, and the subsequent GitHub Actions run passed.
 - Phase 4 should perform live auth, RLS, account lifecycle, seller portal, and Marketplace regression tests. No browser/device tests are claimed by this phase.
