@@ -256,11 +256,30 @@ function getCartCount() {
   );
 }
 
+let cartCloudSync = Promise.resolve();
+
 function saveCart() {
   const key = userStorageKey("zune_cart");
-  if (!key) return;
+  const userId = homeState.user?.id;
+  if (!key || !userId) return;
   localStorage.setItem(key, JSON.stringify(homeState.cart));
   updateCartBadges();
+  const snapshot = homeState.cart.map(item => ({ productId: String(item.productId), quantity: Math.max(1, Math.min(99, Number(item.quantity) || 1)) }));
+  cartCloudSync = cartCloudSync.then(async () => {
+    const current = await supabase.from("cart_items").select("product_id").eq("user_id", userId);
+    if (current.error) throw current.error;
+    const keep = new Set(snapshot.map(item => item.productId));
+    const removeIds = (current.data || []).map(row => String(row.product_id)).filter(id => !keep.has(id));
+    if (removeIds.length) {
+      const removed = await supabase.from("cart_items").delete().eq("user_id", userId).in("product_id", removeIds);
+      if (removed.error) throw removed.error;
+    }
+    if (snapshot.length) {
+      const rows = snapshot.map(item => ({ user_id: userId, product_id: item.productId, quantity: item.quantity }));
+      const saved = await supabase.from("cart_items").upsert(rows, { onConflict: "user_id,product_id" });
+      if (saved.error) throw saved.error;
+    }
+  }).catch(error => console.warn("ZUNE cart cloud sync:", error.message));
 }
 
 function updateCartBadges() {
@@ -1616,25 +1635,29 @@ async function openBuyerSellerChat(product){
 // 12. SAVE PRODUCT
 // --------------------------------------------
 
-function toggleSaved(productId) {
+async function toggleSaved(productId) {
   const id = String(productId);
-
-  const exists = homeState.saved
-    .map(String)
-    .includes(id);
-
-  if (exists) {
-    homeState.saved = homeState.saved.filter(
-      savedId => String(savedId) !== id
-    );
-  } else {
-    homeState.saved.push(id);
-  }
+  const userId = homeState.user?.id;
+  const exists = homeState.saved.map(String).includes(id);
+  if (exists) homeState.saved = homeState.saved.filter(savedId => String(savedId) !== id);
+  else homeState.saved.push(id);
 
   const savedKey = userStorageKey("zune_saved_products");
   if (savedKey) localStorage.setItem(savedKey, JSON.stringify(homeState.saved));
-
   updateProductArea();
+
+  if (!userId) return;
+  try {
+    if (exists) {
+      const result = await supabase.from("wishlists").delete().eq("user_id", userId).eq("product_id", id);
+      if (result.error) throw result.error;
+    } else {
+      const result = await supabase.from("wishlists").upsert({ user_id: userId, product_id: id }, { onConflict: "user_id,product_id" });
+      if (result.error) throw result.error;
+    }
+  } catch (error) {
+    console.warn("ZUNE wishlist cloud sync:", error.message);
+  }
 }
 
 // --------------------------------------------
@@ -2990,9 +3013,39 @@ export async function renderMarketplaceHome({
   homeState.app = app;
   homeState.user = user || null;
   homeState.onLogout = onLogout || null;
-  // Cart na Wishlist ni za akaunti iliyoingia pekee; usisome legacy global keys.
+  // Cart na Wishlist ni za akaunti iliyoingia pekee; cloud ndiyo chanzo kikuu baada ya migration ya kwanza.
   homeState.saved = readUserStorage("zune_saved_products", []);
   homeState.cart = readUserStorage("zune_cart", []);
+  if (homeState.user?.id) {
+    const userId = homeState.user.id;
+    const marker = "zune_collections_cloud_ready:" + userId;
+    try {
+      const [cloudCart, cloudSaved] = await Promise.all([
+        supabase.from("cart_items").select("product_id,quantity").eq("user_id", userId),
+        supabase.from("wishlists").select("product_id").eq("user_id", userId)
+      ]);
+      if (cloudCart.error) throw cloudCart.error;
+      if (cloudSaved.error) throw cloudSaved.error;
+      if (localStorage.getItem(marker) !== "1") {
+        if (!(cloudCart.data || []).length && homeState.cart.length) await saveCart();
+        else homeState.cart = (cloudCart.data || []).map(row => ({ productId: row.product_id, quantity: row.quantity }));
+        if (!(cloudSaved.data || []).length && homeState.saved.length) {
+          for (const id of homeState.saved) {
+            const result = await supabase.from("wishlists").upsert({ user_id: userId, product_id: id }, { onConflict: "user_id,product_id" });
+            if (result.error) throw result.error;
+          }
+        } else homeState.saved = (cloudSaved.data || []).map(row => row.product_id);
+        localStorage.setItem(marker, "1");
+      } else {
+        homeState.cart = (cloudCart.data || []).map(row => ({ productId: row.product_id, quantity: row.quantity }));
+        homeState.saved = (cloudSaved.data || []).map(row => row.product_id);
+      }
+      localStorage.setItem("zune_cart:" + userId, JSON.stringify(homeState.cart));
+      localStorage.setItem("zune_saved_products:" + userId, JSON.stringify(homeState.saved));
+    } catch (error) {
+      console.warn("ZUNE cloud collections load; using this device cache:", error.message);
+    }
+  }
   homeState.cartProducts = [];
   homeState.cartProductsKey = "";
   homeState.cartProductsLoading = false;
