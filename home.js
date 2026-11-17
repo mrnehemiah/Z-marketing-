@@ -2041,7 +2041,7 @@ function bindSearchEvents() {
   suggestionBox?.addEventListener("click",event=>{
     const productButton=event.target.closest("[data-suggest-product]");
     if(productButton){const product=homeState.products.find(p=>String(p.id)===productButton.dataset.suggestProduct);if(product)openProductDetails(product);suggestionBox.classList.remove("open");return;}
-    const storeButton=event.target.closest("[data-suggest-store]");if(storeButton){suggestionBox.classList.remove("open");document.getElementById("z-featured-stores-section")?.scrollIntoView({behavior:"smooth"});}
+    const storeButton=event.target.closest("[data-suggest-store]");if(storeButton){const ownerId=storeButton.dataset.suggestStore;suggestionBox.classList.remove("open");input.blur();if(ownerId)openStoreDetails(ownerId);}
   });
   input.addEventListener("keydown",event=>{if(event.key==="Escape"){suggestionBox?.classList.remove("open");input.setAttribute("aria-expanded","false");}});
 }
@@ -2060,11 +2060,7 @@ function bindHomeEvents() {
   document.querySelectorAll("[data-featured-store]").forEach(button=>button.addEventListener("click",()=>{
     const ownerId=button.dataset.featuredStore;
     if(!ownerId)return;
-    homeState.selectedVendor=ownerId;
-    homeState.selectedCategory="";
-    homeState.search="";
-    renderMarketplacePage("explore");
-    loadProducts(true);
+    openStoreDetails(ownerId);
   }));
 
   document.querySelector("[data-open-cart]")
