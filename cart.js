@@ -9,6 +9,7 @@ const LANG_KEY   = "zune_language";
 const THEME_KEY  = "zune_theme";
 const MAX_QTY    = 99;
 const QUERY_CHUNK = 100; // kikomo cha .in() cha Supabase
+let cartCloudQueue = Promise.resolve();
 
 const TEXT = {
   sw: {
@@ -132,7 +133,7 @@ export function writeCart(cart, userId) {
     console.warn("ZUNE cart storage write failed:", error);
   }
   syncCartCountBadges(normalized);
-  persistCartToCloud(normalized, userId).catch(error => console.warn("ZUNE cart cloud sync:", error.message));
+  cartCloudQueue = cartCloudQueue.then(() => persistCartToCloud(normalized, userId)).catch(error => console.warn("ZUNE cart cloud sync:", error.message));
   return normalized;
 }
 
