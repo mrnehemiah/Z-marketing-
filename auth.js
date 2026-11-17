@@ -5,9 +5,26 @@ import { supabase } from "./supabase.js";
    ZUNE AUTHENTICATION
 ================================= */
 
+// Enforce the marketplace password policy before calling Supabase Auth.
+// Supabase Auth remains the server-side authority for password validation.
+function assertStrongPassword(value) {
+  const password = String(value || "");
+  const valid = password.length >= 8 &&
+    /[a-z]/.test(password) &&
+    /[A-Z]/.test(password) &&
+    /[0-9]/.test(password) &&
+    /[^A-Za-z0-9]/.test(password) &&
+    !/\s/.test(password);
+
+  if (!valid) {
+    throw new Error("Password must be at least 8 characters and include uppercase and lowercase letters, a number, and a symbol, with no spaces.");
+  }
+}
+
 // SIGN UP
 
 export async function registerCustomer(customer) {
+  assertStrongPassword(customer?.password);
   const {
     firstName,
     middleName,
