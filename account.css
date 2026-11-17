@@ -256,3 +256,5 @@
  order:1!important;display:inline-flex!important;position:static!important;float:none!important;
  flex:0 0 20px!important;margin:0!important;transform:none!important;
 }
+
+.account-header-icon svg{width:19px;height:19px;display:block}.account-message-shortcut{position:relative}.account-message-shortcut:after{content:"";position:absolute;right:2px;top:2px;width:6px;height:6px;border-radius:50%;background:#25D366;box-shadow:0 0 0 2px #087A55}
