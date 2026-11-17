@@ -3,7 +3,7 @@ const root=document.getElementById("messages-root");
 const lang=localStorage.getItem("zune_language")==="en"?"en":"sw";
 const tr=(a,b)=>lang==="sw"?a:b;
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let user=null,conversations=[],products={},stores={},profiles={},selected=null,poll=null;
+let user=null,conversations=[],products={},stores={},profiles={},selected=null,poll=null,realtimeChannel=null;
 const date=v=>v?new Date(v).toLocaleString(lang==="sw"?"sw-TZ":"en-US",{dateStyle:"short",timeStyle:"short"}):"";
 function empty(){root.innerHTML='<div class="messages-panel"><div class="messages-empty"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 21l1.9-5.5a9 9 0 0 1-.9-4A8.5 8.5 0 0 1 12.5 3h.5a8.5 8.5 0 0 1 8 8v.5Z"/></svg><b>'+tr("Bado huna mazungumzo","No conversations yet")+'</b><br>'+tr("Ukiwasiliana na muuzaji kupitia bidhaa, mazungumzo yataonekana hapa.","When you message a seller from a product, the conversation will appear here.")+'</div></div>';}
 async function loadList(){
@@ -34,6 +34,19 @@ async function openThread(id){
  const form=document.getElementById("thread-form");form.addEventListener("submit",async e=>{e.preventDefault();const input=form.elements.message,msg=input.value.trim(),button=form.querySelector("button");if(!msg||button.disabled)return;button.disabled=true;try{const q=await supabase.from("chat_messages").insert({conversation_id:id,sender_id:user.id,message:msg});if(q.error)throw q.error;input.value="";await refreshThread();}catch(err){alert(err.message||tr("Ujumbe haukutumwa.","Message could not be sent."));}finally{button.disabled=false;input.focus();}});
 }
 async function refreshThread(){if(!selected)return;const id=selected.id;const q=await supabase.from("chat_messages").select("id,sender_id,message,is_read,created_at").eq("conversation_id",id).order("created_at",{ascending:true}).limit(200);if(q.error)throw q.error;const box=document.getElementById("thread-history");if(!box)return;box.innerHTML=q.data?.length?q.data.map(m=>'<div class="thread-message '+(m.sender_id===user.id?"mine":"")+'">'+esc(m.message)+'<small>'+esc(date(m.created_at))+'</small></div>').join(""):'<div class="messages-empty">'+tr("Anza mazungumzo kwa kutuma ujumbe.","Start the conversation by sending a message.")+'</div>';box.scrollTop=box.scrollHeight;const upd=await supabase.from("chat_messages").update({is_read:true}).eq("conversation_id",id).neq("sender_id",user.id).eq("is_read",false);if(upd.error)console.warn("Could not mark messages as read:",upd.error.message);}
-async function init(){const s=await supabase.auth.getSession();if(s.error)throw s.error;if(!s.data.session?.user){root.innerHTML='<div class="messages-error">'+tr("Ingia kwanza ili kuona ujumbe wako.","Please sign in to view your messages.")+' <a href="./index.html">Login</a></div>';return;}user=s.data.session.user;await loadList();const id=new URLSearchParams(location.search).get("conversation");if(id&&conversations.some(x=>x.id===id))await openThread(id);poll=setInterval(async()=>{try{if(selected)await refreshThread();else await loadList();}catch(e){console.warn("Message refresh:",e.message);}},9000);}
+function subscribeToMessages(){
+ if(realtimeChannel) supabase.removeChannel(realtimeChannel);
+ realtimeChannel=supabase.channel("zune-buyer-messages-"+user.id)
+  .on("postgres_changes",{event:"*",schema:"public",table:"chat_messages"},async payload=>{
+   const conversationId=payload.new?.conversation_id||payload.old?.conversation_id;
+   if(!conversationId||!conversations.some(c=>c.id===conversationId))return;
+   try{
+    if(selected?.id===conversationId)await refreshThread();
+    await loadList();
+   }catch(error){console.warn("Realtime message refresh:",error.message);}
+  })
+  .subscribe(status=>{if(status!=="SUBSCRIBED")console.info("ZUNE messages realtime:",status);});
+}
+async function init(){const s=await supabase.auth.getSession();if(s.error)throw s.error;if(!s.data.session?.user){root.innerHTML='<div class="messages-error">'+tr("Ingia kwanza ili kuona ujumbe wako.","Please sign in to view your messages.")+' <a href="./index.html">Login</a></div>';return;}user=s.data.session.user;await loadList();subscribeToMessages();const id=new URLSearchParams(location.search).get("conversation");if(id&&conversations.some(x=>x.id===id))await openThread(id);poll=setInterval(async()=>{try{if(selected)await refreshThread();else await loadList();}catch(e){console.warn("Message fallback refresh:",e.message);}},30000);}
 init().catch(e=>{console.error("ZUNE Messages:",e);root.innerHTML='<div class="messages-error">'+esc(e.message||tr("Imeshindikana kupakia ujumbe.","Unable to load messages."))+'</div>';});
-window.addEventListener("pagehide",()=>{if(poll)clearInterval(poll);});
+window.addEventListener("pagehide",()=>{if(poll)clearInterval(poll);if(realtimeChannel)supabase.removeChannel(realtimeChannel);});
