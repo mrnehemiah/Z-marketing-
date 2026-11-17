@@ -1056,6 +1056,19 @@ function addHomeStyles() {
     .z-account-shortcut:active,.z-account-menu-row:active{transform:scale(.985)}
     @media(prefers-reduced-motion:reduce){.zune-wave-wordmark span{animation-duration:.01ms;animation-delay:0ms}}
 
+
+    /* Animated Tanzania flag edge around every Marketplace product card */
+    @property --zune-flag-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+    .z-marketplace .z-product-card{
+      border:2px solid transparent!important;
+      background:
+        linear-gradient(var(--surface,#fff),var(--surface,#fff)) padding-box,
+        conic-gradient(from var(--zune-flag-angle),#1eb53a 0deg 105deg,#fcd116 105deg 125deg,#111 125deg 145deg,#fcd116 145deg 165deg,#00a3dd 165deg 270deg,#1eb53a 270deg 360deg) border-box!important;
+      animation:zuneProductFlagMotion 6s linear infinite;
+    }
+    @keyframes zuneProductFlagMotion{to{--zune-flag-angle:360deg}}
+    @media(prefers-reduced-motion:reduce){.z-marketplace .z-product-card{animation:none!important}}
+
   `;
 
   document.head.appendChild(style);
