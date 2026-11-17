@@ -2398,7 +2398,7 @@ function bindCartEvents() {
       renderMarketplacePage("cart");
     },
     onContinueShopping: () => renderMarketplacePage("home"),
-    onCheckout: () => alert(tx("checkoutComingSoon"))
+    onCheckout: () => window.location.assign("./checkout.html")
   });
 
   const key = homeState.cart.map(item => String(item.productId)).sort().join("|");
