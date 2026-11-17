@@ -1,5 +1,6 @@
 -- ZUNE Marketplace security audit — Phase 3
--- Review before applying to the live Supabase project.
+-- Applied to the live Supabase project as migration 20261117093835.
+-- This root-level SQL file is the review/audit copy of that applied change.
 -- No customer, seller, order, payment, dispute, product, store, or audit data is deleted.
 
 BEGIN;
