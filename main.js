@@ -40,6 +40,9 @@ const state = {
 
   loginIdentity: "",
   loginPassword: "",
+  forgotEmail: "",
+  forgotLoading: false,
+  forgotNotice: "",
   showPassword: false,
 
   loading: false,
@@ -669,8 +672,7 @@ function renderLogin(error = "") {
       state.showPassword ? t("hide") : t("show");
   };
 
-  document.getElementById("forgotBtn").onclick =
-    handleForgotPassword;
+  document.getElementById("forgotBtn").onclick = () => renderForgotPassword();
 
   document.getElementById("goSignup").onclick = () => {
     resetSignup();
@@ -740,25 +742,63 @@ async function renderPasswordReset(errorText = "") {
  document.getElementById("reset-password-form").onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),a=String(fd.get("password")||""),b=String(fd.get("confirm")||"");if(a.length<8||a!==b){renderPasswordReset(a!==b?(sw?"Nenosiri hazifanani.":"Passwords do not match."):(sw?"Nenosiri liwe na angalau herufi 8.":"Password must be at least 8 characters."));return;}const btn=e.currentTarget.querySelector("button");btn.disabled=true;try{const {error}=await supabase.auth.updateUser({password:a});if(error)throw error;alert(sw?"Nenosiri limebadilishwa. Ingia tena kwa nenosiri jipya.":"Password updated. Please sign in again with your new password.");await supabase.auth.signOut();renderLogin();}catch(err){renderPasswordReset(err.message||"Password update failed.");}};
 }
 
-async function handleForgotPassword() {
-  const email = prompt(t("forgotPrompt"));
+function renderForgotPassword(errorText = "") {
+  state.screen = "forgot-password";
+  const sw = state.language === "sw";
+  app.innerHTML = `
+    <section class="page">
+      <div class="panel">
+        <div class="brand-area">
+          ${logo()}
+          <h1 class="page-title">${sw ? "Rejesha nenosiri" : "Reset your password"}</h1>
+          <p class="page-description">${sw ? "Weka barua pepe ya akaunti yako. Tutakutumia kiungo cha kuweka nenosiri jipya." : "Enter your account email. We’ll send you a secure link to choose a new password."}</p>
+        </div>
+        <form id="forgotPasswordForm">
+          <div class="form-group">
+            <label for="forgotEmail">${sw ? "Barua pepe" : "Email address"}</label>
+            <input class="form-control" type="email" id="forgotEmail" autocomplete="email" value="${escapeHTML(state.forgotEmail)}" placeholder="${sw ? "mfano@barua.com" : "you@example.com"}" required>
+          </div>
+          <p class="form-error" role="alert">${escapeHTML(errorText)}</p>
+          <p class="form-footer" id="forgotNotice" role="status">${escapeHTML(state.forgotNotice)}</p>
+          <button class="btn btn-primary full-button" id="forgotSubmit" type="submit" ${state.forgotLoading ? "disabled" : ""}>
+            ${state.forgotLoading ? (sw ? "Inatuma..." : "Sending...") : (sw ? "Tuma kiungo" : "Send reset link")}
+          </button>
+        </form>
+        <p class="form-footer"><button type="button" id="forgotBack">${sw ? "Rudi kwenye kuingia" : "Back to log in"}</button></p>
+      </div>
+    </section>
+  `;
+  document.getElementById("forgotEmail").focus();
+  document.getElementById("forgotPasswordForm").onsubmit = handleForgotPassword;
+  document.getElementById("forgotBack").onclick = () => {
+    state.forgotLoading = false;
+    state.forgotNotice = "";
+    renderLogin();
+  };
+}
 
-  if (!email) return;
-
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  if (!emailPattern.test(email.trim())) {
-    alert(t("invalidEmail"));
+async function handleForgotPassword(event) {
+  event.preventDefault();
+  const email = document.getElementById("forgotEmail").value.trim();
+  const emailPattern = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+  if (!emailPattern.test(email)) {
+    renderForgotPassword(t("invalidEmail"));
     return;
   }
-
+  state.forgotEmail = email;
+  state.forgotLoading = true;
+  state.forgotNotice = "";
+  renderForgotPassword();
   try {
-    await recoverPassword(email.trim());
-
-    alert(t("forgotSuccess"));
-
+    await recoverPassword(email);
+    state.forgotLoading = false;
+    state.forgotNotice = state.language === "sw"
+      ? "Ikiwa akaunti ipo, kiungo cha kurejesha nenosiri kimetumwa kwenye barua pepe yako. Angalia pia Spam."
+      : "If an account exists, a password reset link has been sent. Please also check your Spam folder.";
+    renderForgotPassword();
   } catch (error) {
-    alert(error.message || t("forgotError"));
+    state.forgotLoading = false;
+    renderForgotPassword(error.message || t("forgotError"));
   }
 }
 
