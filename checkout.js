@@ -28,7 +28,7 @@ function render(){
  root.querySelector("#zc-quote").addEventListener("click",getQuote);
  root.querySelector("#zc-coupon").addEventListener("input",()=>{quote=null;updateQuoteUI();});
  root.querySelector("#zc-place").addEventListener("click",placeOrder);
- root.querySelector("#zc-form").addEventListener("input",()=>{quote=null;updateQuoteUI();});
+ root.querySelector("#zc-form").addEventListener("input",e=>{if(!["latitude","longitude"].includes(e.target.name)){const lat=root.querySelector('[name="latitude"]'),lng=root.querySelector('[name="longitude"]');if(lat)lat.value="";if(lng)lng.value="";}quote=null;updateQuoteUI();});
 }
 function field(name,label,value,type="text"){return '<label class="zc-field"><span>'+label+'</span><input name="'+name+'" type="'+type+'" maxlength="180" required value="'+esc(value)+'"></label>';}
 function updateQuoteUI(){const button=root.querySelector("#zc-place");const hint=root.querySelector("#zc-hint");const delivery=root.querySelector("#zc-delivery");const grand=root.querySelector("#zc-grand");const discountRow=root.querySelector("#zc-discount-row");const discount=root.querySelector("#zc-discount");if(button)button.disabled=!quote||busy;if(hint)hint.textContent=quote?"":t("quoteNeeded");if(delivery)delivery.textContent=quote?money(quote.delivery_total):"—";if(grand)grand.textContent=quote?money(quote.grand_total):money(subtotal());if(discountRow)discountRow.hidden=!(quote&&Number(quote.discount_total)>0);if(discount)discount.textContent=quote?"-"+money(quote.discount_total):"-"+money(0);}
