@@ -536,7 +536,7 @@ function setupSettings() {
   if (!settingsButton) return;
 
   settingsButton.addEventListener("click", () => {
-    showMessage(t("settings"));
+    window.location.assign("./settings.html?section=notifications");
   });
 }
 
