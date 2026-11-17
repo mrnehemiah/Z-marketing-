@@ -197,3 +197,9 @@
  .z-account-body .account-shopping-grid .account-card{padding:9px 7px!important;min-height:136px!important}
  .z-account-body .account-shopping-grid .account-card-copy strong{font-size:9px!important}
 }
+
+/* Verified Account badge sits immediately before the account holder name */
+.account-identity h1.account-name{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.account-name-verified{display:inline-flex;align-items:center;justify-content:center;flex:0 0 20px;width:20px;height:20px;vertical-align:middle}
+.account-name-verified svg{display:block;width:19px;height:19px}
+@media(max-width:600px){.account-name-verified{flex-basis:18px;width:18px;height:18px}.account-name-verified svg{width:17px;height:17px}}
