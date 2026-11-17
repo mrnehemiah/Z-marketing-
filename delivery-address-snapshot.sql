@@ -33,3 +33,35 @@ EXECUTE FUNCTION public.zune_copy_checkout_address_to_order();
 
 CREATE INDEX IF NOT EXISTS orders_checkout_id_idx
   ON public.orders(checkout_id);
+
+-- Protect the address snapshot from Seller/customer-side order updates.
+-- Admin retains correction authority through the existing Admin role helper.
+CREATE OR REPLACE FUNCTION public.zune_protect_order_address_snapshot()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  IF NOT public.zune_is_admin() AND (
+    OLD.recipient_name IS DISTINCT FROM NEW.recipient_name OR
+    OLD.recipient_phone IS DISTINCT FROM NEW.recipient_phone OR
+    OLD.delivery_address IS DISTINCT FROM NEW.delivery_address OR
+    OLD.delivery_region IS DISTINCT FROM NEW.delivery_region OR
+    OLD.delivery_district IS DISTINCT FROM NEW.delivery_district OR
+    OLD.delivery_country IS DISTINCT FROM NEW.delivery_country OR
+    OLD.delivery_ward IS DISTINCT FROM NEW.delivery_ward OR
+    OLD.delivery_latitude IS DISTINCT FROM NEW.delivery_latitude OR
+    OLD.delivery_longitude IS DISTINCT FROM NEW.delivery_longitude OR
+    OLD.delivery_notes IS DISTINCT FROM NEW.delivery_notes
+  ) THEN
+    RAISE EXCEPTION 'Anwani ya oda iliyowekwa haiwezi kubadilishwa.';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS zune_order_address_immutable ON public.orders;
+CREATE TRIGGER zune_order_address_immutable
+BEFORE UPDATE ON public.orders
+FOR EACH ROW
+EXECUTE FUNCTION public.zune_protect_order_address_snapshot();
