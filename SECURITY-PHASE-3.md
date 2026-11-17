@@ -20,9 +20,9 @@ Read-only inspection of the live database found:
 - Before the account-delete hardening, 49 public `SECURITY DEFINER` functions were executable by `authenticated`; after applying this phase's grant change, 48 remain.
 - 0 public `SECURITY DEFINER` functions are executable by `anon`.
 - All 49 have an explicit, pinned `search_path`.
-- 42 reference `auth.uid()`; administrative operations reviewed use the `zune_is_admin()` or `zune_assert_admin()` guard.
+- 41 of the remaining functions reference `auth.uid()`; 6 admin/helper functions use the `zune_is_admin()` or `zune_assert_admin()` authorization path.
 - The dispute eligibility helpers compare supplied identities with order/product ownership and the authenticated user.
-- `zune_wishlist_counts(uuid[])` has no per-user identity check, but returns aggregate counts grouped by product ID, not wishlist rows or user identities. It is left unchanged pending confirmation of its public product-metric use.
+- The one remaining RPC without a per-user identity check is `zune_wishlist_counts(uuid[])`; it returns only aggregate counts grouped by product ID, not wishlist rows or user identities. It remains unchanged because no private user data is returned; its intended client caller should be confirmed during Phase 4.
 - Seller portal identity/password setup and rate-limit RPCs are not executable by `anon` or `authenticated`; their execution is restricted to the trusted backend role.
 
 No blanket revoke was applied to the 49 functions: several are used by RLS policies or authenticated Marketplace/Seller workflows, and removing their grants without mapping every caller could break working features.
