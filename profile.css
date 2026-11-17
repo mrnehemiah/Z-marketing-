@@ -22,3 +22,5 @@
 .profile-detail b{display:block;font-size:11px;overflow-wrap:anywhere;line-height:1.5}
 .profile-detail-full{grid-column:1/-1}
 @media(max-width:560px){.profile-personal-heading{align-items:flex-start;flex-direction:column}.profile-personal-heading .profile-btn{width:100%}.profile-details-grid{grid-template-columns:1fr}.profile-detail-full{grid-column:auto}}
+
+.profile-nav-icon svg{width:21px;height:21px;display:block}.profile-nav-icon{display:grid;place-items:center;flex:none}
