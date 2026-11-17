@@ -7,7 +7,7 @@ const initials=n=>String(n||"Z").trim().split(/\s+/).slice(0,2).map(x=>x[0]||"")
 const roleLabel=()=>profile.role==="vendor"?"Seller":profile.role==="admin"?"Admin":"Customer";
 const publicUrl=()=>new URL("./public-profile.html?zune_id="+encodeURIComponent(profile.zune_id||""),location.href).href;
 function message(el,text,bad=false){if(el){el.textContent=text;el.style.color=bad?"var(--danger)":"var(--primary)";}}
-function navRow(icon,title,desc,url){return '<a class="profile-nav-row" href="'+url+'"><span class="profile-nav-icon">'+icon+'</span><span class="profile-nav-copy"><b>'+title+'</b><small>'+desc+'</small></span><span class="profile-arrow">›</span></a>';}
+function navRow(icon,title,desc,url){const paths={security:'<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/>',verification:'<path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/>',history:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',activity:'<path d="M3 12h4l3-8 4 16 3-8h4"/>',notifications:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',language:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>',contact:'<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 21l1.9-5.5a9 9 0 0 1-.9-4A8.5 8.5 0 0 1 12.5 3h.5a8.5 8.5 0 0 1 8 8v.5Z"/>',about:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-9h.01"/>'};return '<a class="profile-nav-row" href="'+url+'"><span class="profile-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(paths[icon]||paths.about)+'</svg></span><span class="profile-nav-copy"><b>'+title+'</b><small>'+desc+'</small></span><span class="profile-arrow">›</span></a>';}
 function render(){
  const name=profile.full_name||user.email?.split("@")[0]||"ZUNE User";
  const avatar=avatarUrl?'<img class="profile-avatar" src="'+esc(avatarUrl)+'" alt="Picha ya wasifu">':'<div class="profile-avatar">'+esc(initials(name))+'</div>';
@@ -18,14 +18,14 @@ function render(){
  personalMarkup(name)+
  '<section class="profile-section" id="addresses"><p class="profile-eyebrow">ANWANI ZANGU</p><h2>Anwani za kupokea oda</h2><div id="address-list">'+addressMarkup()+'</div><div class="profile-actions"><a class="profile-btn" href="./addresses.html">+ Ongeza anwani</a></div></section>'+
  '<section class="profile-section"><p class="profile-eyebrow">AKAUNTI YAKO</p><h2>Huduma na mipangilio</h2><div class="profile-row-list">'+
- navRow("🔐","Usalama wa Akaunti","Password na ulinzi wa akaunti","./settings.html?section=security")+
- navRow("🛡","Uthibitishaji wa Akaunti","Hali na maombi ya Verified Account","./verification.html")+
- navRow("🧭","Historia ya Usalama","Vifaa na matukio ya usalama ya akaunti","#security-history")+
- navRow("📜","Historia ya Shughuli","Oda na maombi yako ya hivi karibuni","#activity")+
- navRow("🔔","Taarifa na Arifa","Tazama arifa na ujumbe wa akaunti","#notifications")+
- navRow("🌐","Lugha na Muonekano","Kiswahili, English na theme","./settings.html?section=language")+
- navRow("💬","Msaada na Huduma kwa Wateja","Wasiliana na timu ya ZUNE","./settings.html?section=contact")+
- navRow("ⓘ","Kuhusu ZUNE","Taarifa rasmi za ZUNE Marketplace","./about-zune.html")+
+ Historia ya Usalama"security","Usalama wa Akaunti","Password na ulinzi wa akaunti","./settings.html?section=security")+
+ Historia ya Shughuli"verification","Uthibitishaji wa Akaunti","Hali na maombi ya Verified Account","./verification.html")+
+ Taarifa na Arifa"+
+ Msaada na Huduma kwa Wateja"+
+ navRow("+
+ navRow("language","Lugha na Muonekano","Kiswahili, English na theme","./settings.html?section=language")+
+ navRow("+
+ navRow("about","Kuhusu ZUNE","Taarifa rasmi za ZUNE Marketplace","./about-zune.html")+
  '</div></section>'+
  '<section class="profile-section" id="security-history"><p class="profile-eyebrow">USALAMA WA AKAUNTI</p><h2>Historia ya Usalama</h2><div id="security-list" class="profile-timeline"><div class="profile-empty">Inapakia historia ya usalama...</div></div></section>'+
  '<section class="profile-section" id="activity"><p class="profile-eyebrow">HISTORIA YA SHUGHULI</p><h2>Shughuli zako za hivi karibuni</h2><div id="activity-list" class="profile-timeline"><div class="profile-empty">Inapakia historia...</div></div></section>';
