@@ -1244,10 +1244,12 @@ async function startApp() {
     const session = await getCustomerSession();
 
     if (session) {
+      // Password-recovery sessions must reach the reset form before the normal
+      // sign-in MFA gate; otherwise an enrolled factor can trap the recovery flow.
+      if (location.hash.includes("type=recovery")) { await renderPasswordReset(); return; }
       const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (aalError) throw aalError;
       if (aal?.nextLevel === "aal2" && aal?.currentLevel !== "aal2") { await renderMfaLoginChallenge(); return; }
-      if (location.hash.includes("type=recovery")) { await renderPasswordReset(); return; }
       await renderAccount();
       return;
     }
