@@ -16,7 +16,7 @@ function render(){
  '<section class="profile-identity">'+avatar+'<div class="profile-id-copy"><h2>'+esc(name)+'</h2><p>'+esc(user.email||"")+'</p><div class="profile-badges"><span class="profile-pill">'+roleLabel()+'</span>'+(profile.is_verified?'<span class="profile-pill account-verified">✓ Verified Account</span>':'')+(storeBadge?'<span class="profile-pill store-verified">✓ Verified Store</span>':'')+'</div></div></section>'+
  '<section class="profile-card"><p class="profile-eyebrow">ZUNE SCAN CODE</p><h2>Utambulisho wako wa ZUNE</h2><p class="profile-muted">Mtu akiscani code hii ataona wasifu wako wa umma ndani ya ZUNE.</p><div class="profile-qr-wrap"><div class="profile-qr" id="profile-qr" aria-label="ZUNE QR code"></div><div><p class="profile-muted">ZUNE ID</p><div class="profile-id-value">ZUN-'+esc(profile.zune_id||"Inapakia")+'</div><p class="profile-muted">ID hii ni ya kipekee na haiwezi kubadilishwa.</p><div class="profile-actions"><button class="profile-btn" id="share-profile">Shiriki wasifu</button><button class="profile-btn secondary" id="download-qr">Pakua QR</button></div></div></div><div class="profile-privacy">QR code hii haionyeshi namba yako ya simu, barua pepe au taarifa binafsi.</div></section>'+
  personalMarkup(name)+
- '<section class="profile-section" id="addresses"><p class="profile-eyebrow">ANWANI ZANGU</p><h2>Anwani za kupokea oda</h2><div id="address-list">'+addressMarkup()+'</div><div class="profile-actions"><button class="profile-btn" id="add-address">+ Ongeza anwani</button></div><div id="address-form-wrap"></div></section>'+
+ '<section class="profile-section" id="addresses"><p class="profile-eyebrow">ANWANI ZANGU</p><h2>Anwani za kupokea oda</h2><div id="address-list">'+addressMarkup()+'</div><div class="profile-actions"><a class="profile-btn" href="./addresses.html">Simamia Anwani Zangu</a></div></section>'+
  '<section class="profile-section"><p class="profile-eyebrow">AKAUNTI YAKO</p><h2>Huduma na mipangilio</h2><div class="profile-row-list">'+
  navRow("🔐","Usalama wa Akaunti","Password na ulinzi wa akaunti","./settings.html?section=security")+
  navRow("🛡","Uthibitishaji wa Akaunti","Hali na maombi ya Verified Account","./verification.html")+
@@ -33,7 +33,7 @@ function render(){
  $("#share-profile").onclick=shareProfile;
  $("#download-qr").onclick=downloadQr;
  bindPersonalSection();
- $("#add-address").onclick=()=>showAddressForm();
+ $("#add-address").onclick=()=>{location.href="./addresses.html";};
  loadActivity();
  loadSecurityHistory();
  loadNotifications();
