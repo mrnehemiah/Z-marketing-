@@ -18,13 +18,13 @@ function render(){
  personalMarkup(name)+
  '<section class="profile-section" id="addresses"><p class="profile-eyebrow">ANWANI ZANGU</p><h2>Anwani za kupokea oda</h2><div id="address-list">'+addressMarkup()+'</div><div class="profile-actions"><a class="profile-btn" href="./addresses.html">+ Ongeza anwani</a></div></section>'+
  '<section class="profile-section"><p class="profile-eyebrow">AKAUNTI YAKO</p><h2>Huduma na mipangilio</h2><div class="profile-row-list">'+
- Historia ya Usalama"security","Usalama wa Akaunti","Password na ulinzi wa akaunti","./settings.html?section=security")+
- Historia ya Shughuli"verification","Uthibitishaji wa Akaunti","Hali na maombi ya Verified Account","./verification.html")+
- Taarifa na Arifa"+
- Msaada na Huduma kwa Wateja"+
- navRow("+
+ navRow("security","Usalama wa Akaunti","Password na ulinzi wa akaunti","./settings.html?section=security")+
+ navRow("verification","Uthibitishaji wa Akaunti","Hali na maombi ya Verified Account","./verification.html")+
+ navRow("history","Historia ya Usalama","Vifaa na taarifa za usalama wa akaunti","./settings.html?section=security-history")+
+ navRow("activity","Historia ya Shughuli","Oda na maombi yako ya hivi karibuni","./settings.html?section=activity")+
+ navRow("notifications","Taarifa na Arifa","Tazama arifa na ujumbe wa akaunti","./settings.html?section=notifications")+
  navRow("language","Lugha na Muonekano","Kiswahili, English na theme","./settings.html?section=language")+
- navRow("+
+ navRow("contact","Msaada na Huduma kwa Wateja","Wasiliana na timu ya ZUNE","./settings.html?section=contact")+
  navRow("about","Kuhusu ZUNE","Taarifa rasmi za ZUNE Marketplace","./about-zune.html")+
  '</div></section>'+
  '<section class="profile-section" id="security-history"><p class="profile-eyebrow">USALAMA WA AKAUNTI</p><h2>Historia ya Usalama</h2><div id="security-list" class="profile-timeline"><div class="profile-empty">Inapakia historia ya usalama...</div></div></section>'+
