@@ -3035,6 +3035,9 @@ export async function renderMarketplaceHome({
         });
         homeState.cart = [...cartMap.values()];
         await saveCart();
+        const cartCheck = await supabase.from("cart_items").select("product_id").eq("user_id", userId);
+        if (cartCheck.error) throw cartCheck.error;
+        if ((cartCheck.data || []).length !== homeState.cart.length) throw new Error("Cart cloud sync verification failed");
 
         const savedSet = new Set((cloudSaved.data || []).map(row => String(row.product_id)));
         homeState.saved.forEach(id => savedSet.add(String(id)));
