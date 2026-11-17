@@ -229,3 +229,17 @@
 .account-identity h1.account-name{display:flex!important;align-items:center!important;gap:7px!important}
 .account-identity h1.account-name .account-name-verified{order:0!important;position:relative!important;float:none!important;margin:0!important}
 .account-identity h1.account-name .account-name-text{order:1!important;display:inline!important}
+
+/* Hard-enforce verified badge before the account name, independent of inherited direction/styles */
+.z-account-body #account-root .account-identity h1.account-name{
+ display:flex!important;flex-direction:row!important;direction:ltr!important;unicode-bidi:isolate!important;
+ align-items:center!important;justify-content:flex-start!important;gap:7px!important;
+}
+.z-account-body #account-root .account-identity h1.account-name>.account-name-verified{
+ order:-1!important;display:inline-flex!important;position:static!important;float:none!important;
+ flex:0 0 20px!important;margin:0!important;transform:none!important;
+}
+.z-account-body #account-root .account-identity h1.account-name>.account-name-text{
+ order:0!important;display:inline!important;direction:ltr!important;unicode-bidi:isolate!important;
+}
+@media(max-width:600px){.z-account-body #account-root .account-identity h1.account-name>.account-name-verified{flex-basis:18px!important}}
