@@ -780,7 +780,7 @@ function renderForgotPassword(errorText = "") {
 async function handleForgotPassword(event) {
   event.preventDefault();
   const email = document.getElementById("forgotEmail").value.trim();
-  const emailPattern = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailPattern.test(email)) {
     renderForgotPassword(t("invalidEmail"));
     return;
