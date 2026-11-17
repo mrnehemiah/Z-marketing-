@@ -19,6 +19,17 @@ CREATE INDEX IF NOT EXISTS coupons_seller_scope_idx
   ON public.coupons (seller_id, created_at DESC)
   WHERE coupon_scope = 'seller';
 
+-- Only ZUNE-wide coupons are public to checkout clients; sellers can read their own rows.
+DROP POLICY IF EXISTS coupons_public_read ON public.coupons;
+CREATE POLICY coupons_public_read ON public.coupons
+  FOR SELECT TO public
+  USING (
+    coupon_scope = 'platform'
+    AND lower(status) = 'active'
+    AND starts_at <= now()
+    AND (expires_at IS NULL OR expires_at > now())
+  );
+
 DROP POLICY IF EXISTS coupons_seller_read_own ON public.coupons;
 CREATE POLICY coupons_seller_read_own ON public.coupons
   FOR SELECT TO authenticated
@@ -53,6 +64,6 @@ CREATE POLICY coupons_seller_delete_own ON public.coupons
   USING (coupon_scope = 'seller' AND seller_id = (SELECT auth.uid()));
 
 -- Seller coupons are intentionally NOT enabled for checkout by this schema-only migration.
--- Apply the paired checkout RPC migration after the scope validation and per-seller discount
--- allocation logic has been installed and tested. This avoids a seller coupon discounting
--- another seller's items.
+-- Apply the paired checkout RPC migration after scope validation, per-buyer limits and
+-- proportional per-order discount allocation are installed and tested. This prevents a
+-- seller coupon from discounting another seller's products.
