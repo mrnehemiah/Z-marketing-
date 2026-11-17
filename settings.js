@@ -20,7 +20,7 @@ content.innerHTML='<div class="settings-profile"><img class="settings-avatar" sr
 '<section class="settings-group"><h2>'+t("support")+'</h2><div class="settings-card">'+row("❔","help","helpD","help")+row("💬","contact","contactD","contact")+row("📄","terms","termsD","terms")+row("🔒","policy","policyD","policy")+row("ⓘ","about","aboutD","about")+'</div></section>'+
 '<button class="settings-btn danger" id="settings-logout" style="width:100%;margin-top:12px">↪ '+t("logout")+'</button>';
 content.querySelectorAll("[data-action]").forEach(b=>b.addEventListener("click",()=>openPanel(b.dataset.action)));
-$("#settings-logout").addEventListener("click",async()=>{if(!confirm(lang==="sw"?"Una uhakika unataka kutoka?":"Are you sure you want to log out?"))return;const {error}=await supabase.auth.signOut();if(error){alert(error.message);return;}location.assign("./");});
+$("#settings-logout").addEventListener("click",async()=>{if(!confirm(lang==="sw"?"Utatoka kwenye kifaa hiki pekee. Vifaa vingine vitaendelea kuingia. Una uhakika?":"You will sign out on this device only. Other devices will stay signed in. Continue?"))return;const {error}=await supabase.auth.signOut({scope:"local"});if(error){alert(error.message);return;}location.assign("./");});
 }
 function panel(title,body){content.querySelector(".settings-panel")?.remove();const p=document.createElement("section");p.className="settings-panel active";p.innerHTML='<h2>'+title+'</h2>'+body;content.append(p);p.scrollIntoView({behavior:"smooth",block:"start"});return p;}
 function msg(p,txt,bad=false){const el=$(".settings-message",p);if(el){el.textContent=txt;el.style.color=bad?"#b42318":"var(--primary)";}}

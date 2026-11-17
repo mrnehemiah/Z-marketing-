@@ -127,7 +127,7 @@ export async function getCurrentCustomer() {
 
 export async function logoutCustomer() {
   const { error } =
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
 
   if (error) {
     throw error;
