@@ -280,6 +280,7 @@ function saveCart() {
       if (saved.error) throw saved.error;
     }
   }).catch(error => console.warn("ZUNE cart cloud sync:", error.message));
+  return cartCloudSync;
 }
 
 function updateCartBadges() {
