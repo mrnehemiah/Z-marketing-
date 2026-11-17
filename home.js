@@ -3001,8 +3001,13 @@ export async function renderMarketplaceHome({
   applyZuneTheme(localStorage.getItem("zune_theme") || "emerald");
   addHomeStyles();
 
-  // Onyesha ukurasa wa Home mara moja.
-  renderMarketplacePage("home");
+  // Fungua tab iliyoombwa na kiungo cha Account, kama ipo.
+  const requestedTab = new URLSearchParams(window.location.search).get("tab");
+  const allowedTabs = new Set(["home", "explore", "categories", "cart", "saved", "me"]);
+  const initialTab = allowedTabs.has(requestedTab) ? requestedTab : "home";
+
+  // Onyesha ukurasa ulioombwa mara moja.
+  renderMarketplacePage(initialTab);
 
   // Pakia categories na bidhaa.
   await Promise.all([
@@ -3010,9 +3015,9 @@ export async function renderMarketplaceHome({
     loadProducts(true)
   ]);
 
-  // Sasisha ukurasa baada ya data kupatikana.
-  if (homeState.activeTab === "home") {
-    renderMarketplacePage("home");
+  // Sasisha tab ileile baada ya data kupatikana.
+  if (homeState.activeTab === initialTab) {
+    renderMarketplacePage(initialTab);
   }
 }
 
