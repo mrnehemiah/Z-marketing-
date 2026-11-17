@@ -247,7 +247,7 @@ async function loadNotifications() {
 }
 
 function notificationPreferenceEnabled(notification) {
-  const prefs = JSON.parse(localStorage.getItem("zune_notification_preferences") || "{}");
+  const prefs = JSON.parse(localStorage.getItem("zune_notification_preferences:" + currentUser.id) || "{}");
   const type = String(notification.type || "").toLowerCase();
   const group = ["order","payment","refund","wallet","commission"].includes(type)
     ? "orders"
