@@ -22,6 +22,9 @@ import {
 const app = document.getElementById("app");
 let marketplaceHomeModule = null;
 
+// Keep recovery mode explicit so startup and PASSWORD_RECOVERY events cannot race.
+let passwordRecoveryActive = window.location.hash.includes("type=recovery");
+
 const state = {
   language: localStorage.getItem("zune_language") || "",
   screen: "language",
@@ -1246,7 +1249,7 @@ async function startApp() {
     if (session) {
       // Password-recovery sessions must reach the reset form before the normal
       // sign-in MFA gate; otherwise an enrolled factor can trap the recovery flow.
-      if (location.hash.includes("type=recovery")) { await renderPasswordReset(); return; }
+      if (passwordRecoveryActive || location.hash.includes("type=recovery")) { passwordRecoveryActive = true; await renderPasswordReset(); return; }
       const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (aalError) throw aalError;
       if (aal?.nextLevel === "aal2" && aal?.currentLevel !== "aal2") { await renderMfaLoginChallenge(); return; }
@@ -1268,7 +1271,10 @@ async function startApp() {
 ========================================= */
 
 supabase.auth.onAuthStateChange((event) => {
-  if (event === "PASSWORD_RECOVERY") renderPasswordReset();
+  if (event === "PASSWORD_RECOVERY") {
+    passwordRecoveryActive = true;
+    renderPasswordReset();
+  }
 });
 
 startApp();
