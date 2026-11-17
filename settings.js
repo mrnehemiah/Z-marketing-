@@ -36,8 +36,8 @@ else if(which==="appearance"){p=panel(t("appearance"),'<p>'+t("chooseTheme")+'</
 else if(which==="notifications"){
 const keys=["orders","messages","promotions","account"];
 const labels=lang==="sw"?["Oda na malipo","Ujumbe wa mazungumzo","Ofa na matangazo","Taarifa za akaunti"]:["Orders and payments","Chat messages","Offers and promotions","Account updates"];
-const prefs=JSON.parse(localStorage.getItem("zune_notification_preferences")||"{}");
-const browser=JSON.parse(localStorage.getItem("zune-notification-settings")||"{}");
+const prefs=JSON.parse(localStorage.getItem("zune_notification_preferences:"+user.id)||"{}");
+const browser=JSON.parse(localStorage.getItem("zune-notification-settings:"+user.id)||"{}");
 p=panel(t("notifications"),'<p>'+t("notificationsD")+'</p><label class="settings-choice">'+(lang==="sw"?"Arifa za browser":"Browser notifications")+'<input type="checkbox" id="browser-notices" '+(browser.browserNotifications?"checked":"")+'></label>'+keys.map((k,i)=>'<label class="settings-choice">'+labels[i]+'<input type="checkbox" data-notice="'+k+'" '+(prefs[k]!==false?"checked":"")+'></label>').join("")+'<div class="settings-message"></div>');
 $("#browser-notices",p).onchange=async e=>{
 let enabled=e.target.checked;
