@@ -751,7 +751,35 @@ async function renderMfaLoginChallenge(errorText = "") {
 async function renderPasswordReset(errorText = "") {
  const sw=state.language==="sw";
  app.innerHTML='<section class="page"><div class="panel"><div class="brand-area">'+logo()+'<h1 class="page-title">'+(sw?"Tengeneza nenosiri jipya":"Set a new password")+'</h1><p class="page-description">'+(sw?"Weka nenosiri jipya la akaunti yako ya ZUNE.":"Choose a new password for your ZUNE account.")+'</p></div><form id="reset-password-form"><div class="form-group"><label>'+(sw?"Nenosiri jipya":"New password")+'</label><input class="form-control" type="password" name="password" minlength="8" autocomplete="new-password" required></div><div class="form-group"><label>'+(sw?"Rudia nenosiri":"Confirm password")+'</label><input class="form-control" type="password" name="confirm" minlength="8" autocomplete="new-password" required></div><p class="form-error">'+escapeHTML(errorText)+'</p><button class="btn btn-primary full-button" type="submit">'+(sw?"Hifadhi nenosiri":"Save password")+'</button></form></div></section>';
- document.getElementById("reset-password-form").onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),a=String(fd.get("password")||""),b=String(fd.get("confirm")||"");if(a.length<8||!isStrongPassword(a)||a!==b){renderPasswordReset(a!==b?(sw?"Nenosiri hazifanani.":"Passwords do not match."):(!isStrongPassword(a)?(sw?"Tumia herufi kubwa na ndogo, namba na alama; usiweke nafasi.":"Use uppercase and lowercase letters, a number and a symbol; no spaces."):(sw?"Nenosiri liwe na angalau herufi 8.":"Password must be at least 8 characters."));return;}const btn=e.currentTarget.querySelector("button");btn.disabled=true;try{const {error}=await supabase.auth.updateUser({password:a});if(error)throw error;alert(sw?"Nenosiri limebadilishwa. Ingia tena kwa nenosiri jipya.":"Password updated. Please sign in again with your new password.");await supabase.auth.signOut();renderLogin();}catch(err){renderPasswordReset(err.message||"Password update failed.");}};
+ document.getElementById("reset-password-form").onsubmit=async e=>{
+  e.preventDefault();
+  const fd=new FormData(e.currentTarget);
+  const password=String(fd.get("password")||"");
+  const confirmPassword=String(fd.get("confirm")||"");
+  if(password!==confirmPassword){
+   renderPasswordReset(sw?"Nenosiri hazifanani.":"Passwords do not match.");
+   return;
+  }
+  if(!isStrongPassword(password)){
+   renderPasswordReset(sw
+    ?"Tumia angalau herufi 8 zenye herufi kubwa na ndogo, namba na alama; usiweke nafasi."
+    :"Use at least 8 characters with uppercase and lowercase letters, a number and a symbol; no spaces.");
+   return;
+  }
+  const btn=e.currentTarget.querySelector("button");
+  btn.disabled=true;
+  try{
+   const {error}=await supabase.auth.updateUser({password});
+   if(error)throw error;
+   alert(sw
+    ?"Nenosiri limebadilishwa. Ingia tena kwa nenosiri jipya."
+    :"Password updated. Please sign in again with your new password.");
+   await supabase.auth.signOut();
+   renderLogin();
+  }catch(err){
+   renderPasswordReset(err.message||"Password update failed.");
+  }
+ };
 }
 
 function renderForgotPassword(errorText = "") {
