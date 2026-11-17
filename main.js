@@ -731,6 +731,12 @@ async function renderMfaLoginChallenge(errorText = "") {
  document.getElementById("mfa-login").onsubmit=async e=>{e.preventDefault();const code=String(new FormData(e.currentTarget).get("code")||"").trim();try{const {data,error}=await supabase.auth.mfa.listFactors();if(error)throw error;const fs=(data?.totp||[]).filter(f=>f.status==="verified");if(!fs.length)throw new Error(sw?"Hakuna Authenticator iliyosajiliwa.":"No verified authenticator found.");let ok=false,last=null;for(const f of fs){const c=await supabase.auth.mfa.challenge({factorId:f.id});if(c.error){last=c.error;continue;}const v=await supabase.auth.mfa.verify({factorId:f.id,challengeId:c.data.id,code});if(!v.error){ok=true;break;}last=v.error;}if(!ok)throw last||new Error(sw?"Msimbo si sahihi.":"Incorrect code.");await renderAccount();}catch(err){renderMfaLoginChallenge(err.message||"Verification failed.");}};
 }
 
+async function renderPasswordReset(errorText = "") {
+ const sw=state.language==="sw";
+ app.innerHTML='<section class="page"><div class="panel"><div class="brand-area">'+logo()+'<h1 class="page-title">'+(sw?"Tengeneza nenosiri jipya":"Set a new password")+'</h1><p class="page-description">'+(sw?"Weka nenosiri jipya la akaunti yako ya ZUNE.":"Choose a new password for your ZUNE account.")+'</p></div><form id="reset-password-form"><div class="form-group"><label>'+(sw?"Nenosiri jipya":"New password")+'</label><input class="form-control" type="password" name="password" minlength="8" autocomplete="new-password" required></div><div class="form-group"><label>'+(sw?"Rudia nenosiri":"Confirm password")+'</label><input class="form-control" type="password" name="confirm" minlength="8" autocomplete="new-password" required></div><p class="form-error">'+escapeHTML(errorText)+'</p><button class="btn btn-primary full-button" type="submit">'+(sw?"Hifadhi nenosiri":"Save password")+'</button></form></div></section>';
+ document.getElementById("reset-password-form").onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),a=String(fd.get("password")||""),b=String(fd.get("confirm")||"");if(a.length<8||a!==b){renderPasswordReset(a!==b?(sw?"Nenosiri hazifanani.":"Passwords do not match."):(sw?"Nenosiri liwe na angalau herufi 8.":"Password must be at least 8 characters."));return;}const btn=e.currentTarget.querySelector("button");btn.disabled=true;try{const {error}=await supabase.auth.updateUser({password:a});if(error)throw error;alert(sw?"Nenosiri limebadilishwa. Ingia tena kwa nenosiri jipya.":"Password updated. Please sign in again with your new password.");await supabase.auth.signOut();renderLogin();}catch(err){renderPasswordReset(err.message||"Password update failed.");}};
+}
+
 async function handleForgotPassword() {
   const email = prompt(t("forgotPrompt"));
 
@@ -1238,6 +1244,10 @@ async function startApp() {
     const session = await getCustomerSession();
 
     if (session) {
+      const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aalError) throw aalError;
+      if (aal?.nextLevel === "aal2" && aal?.currentLevel !== "aal2") { await renderMfaLoginChallenge(); return; }
+      if (location.hash.includes("type=recovery")) { await renderPasswordReset(); return; }
       await renderAccount();
       return;
     }
@@ -1254,5 +1264,9 @@ async function startApp() {
 /* =========================================
    RUN ZUNE APPLICATION
 ========================================= */
+
+supabase.auth.onAuthStateChange((event) => {
+  if (event === "PASSWORD_RECOVERY") renderPasswordReset();
+});
 
 startApp();
