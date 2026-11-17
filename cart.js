@@ -9,6 +9,7 @@ const LANG_KEY   = "zune_language";
 const THEME_KEY  = "zune_theme";
 const MAX_QTY    = 99;
 const QUERY_CHUNK = 100; // kikomo cha .in() cha Supabase
+let cartCloudQueue = Promise.resolve();
 
 const TEXT = {
   sw: {
@@ -24,7 +25,7 @@ const TEXT = {
     subtotal: "Jumla ndogo",
     total: "Jumla ya bidhaa",
     checkout: "Endelea kulipia",
-    checkoutNote: "Hatua ya malipo itaunganishwa baada ya mfumo wa checkout kukamilika.",
+    checkoutNote: "Unaweza kuendelea kwenye checkout na kuchagua njia ya malipo inayopatikana.",
     loading: "Inapakia bidhaa za kikapu...",
     loadError: "Imeshindikana kupakia baadhi ya bidhaa. Tafadhali jaribu tena.",
     unavailable: "Bidhaa hii haipatikani kwa sasa.",
@@ -47,7 +48,7 @@ const TEXT = {
     subtotal: "Subtotal",
     total: "Items total",
     checkout: "Continue to checkout",
-    checkoutNote: "Checkout and payment will be connected when the checkout flow is ready.",
+    checkoutNote: "Continue to checkout and choose an available payment method.",
     loading: "Loading cart products...",
     loadError: "Some cart products could not be loaded. Please try again.",
     unavailable: "This product is currently unavailable.",
@@ -104,6 +105,23 @@ export function readCart(userId) {
   }
 }
 
+async function persistCartToCloud(cart, userId) {
+  if (!userId) return;
+  const current = await supabase.from("cart_items").select("product_id").eq("user_id", userId);
+  if (current.error) throw current.error;
+  const keep = new Set(cart.map(item => String(item.productId)));
+  const removeIds = (current.data || []).map(row => String(row.product_id)).filter(id => !keep.has(id));
+  if (removeIds.length) {
+    const removed = await supabase.from("cart_items").delete().eq("user_id", userId).in("product_id", removeIds);
+    if (removed.error) throw removed.error;
+  }
+  if (cart.length) {
+    const rows = cart.map(item => ({ user_id: userId, product_id: item.productId, quantity: item.quantity }));
+    const saved = await supabase.from("cart_items").upsert(rows, { onConflict: "user_id,product_id" });
+    if (saved.error) throw saved.error;
+  }
+}
+
 export function writeCart(cart, userId) {
   const normalized = (Array.isArray(cart) ? cart : [])
     .map(normalizeItem)
@@ -115,6 +133,7 @@ export function writeCart(cart, userId) {
     console.warn("ZUNE cart storage write failed:", error);
   }
   syncCartCountBadges(normalized);
+  cartCloudQueue = cartCloudQueue.then(() => persistCartToCloud(normalized, userId)).catch(error => console.warn("ZUNE cart cloud sync:", error.message));
   return normalized;
 }
 
@@ -302,6 +321,26 @@ export async function mountStandaloneCart(root) {
   document.documentElement.lang = language;
 
   let cart = readCart(userId);
+  const cloudReadyKey = "zune_collections_cloud_ready:" + userId;
+  try {
+    const cloud = await supabase.from("cart_items").select("product_id,quantity").eq("user_id", userId);
+    if (cloud.error) throw cloud.error;
+    if (localStorage.getItem(cloudReadyKey) === "1") {
+      cart = (cloud.data || []).map(row => ({ productId: row.product_id, quantity: row.quantity }));
+    } else {
+      const merged = new Map((cloud.data || []).map(row => [String(row.product_id), { productId: row.product_id, quantity: Number(row.quantity) || 1 }]));
+      cart.forEach(item => {
+        const id = String(item.productId), existing = merged.get(id);
+        merged.set(id, { productId: item.productId, quantity: Math.max(Number(item.quantity) || 1, existing?.quantity || 1) });
+      });
+      cart = [...merged.values()];
+      await persistCartToCloud(cart, userId);
+    }
+    localStorage.setItem(cartStorageKey(userId), JSON.stringify(cart));
+    localStorage.setItem(cloudReadyKey, "1");
+  } catch (error) {
+    console.warn("ZUNE cart cloud load; using device cache:", error.message);
+  }
   const productsById = new Map();
   let renderToken = 0;
 
