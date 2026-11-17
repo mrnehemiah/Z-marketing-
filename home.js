@@ -1473,9 +1473,12 @@ function openStoreDetails(ownerId, product = null) {
   ]).then(([storeResult,profileResult,productsResult])=>{
     if(!overlay.isConnected)return;
     if(storeResult.error)throw storeResult.error;
-    if(profileResult.error)throw profileResult.error;
+    // Public storefronts must remain viewable even when authenticated profile RLS
+    // hides another seller's private profile row. Verification is optional metadata.
+    if(profileResult.error)console.warn("ZUNE storefront profile verification unavailable:",profileResult.error.message);
+    if(productsResult.error)console.warn("ZUNE storefront products query failed:",productsResult.error.message);
     const store=storeResult.data||cachedStore;
-    const profile=profileResult.data||cachedProfile;
+    const profile=profileResult.data||cachedProfile||null;
     const products=productsResult.error?[]:(productsResult.data||[]);
     const templateKey="zune_template_store:"+ownerId;
     let selectedTemplate="classic";
