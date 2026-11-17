@@ -89,3 +89,60 @@
 @media(min-width:601px) and (max-width:760px){
  .account-settings-grid{grid-template-columns:1fr}
 }
+
+
+/* ZUNE Account visual refresh — Premium Modern */
+.z-account-body{background:linear-gradient(180deg,#eaf3ee 0,#f5f7f6 250px,var(--background,#f5f7f6) 250px);color:var(--text,#17231e)}
+.account-shell{width:min(100% - 32px,860px);padding-bottom:46px}
+.account-topbar{position:relative;isolation:isolate;overflow:hidden;min-height:142px;margin:0 calc((min(100vw - 32px,860px) - 100vw)/2) 22px;padding:20px max(18px,calc((100vw - 860px)/2));border:0;border-radius:0 0 28px 28px;background:linear-gradient(125deg,#064d38 0%,#087a55 58%,#15966d 100%);color:#fff;box-shadow:0 12px 30px rgba(5,78,55,.16)}
+.account-topbar:after{content:"";position:absolute;z-index:-1;width:240px;height:240px;right:-80px;top:-125px;border:1px solid rgba(255,255,255,.16);border-radius:50%;box-shadow:0 0 0 25px rgba(255,255,255,.045),0 0 0 52px rgba(255,255,255,.035)}
+.account-brand{font-size:24px;letter-spacing:-1.7px;color:#fff}
+.account-heading h1{font-size:23px;letter-spacing:-.5px}
+.account-heading p{color:rgba(255,255,255,.76);font-size:11px}
+.account-header-icon,.account-language{width:40px;height:40px;border:1px solid rgba(255,255,255,.24);border-radius:14px;background:rgba(255,255,255,.12);color:#fff;backdrop-filter:blur(8px)}
+.account-header-icon{font-size:17px}
+.account-hero{position:relative;display:flex;align-items:center;gap:15px;margin-top:0;padding:18px;border:1px solid color-mix(in srgb,var(--primary,#087a55) 12%,var(--border));border-radius:22px;background:var(--surface,#fff);box-shadow:0 8px 25px rgba(15,45,32,.065)}
+.account-hero-link:after{content:"›";font-size:27px}
+.account-avatar{width:76px;height:76px;flex:0 0 76px;border:3px solid color-mix(in srgb,var(--primary,#087a55) 18%,white);border-radius:23px;background:color-mix(in srgb,var(--primary,#087a55) 10%,var(--surface));color:var(--primary);box-shadow:0 4px 12px rgba(5,78,55,.08)}
+.account-identity h1{font-size:20px;letter-spacing:-.45px}
+.account-identity p{font-size:11px}
+.account-eyebrow{color:var(--primary,#087a55);font-size:9px;letter-spacing:1.35px}
+.account-section{margin-top:27px}
+.account-section-head{margin:0 2px 13px}
+.account-section-head h2{font-size:18px;letter-spacing:-.35px}
+.account-grid.account-shopping-grid{gap:11px}
+.account-shopping-grid .account-card{position:relative;min-height:132px;padding:15px;border-radius:18px;border:1px solid var(--border);background:var(--surface,#fff);box-shadow:0 6px 18px rgba(15,45,32,.045)}
+.account-shopping-grid .account-card-icon{width:45px;height:45px;flex-basis:45px;border-radius:15px;background:color-mix(in srgb,var(--primary,#087a55) 11%,var(--surface));color:var(--primary);font-size:21px}
+.account-shopping-grid .account-card-copy strong{font-size:12px}
+.account-shopping-grid .account-card-copy small{font-size:9px}
+.account-shopping-grid .account-card-arrow{color:var(--primary);font-size:23px}
+.account-card{transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.account-card:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--primary) 40%,var(--border));box-shadow:0 10px 22px rgba(15,45,32,.08)}
+.account-settings-grid{gap:9px!important}
+.account-settings-grid .account-card{min-height:72px;padding:11px 13px;border-radius:15px;background:var(--surface,#fff);box-shadow:0 3px 12px rgba(15,45,32,.035)}
+.account-settings-grid .account-card-icon{width:39px;height:39px;flex-basis:39px;border-radius:13px}
+.account-panel{border-radius:20px;box-shadow:0 7px 22px rgba(15,45,32,.05)}
+.account-status{border-radius:13px}
+.account-button{min-height:44px;border-radius:13px;box-shadow:0 5px 13px rgba(8,122,85,.15)}
+.account-button.danger{box-shadow:none}
+.account-footer{padding-top:30px}
+@media(max-width:600px){
+ .account-shell{width:calc(100% - 26px)}
+ .account-topbar{min-height:126px;margin:0 -13px 18px;padding:16px 15px;border-radius:0 0 23px 23px}
+ .account-brand{font-size:22px}
+ .account-heading h1{font-size:20px}
+ .account-top-actions{gap:6px}
+ .account-header-icon,.account-language{width:36px;height:36px;border-radius:12px}
+ .account-hero{gap:11px;padding:14px 12px;border-radius:19px}
+ .account-avatar{width:64px;height:64px;flex-basis:64px;border-radius:19px}
+ .account-identity h1{font-size:16px}
+ .account-section{margin-top:23px}
+ .account-grid.account-shopping-grid{gap:7px}
+ .account-shopping-grid .account-card{min-height:112px;padding:10px 8px;border-radius:15px}
+ .account-shopping-grid .account-card-icon{width:36px;height:36px;flex-basis:36px;border-radius:12px;font-size:18px}
+ .account-shopping-grid .account-card-copy strong{font-size:10px}
+ .account-shopping-grid .account-card-copy small{font-size:8px}
+ .account-settings-grid{grid-template-columns:1fr;gap:8px!important}
+ .account-settings-grid .account-card{min-height:64px;padding:10px 12px;border-radius:14px}
+}
+@media(prefers-reduced-motion:reduce){.account-card{transition:none}}
