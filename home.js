@@ -1313,11 +1313,12 @@ function renderSponsoredPlacementBlocks(){
   const homeHost=document.getElementById("z-sponsored-products");
   const exploreHost=document.getElementById("z-explore-sponsored-products");
   const storeHost=document.getElementById("z-sponsored-stores");
-  const renderProduct=(item)=>'<article class="z-sponsored-card" data-sponsored-campaign="'+safe(item.campaign.id)+'"><span class="z-sponsored-label">Sponsored</span>'+productCard(item.product)+'</article>';
+  const renderProduct=(item,placement)=>'<article class="z-sponsored-card" data-sponsored-campaign="'+safe(item.campaign.id)+'" data-sponsored-placement="'+safe(placement||item.campaign.placement||"home")+'"><span class="z-sponsored-label">Sponsored</span>'+productCard(item.product)+'</article>';
   const homeItems=homeState.sponsoredProducts.filter(x=>["home","home_feed","trending"].includes(String(x.campaign.placement||"").toLowerCase())).slice(0,homeState.maxSponsoredAdsPerPlacement);
-  const exploreItems=homeState.sponsoredProducts.filter(x=>["search","category","recommendations"].includes(String(x.campaign.placement||"").toLowerCase())).slice(0,homeState.maxSponsoredAdsPerPlacement);
-  if(homeHost)homeHost.innerHTML=homeItems.map(renderProduct).join("")||'<div class="z-sponsored-empty">No sponsored products right now.</div>';
-  if(exploreHost)exploreHost.innerHTML=exploreItems.map(renderProduct).join("");
+  const explorePlacement=homeState.search?"search":(homeState.selectedCategory?"category":"recommendations");
+  const exploreItems=homeState.sponsoredProducts.filter(x=>String(x.campaign.placement||"").toLowerCase()===explorePlacement).slice(0,homeState.maxSponsoredAdsPerPlacement);
+  if(homeHost)homeHost.innerHTML=homeItems.map(x=>renderProduct(x,x.campaign.placement)).join("")||'<div class="z-sponsored-empty">No sponsored products right now.</div>';
+  if(exploreHost)exploreHost.innerHTML=exploreItems.map(x=>renderProduct(x,explorePlacement)).join("");
   if(storeHost)storeHost.innerHTML=homeState.sponsoredStores.map(x=>'<article class="z-sponsored-store" data-sponsored-campaign="'+safe(x.campaign.id)+'" data-sponsored-event="store_visit"><span class="z-sponsored-label">Sponsored</span><strong>'+safe(x.store.store_name||"ZUNE Store")+'</strong><button type="button" data-sponsored-open="'+safe(x.store.owner_id)+'">Visit store</button></article>').join("");
 }
 
@@ -1380,15 +1381,15 @@ function bindSponsoredAdEvents() {
     if ("IntersectionObserver" in window) {
       const observer = new IntersectionObserver(entries => {
         entries.forEach(entry => {
-          if (entry.isIntersecting) { recordSponsoredEvent(campaignId, "impression", host.id === "z-explore-sponsored-products" ? "recommendations" : (host.id === "z-store-sponsored-products" ? "store_page" : "home")); observer.disconnect(); }
+          if (entry.isIntersecting) { recordSponsoredEvent(campaignId, "impression", card.dataset.sponsoredPlacement || (host.id === "z-store-sponsored-products" ? "store_page" : "home")); observer.disconnect(); }
         });
       }, { threshold: 0.5 });
       observer.observe(card);
     }
-    card.querySelector("[data-open-product]")?.addEventListener("click", () => recordSponsoredEvent(campaignId, "click", host.id === "z-explore-sponsored-products" ? "recommendations" : (host.id === "z-store-sponsored-products" ? "store_page" : "home")), { once: true });
+    card.querySelector("[data-open-product]")?.addEventListener("click", () => recordSponsoredEvent(campaignId, "click", card.dataset.sponsoredPlacement || (host.id === "z-store-sponsored-products" ? "store_page" : "home")), { once: true });
     card.querySelector("[data-sponsored-open]")?.addEventListener("click", () => { recordSponsoredEvent(campaignId, card.dataset.sponsoredEvent || "store_visit", host.id === "z-sponsored-stores" ? "home" : "store_page"); openSponsoredStore(card.querySelector("[data-sponsored-open]").dataset.sponsoredOpen); }, { once: true });
     card.querySelector("[data-open-product]")?.addEventListener("keydown", event => {
-      if (event.key === "Enter" || event.key === " ") recordSponsoredEvent(campaignId, "click", host.id === "z-explore-sponsored-products" ? "recommendations" : (host.id === "z-store-sponsored-products" ? "store_page" : "home"));
+      if (event.key === "Enter" || event.key === " ") recordSponsoredEvent(campaignId, "click", card.dataset.sponsoredPlacement || (host.id === "z-store-sponsored-products" ? "store_page" : "home"));
     }, { once: true });
   }));
 }
@@ -1677,7 +1678,7 @@ async function loadProductSponsoredRecommendations(overlay,currentProduct){
   const profiles=new Map((results[1].data||[]).map(x=>[String(x.id),x]));
   rows.forEach(c=>{const p=byId.get(String(c.product_id));p.__zuneStore=stores.get(String(p.vendor_id))||null;p.__zuneOwnerProfile=profiles.get(String(p.vendor_id))||null;});
  }
- host.innerHTML=rows.map(c=>'<article class="z-sponsored-card" data-sponsored-campaign="'+safe(c.id)+'"><span class="z-sponsored-label">Sponsored</span>'+productCard(byId.get(String(c.product_id)))+'</article>').join("");
+ host.innerHTML=rows.map(c=>'<article class="z-sponsored-card" data-sponsored-campaign="'+safe(c.id)+'" data-sponsored-placement="recommendations"><span class="z-sponsored-label">Sponsored</span>'+productCard(byId.get(String(c.product_id)))+'</article>').join("");
  if(!rows.length){section.remove();return;}
  bindProductCards(host);bindSponsoredAdEvents();
 }
