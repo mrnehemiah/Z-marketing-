@@ -1296,6 +1296,28 @@ async function loadSponsoredCampaigns() {
   }
 }
 
+
+async function loadStorefrontSponsoredAds(overlay, currentSellerId) {
+  const host=overlay.querySelector("#z-store-sponsored-products");
+  if(!host)return;
+  const now=new Date().toISOString();
+  const {data:campaigns,error}=await supabase.from("ad_campaigns")
+    .select("id,product_id,seller_id,campaign_type,placement,starts_at,ends_at")
+    .eq("status","approved").eq("placement","store_page").neq("seller_id",currentSellerId).limit(12);
+  if(error)throw error;
+  const live=(campaigns||[]).filter(c=>(!c.starts_at||c.starts_at<=now)&&(!c.ends_at||c.ends_at>now)&&c.product_id);
+  const ids=[...new Set(live.map(c=>c.product_id))].slice(0,4);
+  if(!ids.length){host.closest(".z-storefront-sponsored")?.remove();return;}
+  const {data:products,error:productError}=await supabase.from("products").select("*").in("id",ids).eq("moderation_status","approved");
+  if(productError)throw productError;
+  const byId=new Map((products||[]).map(p=>[String(p.id),p]));
+  const cards=live.filter(c=>byId.has(String(c.product_id))).map(c=>`<div data-sponsored-campaign="${safe(c.id)}" data-sponsored-event="store_visit">${productCard(byId.get(String(c.product_id)))}</div>`);
+  host.innerHTML=cards.join("");
+  bindProductCards(host);
+  bindSponsoredAdEvents();
+  if(!cards.length)host.closest(".z-storefront-sponsored")?.remove();
+}
+
 function openSponsoredStore(sellerId){
   if(!sellerId)return;
   homeState.selectedVendor=String(sellerId);homeState.selectedCategory="";homeState.search="";
@@ -1325,7 +1347,7 @@ function recordSponsoredEvent(campaignId, eventType, placement = "home") {
 }
 
 function bindSponsoredAdEvents() {
-  const hosts = [document.getElementById("z-sponsored-products"), document.getElementById("z-explore-sponsored-products"), document.getElementById("z-sponsored-stores")].filter(Boolean);
+  const hosts = [document.getElementById("z-sponsored-products"), document.getElementById("z-explore-sponsored-products"), document.getElementById("z-sponsored-stores"), document.getElementById("z-store-sponsored-products")].filter(Boolean);
   if (!hosts.length) return;
   hosts.forEach(host => host.querySelectorAll("[data-sponsored-campaign]").forEach(card => {
     if (card.dataset.impressionBound) return;
@@ -1334,7 +1356,7 @@ function bindSponsoredAdEvents() {
     if ("IntersectionObserver" in window) {
       const observer = new IntersectionObserver(entries => {
         entries.forEach(entry => {
-          if (entry.isIntersecting) { recordSponsoredEvent(campaignId, "impression", host.id === "z-explore-sponsored-products" ? "recommendations" : "home"); observer.disconnect(); }
+          if (entry.isIntersecting) { recordSponsoredEvent(campaignId, "impression", host.id === "z-explore-sponsored-products" ? "recommendations" : (host.id === "z-store-sponsored-products" ? "store_page" : "home")); observer.disconnect(); }
         });
       }, { threshold: 0.5 });
       observer.observe(card);
@@ -1469,7 +1491,8 @@ function openStoreDetails(ownerId, product = null) {
     <div class="z-storefront-banner"><span class="z-storefront-brand">ⓏⓊⓃⒺ MARKETPLACE</span><div class="z-storefront-logo" id="z-store-detail-logo" aria-label="Store logo"></div><div class="z-storefront-heading"><h2 id="z-store-detail-name">${safe(fallback)}</h2><div id="z-store-detail-status" class="z-product-store"></div><p id="z-store-detail-location" class="z-product-location"></p></div></div>
     <div class="z-storefront-content"><div class="z-storefront-section-head"><div><span class="z-account-eyebrow">${language()==="sw"?"DUKA LA SELLER":"SELLER STOREFRONT"}</span><h3>${language()==="sw"?"Bidhaa za duka":"Store products"}</h3></div><span id="z-storefront-count" class="z-storefront-count"></span></div>
     <p id="z-store-detail-message" class="z-account-message">${language()==="sw"?"Inapakia taarifa na bidhaa za duka...":"Loading store information and products..."}</p>
-    <div id="z-storefront-products" class="z-storefront-product-grid"></div></div>
+    <div id="z-storefront-products" class="z-storefront-product-grid"></div>
+    <section class="z-storefront-sponsored"><div class="z-storefront-section-head"><div><span class="z-account-eyebrow">SPONSORED</span><h3>${language()==="sw"?"Bidhaa zilizodhaminiwa":"Sponsored products"}</h3></div></div><div id="z-store-sponsored-products" class="z-storefront-product-grid"></div></section></div>
   </section>`;
   document.body.appendChild(overlay);
   const close=()=>overlay.remove();
@@ -1499,6 +1522,7 @@ function openStoreDetails(ownerId, product = null) {
       .z-storefront-count{font-size:12px;color:var(--text-muted)}
       .z-storefront-product-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
       .z-storefront-product-grid .z-product-card{min-width:0}
+      .z-storefront-sponsored{margin-top:22px;padding-top:16px;border-top:1px solid var(--border,#e4ebe7)}
       .z-storefront-sheet[data-zune-store-template="editorial"] .z-storefront-banner{background:#29251f}
       .z-storefront-sheet[data-zune-store-template="hero"] .z-storefront-banner{background:linear-gradient(135deg,#101d35,#314b73);padding:42px 24px}
       .z-storefront-sheet[data-zune-store-template="compact"] .z-storefront-content{padding:12px}
@@ -1544,6 +1568,7 @@ function openStoreDetails(ownerId, product = null) {
     overlay.querySelector("#z-storefront-count").textContent=products.length+" "+(language()==="sw"?"bidhaa":"products");
     products.forEach(item=>{item.__zuneStore=store;item.__zuneOwnerProfile=profile;});
     overlay.querySelector("#z-storefront-products").innerHTML=products.length?products.map(productCard).join(""):"";
+    loadStorefrontSponsoredAds(overlay,ownerId).catch(error=>console.warn("Store page sponsored ads unavailable:",error));
     const message=overlay.querySelector("#z-store-detail-message");
     if(productsResult.error)message.textContent=language()==="sw"?"Taarifa za duka zimepatikana, lakini bidhaa hazikuweza kupakiwa.":"Store details loaded, but products could not be loaded.";
     else if(!products.length)message.textContent=language()==="sw"?"Duka hili bado halijaweka bidhaa.":"This store has not listed any products yet.";
