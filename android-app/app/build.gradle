@@ -16,20 +16,24 @@ android {
 
     signingConfigs {
         release {
-            def ks = System.getenv('ZUNE_KEYSTORE_PATH')
-            if (ks) {
-                storeFile file(ks)
-                storePassword System.getenv('ZUNE_KEYSTORE_PASSWORD')
-                keyAlias System.getenv('ZUNE_KEY_ALIAS')
-                keyPassword System.getenv('ZUNE_KEY_PASSWORD')
+            def keystorePath = System.getenv("ZUNE_KEYSTORE_PATH")
+            if (keystorePath != null && !keystorePath.isEmpty()) {
+                storeFile file(keystorePath)
+                storePassword System.getenv("ZUNE_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ZUNE_KEY_ALIAS")
+                keyPassword System.getenv("ZUNE_KEY_PASSWORD")
             }
         }
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
         release {
             minifyEnabled false
-            if (System.getenv('ZUNE_KEYSTORE_PATH')) {
+            if (System.getenv("ZUNE_KEYSTORE_PATH")) {
                 signingConfig signingConfigs.release
             }
         }
