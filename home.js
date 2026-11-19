@@ -34,6 +34,7 @@ const homeState = {
   sponsoredProducts: [],
   sponsoredStores: [],
   sponsoredAdsLoaded: false,
+  maxSponsoredAdsPerPlacement: 3,
   selectedVendor: "",
   searchSuggestionsOpen: false,
 
@@ -1253,6 +1254,8 @@ async function loadSponsoredCampaigns() {
   if (homeState.sponsoredAdsLoaded) return;
   homeState.sponsoredAdsLoaded = true;
   try {
+    const {data:publicAdSettings}=await supabase.rpc("zune_ad_public_settings");
+    homeState.maxSponsoredAdsPerPlacement=Math.max(1,Math.min(20,Number(publicAdSettings?.max_ads_per_placement)||3));
     const now = new Date().toISOString();
     const { data, error } = await supabase.from("ad_campaigns")
       .select("id,store_id,seller_id,product_id,campaign_type,placement,title,starts_at,ends_at")
@@ -1267,7 +1270,7 @@ async function loadSponsoredCampaigns() {
       if(!storeError)sponsoredStoreRows=storeRows||[];
     }
     const sponsoredStoreMap=new Map(sponsoredStoreRows.map(x=>[String(x.id),x]));
-    homeState.sponsoredStores=storeCampaigns.filter(c=>sponsoredStoreMap.has(String(c.store_id))).map(c=>({campaign:c,store:sponsoredStoreMap.get(String(c.store_id))}));
+    homeState.sponsoredStores=storeCampaigns.filter(c=>sponsoredStoreMap.has(String(c.store_id))).slice(0,homeState.maxSponsoredAdsPerPlacement).map(c=>({campaign:c,store:sponsoredStoreMap.get(String(c.store_id))}));
     const campaigns = liveCampaigns.filter(c =>
       ["sponsored_product", "combo"].includes(c.campaign_type) &&
       ["home", "home_feed", "trending", "recommendations", "category", "search"].includes(String(c.placement || "").toLowerCase()) && c.product_id
@@ -1311,8 +1314,8 @@ function renderSponsoredPlacementBlocks(){
   const exploreHost=document.getElementById("z-explore-sponsored-products");
   const storeHost=document.getElementById("z-sponsored-stores");
   const renderProduct=(item)=>'<article class="z-sponsored-card" data-sponsored-campaign="'+safe(item.campaign.id)+'"><span class="z-sponsored-label">Sponsored</span>'+productCard(item.product)+'</article>';
-  const homeItems=homeState.sponsoredProducts.filter(x=>["home","home_feed","trending"].includes(String(x.campaign.placement||"").toLowerCase()));
-  const exploreItems=homeState.sponsoredProducts.filter(x=>["search","category","recommendations"].includes(String(x.campaign.placement||"").toLowerCase()));
+  const homeItems=homeState.sponsoredProducts.filter(x=>["home","home_feed","trending"].includes(String(x.campaign.placement||"").toLowerCase())).slice(0,homeState.maxSponsoredAdsPerPlacement);
+  const exploreItems=homeState.sponsoredProducts.filter(x=>["search","category","recommendations"].includes(String(x.campaign.placement||"").toLowerCase())).slice(0,homeState.maxSponsoredAdsPerPlacement);
   if(homeHost)homeHost.innerHTML=homeItems.map(renderProduct).join("")||'<div class="z-sponsored-empty">No sponsored products right now.</div>';
   if(exploreHost)exploreHost.innerHTML=exploreItems.map(renderProduct).join("");
   if(storeHost)storeHost.innerHTML=homeState.sponsoredStores.map(x=>'<article class="z-sponsored-store" data-sponsored-campaign="'+safe(x.campaign.id)+'" data-sponsored-event="store_visit"><span class="z-sponsored-label">Sponsored</span><strong>'+safe(x.store.store_name||"ZUNE Store")+'</strong><button type="button" data-sponsored-open="'+safe(x.store.owner_id)+'">Visit store</button></article>').join("");
@@ -1327,7 +1330,7 @@ async function loadStorefrontSponsoredAds(overlay, currentSellerId) {
     .eq("status","approved").eq("placement","store_page").neq("seller_id",currentSellerId).limit(12);
   if(error)throw error;
   const live=(campaigns||[]).filter(c=>(!c.starts_at||c.starts_at<=now)&&(!c.ends_at||c.ends_at>now)&&c.product_id);
-  const ids=[...new Set(live.map(c=>c.product_id))].slice(0,4);
+  const ids=[...new Set(live.map(c=>c.product_id))].slice(0,homeState.maxSponsoredAdsPerPlacement||3);
   if(!ids.length){host.closest(".z-storefront-sponsored")?.remove();return;}
   const {data:products,error:productError}=await supabase.from("products").select("*").in("id",ids).eq("moderation_status","approved");
   if(productError)throw productError;
