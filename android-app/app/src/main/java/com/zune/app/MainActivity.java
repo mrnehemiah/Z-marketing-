@@ -125,6 +125,7 @@ public class MainActivity extends Activity {
                     while ((line = reader.readLine()) != null) jsonText.append(line);
                 }
                 JSONObject release = new JSONObject(jsonText.toString());
+                if (release.optBoolean("draft", false) || release.optBoolean("prerelease", false)) return;
                 String body = release.optString("body", "");
                 int remoteCode = extractVersionCode(body);
                 int localCode = getLocalVersionCode();
@@ -178,13 +179,16 @@ public class MainActivity extends Activity {
 
     private void showUpdateDialog(String version, String notes, String apkUrl) {
         if (isFinishing()) return;
-        String message = notes.isEmpty() ? "Toleo jipya la ZUNE linapatikana." : notes;
+        String message = notes.isEmpty()
+                ? "Kuna toleo jipya la ZUNE lenye maboresho na marekebisho."
+                : notes;
         new AlertDialog.Builder(this)
-                .setTitle("ZUNE Update Available")
-                .setMessage(version + "\\n\\n" + message)
+                .setTitle("ZUNE ina sasisho jipya")
+                .setMessage("Toleo: " + version + "\\n\\n" + message
+                        + "\\n\\nUngependa kupakua na kusakinisha sasisho sasa?")
                 .setCancelable(true)
                 .setNegativeButton("Baadaye", (dialog, which) -> dialog.dismiss())
-                .setPositiveButton("Update Now", (dialog, which) -> downloadUpdate(apkUrl))
+                .setPositiveButton("Sasisha sasa", (dialog, which) -> downloadUpdate(apkUrl))
                 .show();
     }
 
