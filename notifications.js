@@ -170,6 +170,7 @@ function formatTime(dateValue) {
 function getNotificationIcon(type) {
   const icons = {
     general: "🔔",
+    announcement: "📢",
     account: "👤",
     security: "🔐",
     seller_application: "🏪",
