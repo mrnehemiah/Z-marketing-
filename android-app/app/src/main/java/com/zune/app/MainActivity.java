@@ -36,9 +36,9 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 public class MainActivity extends Activity {
-    private static final String MARKET = "https://mrnehemiah.github.io/Z-marketing-/";
+    private static final String MARKET = "https://mrnehemiah.github.io/";
     private static final String SELLER = "https://mrnehemiah.github.io/zuneacts/";
-    private static final String LATEST_RELEASE = "https://api.github.com/repos/mrnehemiah/Z-marketing-/releases/latest";
+    private static final String LATEST_RELEASE = "https://api.github.com/repos/mrnehemiah/mrnehemiah.github.io/releases/latest";
     private WebView webView;
     private ValueCallback<Uri[]> uploadCallback;
     private static final int FILE_CHOOSER_REQUEST = 4201;
