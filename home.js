@@ -1259,13 +1259,21 @@ async function loadSponsoredCampaigns() {
       .eq("status", "approved").order("created_at", { ascending: false }).limit(40);
     if (error) throw error;
     const liveCampaigns = (data || []).filter(c => (!c.starts_at || c.starts_at <= now) && (!c.ends_at || c.ends_at > now));
-    homeState.sponsoredStores = liveCampaigns.filter(c => c.campaign_type === "sponsored_store" && ["home","home_feed"].includes(String(c.placement||"").toLowerCase()));
+    const storeCampaigns = liveCampaigns.filter(c => c.campaign_type === "sponsored_store" && ["home","home_feed"].includes(String(c.placement||"").toLowerCase()) && c.store_id);
+    const storeIds = [...new Set(storeCampaigns.map(c=>c.store_id))];
+    let sponsoredStoreRows=[];
+    if(storeIds.length){
+      const {data:storeRows,error:storeError}=await supabase.from("stores").select("id,owner_id,store_name,logo_url,verification_status").in("id",storeIds);
+      if(!storeError)sponsoredStoreRows=storeRows||[];
+    }
+    const sponsoredStoreMap=new Map(sponsoredStoreRows.map(x=>[String(x.id),x]));
+    homeState.sponsoredStores=storeCampaigns.filter(c=>sponsoredStoreMap.has(String(c.store_id))).map(c=>({campaign:c,store:sponsoredStoreMap.get(String(c.store_id))}));
     const campaigns = liveCampaigns.filter(c =>
       ["sponsored_product", "combo"].includes(c.campaign_type) &&
       ["home", "home_feed", "trending", "recommendations", "category", "search"].includes(String(c.placement || "").toLowerCase()) && c.product_id
     );
     const productIds = [...new Set(campaigns.map(c => c.product_id))];
-    if (!productIds.length) { updateProductArea(); bindSponsoredAdEvents(); return; }
+    if (!productIds.length) { homeState.sponsoredCampaigns=[];homeState.sponsoredProducts=[];renderSponsoredPlacementBlocks();updateProductArea();bindSponsoredAdEvents();return; }
     const { data: products, error: productError } = await supabase.from("products").select("*").in("id", productIds);
     if (productError) throw productError;
     const byId = new Map((products || []).map(p => [String(p.id), p]));
@@ -1288,6 +1296,7 @@ async function loadSponsoredCampaigns() {
       p.__zuneOwnerProfile = profileMap.get(String(p.vendor_id)) || null;
       return { campaign: c, product: p };
     });
+    renderSponsoredPlacementBlocks();
     updateProductArea();
     bindSponsoredAdEvents();
   } catch (error) {
@@ -1296,6 +1305,18 @@ async function loadSponsoredCampaigns() {
   }
 }
 
+
+function renderSponsoredPlacementBlocks(){
+  const homeHost=document.getElementById("z-sponsored-products");
+  const exploreHost=document.getElementById("z-explore-sponsored-products");
+  const storeHost=document.getElementById("z-sponsored-stores");
+  const renderProduct=(item)=>'<article class="z-sponsored-card" data-sponsored-campaign="'+safe(item.campaign.id)+'"><span class="z-sponsored-label">Sponsored</span>'+productCard(item.product)+'</article>';
+  const homeItems=homeState.sponsoredProducts.filter(x=>["home","home_feed","trending"].includes(String(x.campaign.placement||"").toLowerCase()));
+  const exploreItems=homeState.sponsoredProducts.filter(x=>["search","category","recommendations"].includes(String(x.campaign.placement||"").toLowerCase()));
+  if(homeHost)homeHost.innerHTML=homeItems.map(renderProduct).join("")||'<div class="z-sponsored-empty">No sponsored products right now.</div>';
+  if(exploreHost)exploreHost.innerHTML=exploreItems.map(renderProduct).join("");
+  if(storeHost)storeHost.innerHTML=homeState.sponsoredStores.map(x=>'<article class="z-sponsored-store" data-sponsored-campaign="'+safe(x.campaign.id)+'" data-sponsored-event="store_visit"><span class="z-sponsored-label">Sponsored</span><strong>'+safe(x.store.store_name||"ZUNE Store")+'</strong><button type="button" data-sponsored-open="'+safe(x.store.owner_id)+'">Visit store</button></article>').join("");
+}
 
 async function loadStorefrontSponsoredAds(overlay, currentSellerId) {
   const host=overlay.querySelector("#z-store-sponsored-products");
