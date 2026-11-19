@@ -1363,7 +1363,6 @@ function recordSponsoredEvent(campaignId, eventType, placement = "home") {
     event_type: eventType,
     event_key: crypto.randomUUID(),
     visitor_key: sponsoredVisitorKey(),
-    user_id: homeState.user?.id || null,
     placement,
     metadata: { source: "marketplace" }
   };
