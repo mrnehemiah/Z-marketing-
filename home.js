@@ -1372,7 +1372,7 @@ function recordSponsoredEvent(campaignId, eventType, placement = "home") {
 }
 
 function bindSponsoredAdEvents() {
-  const hosts = [document.getElementById("z-sponsored-products"), document.getElementById("z-explore-sponsored-products"), document.getElementById("z-sponsored-stores"), document.getElementById("z-store-sponsored-products")].filter(Boolean);
+  const hosts = [document.getElementById("z-sponsored-products"), document.getElementById("z-explore-sponsored-products"), document.getElementById("z-sponsored-stores"), document.getElementById("z-store-sponsored-products"), ...document.querySelectorAll("#z-product-sponsored-recommendations .z-sponsored-products")].filter(Boolean);
   if (!hosts.length) return;
   hosts.forEach(host => host.querySelectorAll("[data-sponsored-campaign]").forEach(card => {
     if (card.dataset.impressionBound) return;
