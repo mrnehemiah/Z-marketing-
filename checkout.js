@@ -57,7 +57,7 @@ async function loadCheckoutSponsoredAds(){
  const visitorKey=(()=>{try{let k=localStorage.getItem("zune_ads_visitor_key");if(!k){k=crypto.randomUUID();localStorage.setItem("zune_ads_visitor_key",k);}return k;}catch(_){return crypto.randomUUID();}})();
  section.querySelectorAll("[data-ad-campaign]").forEach(card=>{
   const campaignId=card.dataset.adCampaign;
-  const send=eventType=>supabase.from("ad_events").insert({campaign_id:campaignId,event_type:eventType,event_key:crypto.randomUUID(),visitor_key:visitorKey,user_id:user.id,placement:"checkout",metadata:{source:"checkout"}}).then(({error})=>{if(error)console.warn("Checkout ad event:",error.message);});
+  const send=eventType=>supabase.from("ad_events").insert({campaign_id:campaignId,event_type:eventType,event_key:crypto.randomUUID(),visitor_key:visitorKey,placement:"checkout",metadata:{source:"checkout"}}).then(({error})=>{if(error)console.warn("Checkout ad event:",error.message);});
   send("impression");
   card.querySelector("[data-ad-open]")?.addEventListener("click",()=>send("click"),{once:true});
  });
