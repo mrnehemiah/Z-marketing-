@@ -66,7 +66,7 @@ async function load(){
  const checkoutIds=[...new Set(orders.map(o=>o.checkout_id).filter(Boolean))];
  const orderIds=orders.map(o=>o.id);
  const [checkoutResult,deliveryResult,itemResult]=await Promise.all([
-  checkoutIds.length?supabase.from("order_checkouts").select("id,recipient_name,recipient_phone,recipient_email,country,region,district,ward,delivery_address,grand_total,payment_method,status,created_at").in("id",checkoutIds):Promise.resolve({data:[],error:null}),
+  checkoutIds.length?supabase.from("order_checkouts").select("id,recipient_name,recipient_phone,recipient_email,country,region,district,ward,delivery_address,latitude,longitude,grand_total,payment_method,status,created_at").in("id",checkoutIds):Promise.resolve({data:[],error:null}),
   checkoutIds.length?supabase.from("order_deliveries").select("id,checkout_id,vendor_id,delivery_fee,currency,status,assigned_driver_id,seller_handover_confirmed_at,driver_pickup_confirmed_at,driver_delivered_at,buyer_confirmed_at,last_latitude,last_longitude,last_location_at,created_at").in("checkout_id",checkoutIds):Promise.resolve({data:[],error:null}),
   orderIds.length?supabase.from("order_items").select("id,order_id,product_name,price,quantity,seller_id").in("order_id",orderIds):Promise.resolve({data:[],error:null})
  ]);
