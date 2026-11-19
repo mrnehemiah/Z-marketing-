@@ -2,7 +2,7 @@
 
 This Android wrapper opens ZUNE Market first and keeps ZUNE Acts inside the same app.
 
-- Market: https://mrnehemiah.github.io/Z-marketing-/
+- Market: https://mrnehemiah.github.io/
 - Seller Portal: https://mrnehemiah.github.io/zuneacts/
 - Application ID: `com.zune.app`
 - Native project: Android / Java / WebView
