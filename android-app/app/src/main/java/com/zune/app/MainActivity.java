@@ -14,8 +14,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
 import android.provider.Settings;
 import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
@@ -30,56 +28,69 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
 public class MainActivity extends Activity {
-    private static final String MARKET = "https://mrnehemiah.github.io/";
-    private static final String SELLER = "https://mrnehemiah.github.io/zuneacts/";
-    private static final String LATEST_RELEASE = "https://api.github.com/repos/mrnehemiah/mrnehemiah.github.io/releases/latest";
-    private WebView webView;
-    private ValueCallback<Uri[]> uploadCallback;
+    private static final String MARKET_URL = "https://mrnehemiah.github.io/";
+    private static final String SELLER_URL = "https://mrnehemiah.github.io/zuneacts/";
+    private static final String RELEASE_API = "https://api.github.com/repos/mrnehemiah/mrnehemiah.github.io/releases/latest";
     private static final int FILE_CHOOSER_REQUEST = 4201;
-    private long activeDownloadId = -1;
-    private BroadcastReceiver downloadReceiver;
 
-    private boolean isTrusted(String url) {
-        if (url == null) return false;
-        Uri uri = Uri.parse(url);
+    private WebView webView;
+    private ValueCallback<Uri[]> fileUploadCallback;
+    private BroadcastReceiver downloadReceiver;
+    private long pendingDownloadId = -1L;
+    private boolean updateDialogShown = false;
+
+    private boolean isInternalUrl(String value) {
+        if (value == null) return false;
+        Uri uri = Uri.parse(value);
+        if (!"https".equalsIgnoreCase(uri.getScheme())) return false;
         String host = uri.getHost();
-        return "mrnehemiah.github.io".equalsIgnoreCase(host)
-                && (url.startsWith(MARKET) || url.startsWith(SELLER)
-                || url.equals("https://mrnehemiah.github.io/"));
+        if (host == null || !"mrnehemiah.github.io".equalsIgnoreCase(host)) return false;
+        String path = uri.getPath() == null ? "/" : uri.getPath();
+        return path.equals("/") || path.startsWith("/zuneacts/");
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().setStatusBarColor(android.graphics.Color.rgb(0, 59, 50));
+        getWindow().setNavigationBarColor(android.graphics.Color.rgb(0, 59, 50));
+
         webView = new WebView(this);
         setContentView(webView);
+        configureWebView();
+        if (savedInstanceState == null) webView.loadUrl(MARKET_URL);
+        else webView.restoreState(savedInstanceState);
+        checkForUpdates();
+    }
 
+    private void configureWebView() {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
-        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         settings.setLoadsImagesAutomatically(true);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setSupportMultipleWindows(false);
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
-        CookieManager.getInstance().setAcceptCookie(true);
-        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+
+        CookieManager cookies = CookieManager.getInstance();
+        cookies.setAcceptCookie(true);
+        cookies.setAcceptThirdPartyCookies(webView, false);
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                String url = request.getUrl().toString();
-                if (isTrusted(url)) return false;
-                openExternal(url);
+                String target = request.getUrl().toString();
+                if (isInternalUrl(target)) return false;
+                openExternal(target);
                 return true;
             }
         });
@@ -87,56 +98,51 @@ public class MainActivity extends Activity {
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback,
-                    FileChooserParams params) {
-                if (uploadCallback != null) uploadCallback.onReceiveValue(null);
-                uploadCallback = callback;
+                                             FileChooserParams params) {
+                if (fileUploadCallback != null) fileUploadCallback.onReceiveValue(null);
+                fileUploadCallback = callback;
                 try {
-                    Intent intent = params.createIntent();
-                    startActivityForResult(intent, FILE_CHOOSER_REQUEST);
+                    startActivityForResult(params.createIntent(), FILE_CHOOSER_REQUEST);
                     return true;
-                } catch (ActivityNotFoundException ex) {
-                    uploadCallback = null;
-                    Toast.makeText(MainActivity.this, "Hakuna app ya kuchagua faili.", Toast.LENGTH_SHORT).show();
+                } catch (ActivityNotFoundException error) {
+                    fileUploadCallback = null;
+                    Toast.makeText(MainActivity.this, "Hakuna programu ya kuchagua faili.", Toast.LENGTH_LONG).show();
                     return false;
                 }
             }
         });
-
-        webView.clearCache(false);
-        webView.loadUrl(MARKET);
-        checkForUpdates();
     }
 
     private void checkForUpdates() {
         new Thread(() -> {
             HttpURLConnection connection = null;
             try {
-                connection = (HttpURLConnection) new URL(LATEST_RELEASE).openConnection();
+                connection = (HttpURLConnection) new URL(RELEASE_API).openConnection();
                 connection.setRequestMethod("GET");
-                connection.setConnectTimeout(10000);
-                connection.setReadTimeout(10000);
+                connection.setConnectTimeout(12000);
+                connection.setReadTimeout(12000);
                 connection.setRequestProperty("Accept", "application/vnd.github+json");
-                connection.setRequestProperty("User-Agent", "ZUNE-Android-App");
-                if (connection.getResponseCode() != 200) return;
-                StringBuilder jsonText = new StringBuilder();
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(connection.getInputStream()))) {
+                connection.setRequestProperty("User-Agent", "ZUNE-Android");
+                if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) return;
+
+                StringBuilder response = new StringBuilder();
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
                     String line;
-                    while ((line = reader.readLine()) != null) jsonText.append(line);
+                    while ((line = reader.readLine()) != null) response.append(line);
                 }
-                JSONObject release = new JSONObject(jsonText.toString());
+
+                JSONObject release = new JSONObject(response.toString());
                 if (release.optBoolean("draft", false) || release.optBoolean("prerelease", false)) return;
-                String body = release.optString("body", "");
-                int remoteCode = extractVersionCode(body);
-                int localCode = getLocalVersionCode();
-                if (remoteCode <= localCode) return;
+                String notes = release.optString("body", "");
+                int availableCode = parseVersionCode(notes);
+                if (availableCode <= getInstalledVersionCode()) return;
 
                 JSONArray assets = release.optJSONArray("assets");
                 String apkUrl = null;
                 if (assets != null) {
                     for (int i = 0; i < assets.length(); i++) {
-                        JSONObject asset = assets.getJSONObject(i);
-                        if ("ZUNE.apk".equalsIgnoreCase(asset.optString("name"))) {
+                        JSONObject asset = assets.optJSONObject(i);
+                        if (asset != null && "ZUNE.apk".equalsIgnoreCase(asset.optString("name"))) {
                             apkUrl = asset.optString("browser_download_url", null);
                             break;
                         }
@@ -144,97 +150,93 @@ public class MainActivity extends Activity {
                 }
                 if (apkUrl == null || !apkUrl.startsWith("https://github.com/")) return;
 
-                String notes = body.replaceAll("(?m)^versionCode\\s*=.*$", "").trim();
-                String finalApkUrl = apkUrl;
-                new Handler(Looper.getMainLooper()).post(() -> showUpdateDialog(
-                        release.optString("tag_name", "Toleo jipya"), notes, finalApkUrl));
+                String cleanNotes = notes.replaceAll("(?m)^versionCode\\s*=.*$", "").trim();
+                String versionName = release.optString("name", release.optString("tag_name", "Toleo jipya"));
+                String finalUrl = apkUrl;
+                runOnUiThread(() -> showUpdateDialog(versionName, cleanNotes, finalUrl));
             } catch (Exception ignored) {
-                // Update checks are optional; the marketplace remains usable offline.
+                // Update checks must never prevent the marketplace from opening.
             } finally {
                 if (connection != null) connection.disconnect();
             }
         }).start();
     }
 
-    private int extractVersionCode(String body) {
+    private int parseVersionCode(String releaseNotes) {
         try {
             java.util.regex.Matcher matcher = java.util.regex.Pattern
-                    .compile("(?m)^versionCode\\s*=\\s*(\\d+)\\s*$").matcher(body);
+                    .compile("(?m)^versionCode\\s*=\\s*(\\d+)\\s*$").matcher(releaseNotes);
             return matcher.find() ? Integer.parseInt(matcher.group(1)) : 0;
-        } catch (Exception ignored) { return 0; }
+        } catch (Exception ignored) {
+            return 0;
+        }
     }
 
-    private int getLocalVersionCode() {
+    private int getInstalledVersionCode() {
         try {
             PackageInfo info;
             if (Build.VERSION.SDK_INT >= 33) {
-                info = getPackageManager().getPackageInfo(getPackageName(),
-                        PackageManager.PackageInfoFlags.of(0));
+                info = getPackageManager().getPackageInfo(getPackageName(), PackageManager.PackageInfoFlags.of(0));
             } else {
                 info = getPackageManager().getPackageInfo(getPackageName(), 0);
             }
-            return (int) (Build.VERSION.SDK_INT >= 28 ? info.getLongVersionCode() : info.versionCode);
-        } catch (Exception ignored) { return 0; }
+            return Build.VERSION.SDK_INT >= 28 ? (int) info.getLongVersionCode() : info.versionCode;
+        } catch (Exception ignored) {
+            return 0;
+        }
     }
 
     private void showUpdateDialog(String version, String notes, String apkUrl) {
-        if (isFinishing()) return;
-        String message = notes.isEmpty()
-                ? "Kuna toleo jipya la ZUNE lenye maboresho na marekebisho."
-                : notes;
+        if (isFinishing() || updateDialogShown) return;
+        updateDialogShown = true;
+        String details = notes.isEmpty() ? "Maboresho mapya na marekebisho ya mfumo." : notes;
         new AlertDialog.Builder(this)
                 .setTitle("ZUNE ina sasisho jipya")
-                .setMessage("Toleo: " + version + "\\n\\n" + message
-                        + "\\n\\nUngependa kupakua na kusakinisha sasisho sasa?")
+                .setMessage("Toleo: " + version + "\n\n" + details
+                        + "\n\nUngependa kupakua sasisho sasa?")
                 .setCancelable(true)
-                .setNegativeButton("Baadaye", (dialog, which) -> dialog.dismiss())
-                .setPositiveButton("Sasisha sasa", (dialog, which) -> downloadUpdate(apkUrl))
+                .setNegativeButton("Baadaye", (dialog, which) -> {
+                    updateDialogShown = false;
+                    dialog.dismiss();
+                })
+                .setPositiveButton("Sasisha sasa", (dialog, which) -> {
+                    updateDialogShown = false;
+                    startApkDownload(apkUrl);
+                })
+                .setOnCancelListener(dialog -> updateDialogShown = false)
                 .show();
     }
 
-    private void downloadUpdate(String apkUrl) {
+    private void startApkDownload(String apkUrl) {
         try {
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(apkUrl));
             request.setTitle("ZUNE Update");
-            request.setDescription("Inapakua toleo jipya la ZUNE...");
+            request.setDescription("Inapakua sasisho la ZUNE...");
             request.setMimeType("application/vnd.android.package-archive");
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "ZUNE-update.apk");
             DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-            activeDownloadId = manager.enqueue(request);
+            pendingDownloadId = manager.enqueue(request);
             registerDownloadReceiver();
-            Toast.makeText(this, "Upakuaji wa ZUNE umeanza.", Toast.LENGTH_LONG).show();
-        } catch (Exception ex) {
-            Toast.makeText(this, "Imeshindikana kuanza upakuaji wa update.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Upakuaji wa sasisho umeanza. Utaarifiwa ukikamilika.", Toast.LENGTH_LONG).show();
+        } catch (Exception error) {
+            Toast.makeText(this, "Imeshindikana kuanza upakuaji. Jaribu tena.", Toast.LENGTH_LONG).show();
         }
     }
 
     private void registerDownloadReceiver() {
         if (downloadReceiver != null) return;
         downloadReceiver = new BroadcastReceiver() {
-            @Override public void onReceive(Context context, Intent intent) {
-                long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
-                if (id != activeDownloadId) return;
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L) != pendingDownloadId) return;
                 DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-                Uri apkUri = manager.getUriForDownloadedFile(activeDownloadId);
+                Uri apkUri = manager.getUriForDownloadedFile(pendingDownloadId);
                 if (apkUri == null) {
-                    Toast.makeText(MainActivity.this, "Upakuaji haujakamilika. Jaribu tena.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(MainActivity.this, "Upakuaji haujakamilika. Tafadhali jaribu tena.", Toast.LENGTH_LONG).show();
                     return;
                 }
-                if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
-                    Intent settingsIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                            Uri.parse("package:" + getPackageName()));
-                    startActivity(settingsIntent);
-                    Toast.makeText(MainActivity.this, "Ruhusu ZUNE kusakinisha masasisho, kisha fungua ZUNE tena.", Toast.LENGTH_LONG).show();
-                    return;
-                }
-                Intent install = new Intent(Intent.ACTION_VIEW);
-                install.setDataAndType(apkUri, "application/vnd.android.package-archive");
-                install.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                try { startActivity(install); }
-                catch (ActivityNotFoundException ex) {
-                    Toast.makeText(MainActivity.this, "Simu haijapata kisakinishi cha APK.", Toast.LENGTH_LONG).show();
-                }
+                installDownloadedApk(apkUri);
             }
         };
         IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
@@ -242,27 +244,45 @@ public class MainActivity extends Activity {
         else registerReceiver(downloadReceiver, filter);
     }
 
+    private void installDownloadedApk(Uri apkUri) {
+        if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+            Intent permissionIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + getPackageName()));
+            startActivity(permissionIntent);
+            Toast.makeText(this, "Ruhusu ZUNE kusakinisha programu kutoka chanzo hiki, kisha fungua ZUNE tena.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Intent installIntent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
+        installIntent.setData(apkUri);
+        installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try {
+            startActivity(installIntent);
+        } catch (ActivityNotFoundException error) {
+            Toast.makeText(this, "Kisakinishi cha Android hakijapatikana.", Toast.LENGTH_LONG).show();
+        }
+    }
+
     private void openExternal(String url) {
-        try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
-        catch (ActivityNotFoundException ignored) {
-            Toast.makeText(this, "Kiungo hiki hakiwezi kufunguliwa.", Toast.LENGTH_SHORT).show();
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+        } catch (ActivityNotFoundException ignored) {
+            Toast.makeText(this, "Kiungo hakiwezi kufunguliwa.", Toast.LENGTH_SHORT).show();
         }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == FILE_CHOOSER_REQUEST && uploadCallback != null) {
-            Uri[] results = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
-            uploadCallback.onReceiveValue(results);
-            uploadCallback = null;
+        if (requestCode == FILE_CHOOSER_REQUEST && fileUploadCallback != null) {
+            fileUploadCallback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data));
+            fileUploadCallback = null;
         }
     }
 
     @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        webView.saveState(outState);
+    protected void onSaveInstanceState(Bundle state) {
+        super.onSaveInstanceState(state);
+        if (webView != null) webView.saveState(state);
     }
 
     @Override
@@ -274,9 +294,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         if (downloadReceiver != null) {
-            try { unregisterReceiver(downloadReceiver); } catch (Exception ignored) {}
+            try { unregisterReceiver(downloadReceiver); } catch (Exception ignored) { }
         }
-        if (uploadCallback != null) uploadCallback.onReceiveValue(null);
+        if (fileUploadCallback != null) fileUploadCallback.onReceiveValue(null);
         if (webView != null) {
             webView.stopLoading();
             webView.destroy();
