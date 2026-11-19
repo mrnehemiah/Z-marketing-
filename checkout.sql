@@ -311,3 +311,21 @@ DROP TRIGGER IF EXISTS zune_restore_stock_on_order_cancel ON public.orders;
 CREATE TRIGGER zune_restore_stock_on_order_cancel
  AFTER UPDATE OF status ON public.orders
  FOR EACH ROW EXECUTE FUNCTION public.zune_restore_stock_on_order_cancel();
+
+
+-- 2026-11-19: Ward-aware delivery quote integration.
+-- Kept here as well as a standalone migration so fresh deployments retain the fix.
+function content(value) {
+    const iterate =
+      typeof value === "string" ? undefined : value?.[iteratorKey];
+    if (typeof iterate !== "function") {
+      return emitBlock(value);
+    }
+
+    // Reuse the method from a potentially stateful getter, with its original
+    // receiver. The for-of loop closes the iterator if the host rejects a block.
+    const blocks = { [iteratorKey]: () => apply(iterate, value, []) };
+    for (const block of blocks) {
+      emitBlock(block);
+    }
+  }
