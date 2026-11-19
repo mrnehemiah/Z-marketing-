@@ -2697,7 +2697,7 @@ function bindAccountEvents() {
       });
     });
   });
-  document.querySelector("[data-open-seller-dashboard]")?.addEventListener("click",()=>navigateWithZuneWave(()=>window.location.assign("https://mrnehemiah.github.io/Zunemar/")));
+  document.querySelector("[data-open-seller-dashboard]")?.addEventListener("click",()=>navigateWithZuneWave(()=>window.location.assign("https://mrnehemiah.github.io/zuneacts/")));
   document.querySelector("[data-account-profile]")?.addEventListener("click",()=>navigateWithZuneWave(()=>window.location.assign("./settings.html?section=personal")));
   document.querySelector("[data-account-profile]")?.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();navigateWithZuneWave(()=>window.location.assign("./settings.html?section=personal"));}});
   document.querySelectorAll("[data-open-settings]").forEach(button=>button.addEventListener("click",()=>navigateWithZuneWave(()=>window.location.assign("./settings.html?section="+encodeURIComponent(button.dataset.openSettings||"personal")))));
@@ -2905,7 +2905,7 @@ async function renderMarketplacePage(page) {
   if (!app) return;
 
   if (page === "seller") {
-    window.location.assign("https://mrnehemiah.github.io/Zunemar/");
+    window.location.assign("https://mrnehemiah.github.io/zuneacts/");
     return;
   }
 
