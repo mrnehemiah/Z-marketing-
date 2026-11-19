@@ -13,6 +13,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ZUNE_RELEASE_KEY_BASE64: ${{ secrets.ZUNE_RELEASE_KEY_BASE64 }}
+      ZUNE_KEYSTORE_PASSWORD: ${{ secrets.ZUNE_KEYSTORE_PASSWORD }}
+      ZUNE_KEY_ALIAS: ${{ secrets.ZUNE_KEY_ALIAS }}
+      ZUNE_KEY_PASSWORD: ${{ secrets.ZUNE_KEY_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,12 +40,7 @@ jobs:
           echo "ZUNE_TAG=v1.$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
 
       - name: Build signed release APK when signing secrets exist
-        if: ${{ secrets.ZUNE_RELEASE_KEY_BASE64 != '' && secrets.ZUNE_KEYSTORE_PASSWORD != '' && secrets.ZUNE_KEY_ALIAS != '' && secrets.ZUNE_KEY_PASSWORD != '' }}
-        env:
-          ZUNE_RELEASE_KEY_BASE64: ${{ secrets.ZUNE_RELEASE_KEY_BASE64 }}
-          ZUNE_KEYSTORE_PASSWORD: ${{ secrets.ZUNE_KEYSTORE_PASSWORD }}
-          ZUNE_KEY_ALIAS: ${{ secrets.ZUNE_KEY_ALIAS }}
-          ZUNE_KEY_PASSWORD: ${{ secrets.ZUNE_KEY_PASSWORD }}
+        if: ${{ env.ZUNE_RELEASE_KEY_BASE64 != '' && env.ZUNE_KEYSTORE_PASSWORD != '' && env.ZUNE_KEY_ALIAS != '' && env.ZUNE_KEY_PASSWORD != '' }}
         run: |
           echo "$ZUNE_RELEASE_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/zune-release.jks"
           echo "ZUNE_KEYSTORE_PATH=$RUNNER_TEMP/zune-release.jks" >> "$GITHUB_ENV"
@@ -50,7 +50,7 @@ jobs:
           echo "ZUNE_BUILD_TYPE=signed-release" >> "$GITHUB_ENV"
 
       - name: Build installable debug APK if release signing is not configured
-        if: ${{ secrets.ZUNE_RELEASE_KEY_BASE64 == '' || secrets.ZUNE_KEYSTORE_PASSWORD == '' || secrets.ZUNE_KEY_ALIAS == '' || secrets.ZUNE_KEY_PASSWORD == '' }}
+        if: ${{ env.ZUNE_RELEASE_KEY_BASE64 == '' || env.ZUNE_KEYSTORE_PASSWORD == '' || env.ZUNE_KEY_ALIAS == '' || env.ZUNE_KEY_PASSWORD == '' }}
         run: |
           gradle -p android-app :app:assembleDebug
           mkdir -p dist
