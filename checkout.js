@@ -40,7 +40,8 @@ async function loadCheckoutSponsoredAds(){
   .eq("status","approved").eq("placement","checkout").not("product_id","is",null).limit(8);
  if(error)throw error;
  const live=(campaigns||[]).filter(c=>(!c.starts_at||c.starts_at<=now)&&(!c.ends_at||c.ends_at>now));
- const ids=[...new Set(live.map(c=>c.product_id))].slice(0,3);
+ const maxAds=Math.max(1,Math.min(20,Number(settings.max_ads_per_placement)||3));
+ const ids=[...new Set(live.map(c=>c.product_id))].slice(0,maxAds);
  if(!ids.length)return;
  const {data:items,error:productError}=await supabase.from("products").select("id,title,price,image_url").in("id",ids).eq("moderation_status","approved");
  if(productError)throw productError;
