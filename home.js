@@ -1634,8 +1634,13 @@ function openProductDetails(product) {
         <button type="button" class="z-primary-button z-detail-add" ${stock !== null && stock <= 0 ? "disabled" : ""}>${tx("addCart")}</button>
         ${product.vendor_id && String(product.vendor_id)!==String(homeState.user?.id) ? `<button type="button" class="z-primary-button z-detail-message" style="margin-top:9px;background:transparent;color:var(--primary);border:1px solid var(--border)">${language()==="sw"?"Wasiliana na Seller":"Message Seller"}</button>` : ""}
       </div>
+      <div class="z-detail-content z-product-recommendations" id="z-product-sponsored-recommendations">
+        <div class="z-section-heading"><h2>Sponsored recommendations</h2><span class="z-sponsored-note">Sponsored</span></div>
+        <div class="z-sponsored-products"><p class="z-sponsored-empty">Loading recommendations…</p></div>
+      </div>
     </section>`;
   document.body.appendChild(overlay);
+  loadProductSponsoredRecommendations(overlay,product).catch(error=>{console.warn("Product sponsored recommendations:",error);overlay.querySelector("#z-product-sponsored-recommendations")?.remove();});
   const close = () => overlay.remove();
   overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
   overlay.querySelector(".z-detail-close")?.addEventListener("click", close);
@@ -1647,6 +1652,34 @@ function openProductDetails(product) {
   overlay.querySelector(".z-detail-message")?.addEventListener("click",()=>openBuyerSellerChat(product));
   const onKey = event => { if (event.key === "Escape") { close(); document.removeEventListener("keydown", onKey); } };
   document.addEventListener("keydown", onKey);
+}
+
+async function loadProductSponsoredRecommendations(overlay,currentProduct){
+ const section=overlay.querySelector("#z-product-sponsored-recommendations"),host=section&&section.querySelector(".z-sponsored-products");
+ if(!host)return;
+ const now=new Date().toISOString();
+ const result=await supabase.from("ad_campaigns").select("id,product_id,seller_id,placement,starts_at,ends_at").eq("status","approved").eq("placement","recommendations").neq("seller_id",currentProduct.vendor_id||"").limit(30);
+ if(result.error)throw result.error;
+ const live=(result.data||[]).filter(c=>String(c.product_id)!==String(currentProduct.id)&&(!c.starts_at||c.starts_at<=now)&&(!c.ends_at||c.ends_at>now));
+ const ids=[...new Set(live.map(c=>c.product_id).filter(Boolean))].slice(0,homeState.maxSponsoredAdsPerPlacement||3);
+ if(!ids.length){section.remove();return;}
+ const productsResult=await supabase.from("products").select("*").in("id",ids).eq("moderation_status","approved").is("removed_at",null).is("seller_archived_at",null);
+ if(productsResult.error)throw productsResult.error;
+ const byId=new Map((productsResult.data||[]).map(p=>[String(p.id),p]));
+ const rows=live.filter(c=>byId.has(String(c.product_id))).slice(0,homeState.maxSponsoredAdsPerPlacement||3);
+ const vendorIds=[...new Set(rows.map(c=>byId.get(String(c.product_id)).vendor_id).filter(Boolean))];
+ if(vendorIds.length){
+  const results=await Promise.all([
+   supabase.from("stores").select("owner_id,store_name,verification_status,logo_url").in("owner_id",vendorIds),
+   supabase.from("profiles").select("id,is_verified").in("id",vendorIds)
+  ]);
+  const stores=new Map((results[0].data||[]).map(x=>[String(x.owner_id),x]));
+  const profiles=new Map((results[1].data||[]).map(x=>[String(x.id),x]));
+  rows.forEach(c=>{const p=byId.get(String(c.product_id));p.__zuneStore=stores.get(String(p.vendor_id))||null;p.__zuneOwnerProfile=profiles.get(String(p.vendor_id))||null;});
+ }
+ host.innerHTML=rows.map(c=>'<article class="z-sponsored-card" data-sponsored-campaign="'+safe(c.id)+'"><span class="z-sponsored-label">Sponsored</span>'+productCard(byId.get(String(c.product_id)))+'</article>').join("");
+ if(!rows.length){section.remove();return;}
+ bindProductCards(host);bindSponsoredAdEvents();
 }
 
 async function openBuyerSellerChat(product){
