@@ -43,10 +43,19 @@ jobs:
         if: ${{ env.ZUNE_RELEASE_KEY_BASE64 != '' && env.ZUNE_KEYSTORE_PASSWORD != '' && env.ZUNE_KEY_ALIAS != '' && env.ZUNE_KEY_PASSWORD != '' }}
         run: |
           echo "$ZUNE_RELEASE_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/zune-release.jks"
-          echo "ZUNE_KEYSTORE_PATH=$RUNNER_TEMP/zune-release.jks" >> "$GITHUB_ENV"
+          export ZUNE_KEYSTORE_PATH="$RUNNER_TEMP/zune-release.jks"
+          echo "ZUNE_KEYSTORE_PATH=$ZUNE_KEYSTORE_PATH" >> "$GITHUB_ENV"
+          keytool -list -keystore "$ZUNE_KEYSTORE_PATH" -storepass "$ZUNE_KEYSTORE_PASSWORD" -alias "$ZUNE_KEY_ALIAS" >/dev/null
           gradle -p android-app :app:assembleRelease
           mkdir -p dist
-          cp android-app/app/build/outputs/apk/release/app-release.apk dist/ZUNE.apk
+          APK_PATH="$(find android-app/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' ! -name '*unsigned*' | head -n 1)"
+          if [ -z "$APK_PATH" ]; then
+            echo "Signed release APK was not produced. Available APK files:"
+            find android-app/app/build/outputs/apk -type f -name '*.apk' -print
+            exit 1
+          fi
+          cp "$APK_PATH" dist/ZUNE.apk
+          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)/apksigner" verify --verbose dist/ZUNE.apk
           echo "ZUNE_BUILD_TYPE=signed-release" >> "$GITHUB_ENV"
 
       - name: Build installable debug APK if release signing is not configured
