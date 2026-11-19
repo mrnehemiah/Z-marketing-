@@ -1361,7 +1361,7 @@ function bindSponsoredAdEvents() {
       }, { threshold: 0.5 });
       observer.observe(card);
     }
-    card.querySelector("[data-open-product]")?.addEventListener("click", () => recordSponsoredEvent(campaignId, "click", host.id === "z-explore-sponsored-products" ? "recommendations" : "home"), { once: true });
+    card.querySelector("[data-open-product]")?.addEventListener("click", () => recordSponsoredEvent(campaignId, "click", host.id === "z-explore-sponsored-products" ? "recommendations" : (host.id === "z-store-sponsored-products" ? "store_page" : "home")), { once: true });
     card.querySelector("[data-sponsored-open]")?.addEventListener("click", () => { recordSponsoredEvent(campaignId, card.dataset.sponsoredEvent || "store_visit", host.id === "z-sponsored-stores" ? "home" : "store_page"); openSponsoredStore(card.querySelector("[data-sponsored-open]").dataset.sponsoredOpen); }, { once: true });
     card.querySelector("[data-open-product]")?.addEventListener("keydown", event => {
       if (event.key === "Enter" || event.key === " ") recordSponsoredEvent(campaignId, "click", host.id === "z-explore-sponsored-products" ? "recommendations" : "home");
