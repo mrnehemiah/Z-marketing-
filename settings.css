@@ -15,3 +15,56 @@
 .settings-retention label{font-size:13px;font-weight:800;color:var(--text,#20332a)}
 .settings-retention select{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--border,#dce7e0);border-radius:11px;background:#fff;color:#20332a;font:inherit;font-size:14px}
 .settings-retention small{font-size:11px;line-height:1.5;color:var(--muted,#74827b)}
+
+
+/* Premium 3D treatment — Notification Settings only */
+.settings-panel:has(#browser-notices){
+  position:relative;
+  overflow:hidden;
+  border:1px solid #d7e8df;
+  border-radius:24px;
+  padding:20px;
+  background:linear-gradient(155deg,#ffffff 0%,#f4faf6 58%,#eaf5ef 100%);
+  box-shadow:0 18px 38px rgba(11,74,49,.12),0 4px 10px rgba(11,74,49,.07),inset 0 1px 0 #fff;
+}
+.settings-panel:has(#browser-notices)>h2{font-size:21px;letter-spacing:-.45px;color:#075b40;margin-bottom:8px}
+.settings-panel:has(#browser-notices)>p:first-of-type{
+  padding:15px 16px;margin:0 0 18px;border-radius:18px;color:#eafff4;
+  background:linear-gradient(135deg,#075b40,#0c9b6a 65%,#36b987);
+  box-shadow:0 9px 18px rgba(4,100,67,.23),inset 0 1px 0 rgba(255,255,255,.28);
+  font-size:13px;line-height:1.55;
+}
+.settings-panel:has(#browser-notices) .settings-choice{
+  position:relative;min-height:54px;margin:9px 0;padding:12px 14px;
+  border:1px solid #e0ece5;border-radius:16px;background:linear-gradient(145deg,#fff,#f7fbf8);
+  box-shadow:0 5px 11px rgba(17,65,45,.07),inset 0 1px 0 #fff;
+  font-weight:650;transition:transform .18s ease,box-shadow .18s ease;
+}
+.settings-panel:has(#browser-notices) .settings-choice:active{transform:translateY(1px);box-shadow:0 2px 5px rgba(17,65,45,.08)}
+.settings-panel:has(#browser-notices) .settings-choice input{
+  appearance:none;-webkit-appearance:none;width:48px;height:28px;flex:none;position:relative;
+  border:1px solid #cbd8d0;border-radius:30px;background:linear-gradient(#e4eae6,#d6dfd9);
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.12),0 1px 0 #fff;cursor:pointer;transition:background .2s ease;
+}
+.settings-panel:has(#browser-notices) .settings-choice input:before{
+  content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;
+  background:linear-gradient(145deg,#fff,#e8eee9);box-shadow:0 2px 5px rgba(0,0,0,.22),inset 0 1px 0 #fff;transition:transform .2s ease;
+}
+.settings-panel:has(#browser-notices) .settings-choice input:checked{
+  background:linear-gradient(145deg,#087a55,#16ad78);border-color:#087a55;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.12),0 3px 8px rgba(8,122,85,.2);
+}
+.settings-panel:has(#browser-notices) .settings-choice input:checked:before{transform:translateX(20px)}
+.settings-panel:has(#browser-notices) .settings-retention{
+  margin-top:18px;padding:17px;border:1px solid #cfe4d7;border-radius:19px;
+  background:linear-gradient(145deg,#f3fbf6,#e5f3eb);
+  box-shadow:0 8px 18px rgba(14,91,59,.09),inset 0 1px 0 #fff;
+}
+.settings-panel:has(#browser-notices) .settings-retention select{
+  border:1px solid #c8ded1;border-radius:13px;min-height:48px;
+  box-shadow:0 4px 9px rgba(17,65,45,.08),inset 0 1px 0 #fff;
+}
+.settings-panel:has(#browser-notices) .settings-message{
+  padding:10px 12px;border-radius:12px;background:#e8f5ed;color:#087a55;min-height:18px;
+}
+@media(prefers-reduced-motion:reduce){.settings-panel:has(#browser-notices) .settings-choice,.settings-panel:has(#browser-notices) .settings-choice input,.settings-panel:has(#browser-notices) .settings-choice input:before{transition:none}}
