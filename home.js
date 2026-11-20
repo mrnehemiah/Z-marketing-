@@ -39,6 +39,8 @@ const homeState = {
   maxSponsoredAdsPerPlacement: 3,
   selectedVendor: "",
   searchSuggestionsOpen: false,
+  searchFilters: { minPrice:"", maxPrice:"", inStock:false, verifiedOnly:false, sort:"newest" },
+  selectedSearchImage: null,
 
   selectedCategory: "",
   search: "",
@@ -1262,7 +1264,7 @@ async function loadProducts(reset = false) {
     let query = supabase
       .from("products")
       .select("*")
-      .order("created_at", { ascending: false })
+      .order(homeState.searchFilters.sort==="price_low"?"price":homeState.searchFilters.sort==="price_high"?"price":"created_at", { ascending: homeState.searchFilters.sort==="price_low" || homeState.searchFilters.sort==="newest" })
       .range(
         homeState.page * PAGE_SIZE,
         (homeState.page + 1) * PAGE_SIZE - 1
@@ -1273,6 +1275,9 @@ async function loadProducts(reset = false) {
     }
 
     if (homeState.selectedVendor) query = query.eq("vendor_id", homeState.selectedVendor);
+    if (homeState.searchFilters.minPrice && Number(homeState.searchFilters.minPrice)>0) query=query.gte("price",Number(homeState.searchFilters.minPrice));
+    if (homeState.searchFilters.maxPrice && Number(homeState.searchFilters.maxPrice)>0) query=query.lte("price",Number(homeState.searchFilters.maxPrice));
+    if (homeState.searchFilters.inStock) query=query.gt("stock_quantity",0);
 
     if (homeState.search.trim()) {
       const searchValue = homeState.search.trim()
@@ -1323,14 +1328,17 @@ async function loadProducts(reset = false) {
       }
     }
 
+    const visibleProducts=homeState.searchFilters.verifiedOnly
+      ? products.filter(item=>item.__zuneStore?.verification_status==="verified" || item.__zuneOwnerProfile?.is_verified===true)
+      : products;
     if (reset) {
-      homeState.products = products;
+      homeState.products = visibleProducts;
     } else {
       const existingIds = new Set(
         homeState.products.map(product => String(product.id))
       );
 
-      const newProducts = products.filter(
+      const newProducts = visibleProducts.filter(
         product => !existingIds.has(String(product.id))
       );
 
@@ -2196,6 +2204,39 @@ function ensureHomeVisualEnhancements(){
   document.head.appendChild(style);
 }
 
+function ensurePremiumSearchStyles(){
+ if(document.getElementById("zune-premium-search-styles"))return;
+ const style=document.createElement("style");style.id="zune-premium-search-styles";
+ style.textContent=`
+ .z-search-premium{position:relative;margin:10px 0 5px}
+ .z-search-premium-box{display:flex!important;align-items:center;gap:7px;min-height:54px;padding:0 10px!important;border:1px solid #dce9e1!important;border-radius:17px!important;background:#fff!important;box-shadow:0 6px 20px rgba(15,65,39,.08)!important}
+ .z-search-premium-box>input[type=search]{flex:1;min-width:0;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;font-size:13px!important}
+ .z-search-tool{display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;border:0;border-radius:10px;background:#eff7f1;color:#147343;font-size:19px;font-weight:800;cursor:pointer}
+ .z-search-filter-trigger{background:#e7f3eb}
+ .z-search-hint{padding:5px 4px 0;color:#829188;font-size:10px}
+ .z-search-suggestions{z-index:60}
+ .z-search-filter-overlay,.z-search-image-preview{position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:14px;background:rgba(8,25,16,.52);backdrop-filter:blur(4px)}
+ .z-search-filter-sheet,.z-search-image-sheet{width:min(100%,520px);max-height:88vh;overflow:auto;padding:20px;border-radius:23px 23px 17px 17px;background:#fff;color:#17251c;box-shadow:0 18px 60px #0003}
+ .z-search-sheet-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:17px}
+ .z-search-sheet-head h3{margin:0;font-size:19px;font-weight:900}
+ .z-search-sheet-close{width:34px;height:34px;border:0;border-radius:50%;background:#f1f5f2;font-size:22px}
+ .z-search-filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+ .z-search-filter-field{display:flex;flex-direction:column;gap:6px;color:#59675e;font-size:11px;font-weight:700}
+ .z-search-filter-field input,.z-search-filter-field select{width:100%;min-height:43px;padding:0 11px;border:1px solid #dce6df;border-radius:11px;background:#fff;color:#17251c;font-size:13px}
+ .z-search-filter-check{display:flex;align-items:center;gap:9px;margin:15px 0;color:#33463a;font-size:13px}
+ .z-search-filter-actions{display:flex;gap:9px;margin-top:18px}
+ .z-search-filter-actions button{flex:1;min-height:45px;border:0;border-radius:12px;font-weight:800}
+ .z-search-filter-reset{background:#f0f4f1;color:#425348}
+ .z-search-filter-apply{background:#087b45;color:#fff}
+ .z-search-active-count{display:inline-grid;place-items:center;min-width:17px;height:17px;margin-left:3px;border-radius:50%;background:#087b45;color:white;font-size:10px}
+ .z-search-image-preview img{display:block;width:100%;max-height:42vh;object-fit:contain;border-radius:14px;background:#f2f5f3}
+ .z-search-image-note{margin:12px 0;color:#69786e;font-size:12px;line-height:1.5}
+ .z-search-image-upload{display:block;width:100%;padding:13px;border:1px dashed #9bb9a5;border-radius:12px;text-align:center;color:#147343;font-weight:800}
+ @media(min-width:700px){.z-search-filter-overlay,.z-search-image-preview{align-items:center}.z-search-filter-sheet,.z-search-image-sheet{border-radius:22px}}
+ `;
+ document.head.appendChild(style);
+}
+
 // --------------------------------------------
 // 18. HOME PAGE
 // --------------------------------------------
@@ -2237,20 +2278,18 @@ function renderHomePage() {
 
         </div>
 
-        <label class="z-search-box">
-          ${zIcon("search")}
-
-          <input
-            id="z-home-search"
-            type="search"
-            placeholder="${tx("search")}"
-            value="${safe(homeState.search)}"
-            autocomplete="off"
-            aria-controls="z-search-suggestions"
-            aria-expanded="false"
-          >
-          <div class="z-search-suggestions" id="z-search-suggestions" role="listbox"></div>
-        </label>
+        <div class="z-search-premium" id="z-search-premium">
+          <label class="z-search-box z-search-premium-box">
+            ${zIcon("search")}
+            <input id="z-home-search" type="search" placeholder="${tx("search")}" value="${safe(homeState.search)}" autocomplete="off" aria-controls="z-search-suggestions" aria-expanded="false">
+            <button type="button" class="z-search-tool" id="z-search-image" aria-label="${language()==="sw"?"Tafuta kwa picha":"Search by image"}" title="${language()==="sw"?"Tafuta kwa picha":"Search by image"}">▧</button>
+            <button type="button" class="z-search-tool" id="z-search-voice" aria-label="${language()==="sw"?"Tafuta kwa sauti":"Voice search"}" title="${language()==="sw"?"Tafuta kwa sauti":"Voice search"}">♩</button>
+            <button type="button" class="z-search-tool z-search-filter-trigger" id="z-search-filter" aria-label="${language()==="sw"?"Chuja bidhaa":"Filter products"}" title="${language()==="sw"?"Chuja bidhaa":"Filter products"}">☷</button>
+            <input type="file" id="z-search-image-file" accept="image/*" hidden>
+            <div class="z-search-suggestions" id="z-search-suggestions" role="listbox"></div>
+          </label>
+          <div class="z-search-hint">${language()==="sw"?"Tafuta bidhaa, duka au chapa":"Search products, stores or brands"}</div>
+        </div>
 
       </header>
 
@@ -2344,39 +2383,107 @@ function bindCategoryEvents() {
 // 20. SEARCH EVENTS
 // --------------------------------------------
 
-function bindSearchEvents() {
-  const input = document.getElementById("z-home-search");
-
-  if (!input) return;
-
-  let searchTimeout;
-
-  const suggestionBox=document.getElementById("z-search-suggestions");
-  const renderSuggestions=()=>{
-    if(!suggestionBox)return;
-    const q=input.value.trim().toLowerCase();
-    if(!q){suggestionBox.classList.remove("open");input.setAttribute("aria-expanded","false");return;}
-    const matches=homeState.products.filter(p=>String(p.title||"").toLowerCase().includes(q)).slice(0,6);
-    const storeMatches=homeState.featuredStores.filter(st=>String(st.store_name||"").toLowerCase().includes(q)).slice(0,3);
-    const rows=[...matches.map(p=>`<button type="button" class="z-search-suggestion" data-suggest-product="${safe(p.id)}">⌕ <span>${safe(p.title)}<small>${money(p.price)}</small></span></button>`),...storeMatches.map(st=>`<button type="button" class="z-search-suggestion" data-suggest-store="${safe(st.owner_id)}">▣ <span>${safe(st.store_name)}<small>${language()==="sw"?"Duka":"Store"}</small></span></button>` )];
-    suggestionBox.innerHTML=rows.length?rows.join(""):`<div class="z-search-suggestion">${language()==="sw"?"Endelea kuandika kutafuta bidhaa zaidi":"Keep typing to search more products"}</div>`;
-    suggestionBox.classList.add("open");input.setAttribute("aria-expanded","true");
-  };
-  input.addEventListener("input", () => {
-    renderSuggestions();clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(async () => {
-      homeState.search = input.value.trim();homeState.selectedVendor="";homeState.products = [];homeState.page = 0;homeState.hasMore = true;
-      await loadProducts(true);renderSuggestions();
-    }, 350);
-  });
-  suggestionBox?.addEventListener("click",event=>{
-    const productButton=event.target.closest("[data-suggest-product]");
-    if(productButton){const product=homeState.products.find(p=>String(p.id)===productButton.dataset.suggestProduct);if(product)openProductDetails(product);suggestionBox.classList.remove("open");return;}
-    const storeButton=event.target.closest("[data-suggest-store]");if(storeButton){const ownerId=storeButton.dataset.suggestStore;suggestionBox.classList.remove("open");input.blur();if(ownerId)openStoreDetails(ownerId);}
-  });
-  input.addEventListener("keydown",event=>{if(event.key==="Escape"){suggestionBox?.classList.remove("open");input.setAttribute("aria-expanded","false");}});
+function openSearchFilterSheet(){
+ document.getElementById("z-search-filter-overlay")?.remove();
+ const f=homeState.searchFilters,sw=language()==="sw";
+ const overlay=document.createElement("div");overlay.id="z-search-filter-overlay";overlay.className="z-search-filter-overlay";
+ overlay.innerHTML=`<section class="z-search-filter-sheet" role="dialog" aria-modal="true" aria-label="${sw?"Chuja bidhaa":"Filter products"}">
+  <div class="z-search-sheet-head"><h3>${sw?"Chuja bidhaa":"Filter products"}</h3><button type="button" class="z-search-sheet-close" aria-label="Close">×</button></div>
+  <div class="z-search-filter-grid">
+   <label class="z-search-filter-field">${sw?"Bei ya chini (TSh)":"Minimum price (TSh)"}<input id="z-filter-min" type="number" min="0" inputmode="numeric" value="${safe(f.minPrice)}" placeholder="0"></label>
+   <label class="z-search-filter-field">${sw?"Bei ya juu (TSh)":"Maximum price (TSh)"}<input id="z-filter-max" type="number" min="0" inputmode="numeric" value="${safe(f.maxPrice)}" placeholder="—"></label>
+   <label class="z-search-filter-field" style="grid-column:1/-1">${sw?"Panga matokeo":"Sort results"}<select id="z-filter-sort">
+    <option value="newest" ${f.sort==="newest"?"selected":""}>${sw?"Mpya kwanza":"Newest first"}</option>
+    <option value="price_low" ${f.sort==="price_low"?"selected":""}>${sw?"Bei: ndogo hadi kubwa":"Price: low to high"}</option>
+    <option value="price_high" ${f.sort==="price_high"?"selected":""}>${sw?"Bei: kubwa hadi ndogo":"Price: high to low"}</option>
+   </select></label>
+  </div>
+  <label class="z-search-filter-check"><input id="z-filter-stock" type="checkbox" ${f.inStock?"checked":""}> ${sw?"Bidhaa zilizopo stokini":"In-stock products only"}</label>
+  <label class="z-search-filter-check"><input id="z-filter-verified" type="checkbox" ${f.verifiedOnly?"checked":""}> ${sw?"Maduka yaliyothibitishwa pekee":"Verified stores only"}</label>
+  <div class="z-search-filter-actions"><button type="button" class="z-search-filter-reset" id="z-filter-reset">${sw?"Futa vichujio":"Reset"}</button><button type="button" class="z-search-filter-apply" id="z-filter-apply">${sw?"Tumia vichujio":"Apply filters"}</button></div>
+ </section>`;
+ document.body.appendChild(overlay);
+ const close=()=>overlay.remove();
+ overlay.addEventListener("click",e=>{if(e.target===overlay)close();});
+ overlay.querySelector(".z-search-sheet-close").addEventListener("click",close);
+ overlay.querySelector("#z-filter-reset").addEventListener("click",()=>{
+  overlay.querySelector("#z-filter-min").value="";overlay.querySelector("#z-filter-max").value="";
+  overlay.querySelector("#z-filter-sort").value="newest";overlay.querySelector("#z-filter-stock").checked=false;overlay.querySelector("#z-filter-verified").checked=false;
+ });
+ overlay.querySelector("#z-filter-apply").addEventListener("click",async()=>{
+  const min=overlay.querySelector("#z-filter-min").value.trim(),max=overlay.querySelector("#z-filter-max").value.trim();
+  if(min&&max&&Number(min)>Number(max)){alert(sw?"Bei ya chini haiwezi kuzidi bei ya juu.":"Minimum price cannot exceed maximum price.");return;}
+  homeState.searchFilters={minPrice:min,maxPrice:max,sort:overlay.querySelector("#z-filter-sort").value,inStock:overlay.querySelector("#z-filter-stock").checked,verifiedOnly:overlay.querySelector("#z-filter-verified").checked};
+  close();homeState.page=0;homeState.products=[];homeState.hasMore=true;await loadProducts(true);
+ });
 }
 
+function openSearchImagePicker(){
+ const picker=document.getElementById("z-search-image-file");picker?.click();
+}
+
+function showSearchImagePreview(file){
+ if(!file)return;
+ if(!file.type.startsWith("image/")){alert(language()==="sw"?"Chagua faili la picha.":"Please choose an image file.");return;}
+ if(file.size>8*1024*1024){alert(language()==="sw"?"Picha iwe chini ya 8MB.":"Please choose an image under 8MB.");return;}
+ const reader=new FileReader();
+ reader.onload=()=>{
+  document.getElementById("z-search-image-preview")?.remove();
+  const overlay=document.createElement("div");overlay.id="z-search-image-preview";overlay.className="z-search-image-preview";
+  overlay.innerHTML=`<section class="z-search-image-sheet" role="dialog" aria-modal="true" aria-label="Image search">
+   <div class="z-search-sheet-head"><h3>${language()==="sw"?"Tafuta kwa picha":"Search by image"}</h3><button type="button" class="z-search-sheet-close">×</button></div>
+   <img src="${String(reader.result)}" alt="Selected search image">
+   <p class="z-search-image-note">${language()==="sw"?"Picha imechaguliwa. Ulinganishaji wa picha na bidhaa unahitaji huduma ya image-search backend ambayo bado haijaunganishwa.":"Image selected. Matching this image against marketplace products requires an image-search backend that is not connected yet."}</p>
+   <button type="button" class="z-search-filter-apply" style="width:100%;min-height:44px;border:0;border-radius:12px" id="z-search-image-close">${language()==="sw"?"Sawa":"Got it"}</button>
+  </section>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click",e=>{if(e.target===overlay)overlay.remove();});
+  overlay.querySelector(".z-search-sheet-close").addEventListener("click",()=>overlay.remove());
+  overlay.querySelector("#z-search-image-close").addEventListener("click",()=>overlay.remove());
+ };
+ reader.readAsDataURL(file);
+}
+
+function startVoiceSearch(input){
+ const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SpeechRecognition){alert(language()==="sw"?"Kivinjari hiki hakitumii voice search. Jaribu Chrome.":"Voice search is not supported by this browser. Try Chrome.");return;}
+ const recognition=new SpeechRecognition();recognition.lang=language()==="sw"?"sw-TZ":"en-TZ";recognition.interimResults=false;recognition.maxAlternatives=1;
+ const button=document.getElementById("z-search-voice");button?.classList.add("is-listening");
+ recognition.onresult=event=>{const transcript=event.results?.[0]?.[0]?.transcript||"";input.value=transcript;input.dispatchEvent(new Event("input",{bubbles:true}));};
+ recognition.onerror=()=>alert(language()==="sw"?"Imeshindikana kusikia sauti. Ruhusu microphone kisha jaribu tena.":"Voice search failed. Allow microphone access and try again.");
+ recognition.onend=()=>button?.classList.remove("is-listening");
+ try{recognition.start();}catch(error){button?.classList.remove("is-listening");}
+}
+
+function bindSearchEvents() {
+ const input=document.getElementById("z-home-search");if(!input)return;
+ let searchTimeout;const suggestionBox=document.getElementById("z-search-suggestions");
+ const renderSuggestions=()=>{
+  if(!suggestionBox)return;const q=input.value.trim().toLowerCase();
+  if(!q){suggestionBox.classList.remove("open");input.setAttribute("aria-expanded","false");return;}
+  const matches=homeState.products.filter(p=>String(p.title||"").toLowerCase().includes(q)).slice(0,6);
+  const storeMatches=homeState.featuredStores.filter(st=>String(st.store_name||"").toLowerCase().includes(q)).slice(0,3);
+  const rows=[...matches.map(p=>`<button type="button" class="z-search-suggestion" data-suggest-product="${safe(p.id)}">⌕ <span>${safe(p.title)}<small>${money(p.price)}</small></span></button>`),...storeMatches.map(st=>`<button type="button" class="z-search-suggestion" data-suggest-store="${safe(st.owner_id)}">▣ <span>${safe(st.store_name)}<small>${language()==="sw"?"Duka":"Store"}</small></span></button>`)];
+  suggestionBox.innerHTML=rows.length?rows.join(""):`<div class="z-search-suggestion">${language()==="sw"?"Endelea kuandika kutafuta bidhaa zaidi":"Keep typing to search more products"}</div>`;
+  suggestionBox.classList.add("open");input.setAttribute("aria-expanded","true");
+ };
+ input.addEventListener("input",()=>{
+  renderSuggestions();clearTimeout(searchTimeout);
+  searchTimeout=setTimeout(async()=>{homeState.search=input.value.trim();homeState.selectedVendor="";homeState.products=[];homeState.page=0;homeState.hasMore=true;await loadProducts(true);renderSuggestions();},350);
+ });
+ suggestionBox?.addEventListener("click",event=>{
+  const p=event.target.closest("[data-suggest-product]");
+  if(p){const product=homeState.products.find(x=>String(x.id)===p.dataset.suggestProduct);if(product)openProductDetails(product);suggestionBox.classList.remove("open");return;}
+  const st=event.target.closest("[data-suggest-store]");
+  if(st){const ownerId=st.dataset.suggestStore;suggestionBox.classList.remove("open");input.blur();if(ownerId)openStoreDetails(ownerId);}
+ });
+ input.addEventListener("keydown",event=>{if(event.key==="Escape"){suggestionBox?.classList.remove("open");input.setAttribute("aria-expanded","false");}});
+ document.getElementById("z-search-filter")?.addEventListener("click",openSearchFilterSheet);
+ document.getElementById("z-search-image")?.addEventListener("click",openSearchImagePicker);
+ document.getElementById("z-search-image-file")?.addEventListener("change",event=>{showSearchImagePreview(event.target.files?.[0]);event.target.value="";});
+ document.getElementById("z-search-voice")?.addEventListener("click",()=>startVoiceSearch(input));
+}
+ 
 // --------------------------------------------
 // 21. HOME EVENTS
 // --------------------------------------------
@@ -3263,6 +3370,7 @@ function ensureZuneProductFlagMotion(){
 async function renderMarketplacePage(page) {
   ensureZuneProductFlagMotion();
   ensureHomeVisualEnhancements();
+  ensurePremiumSearchStyles();
   homeState.activeTab = page;
   if (page !== "home" && homeState.carouselTimer) {
     clearInterval(homeState.carouselTimer);
