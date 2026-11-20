@@ -499,6 +499,32 @@ function addHomeStyles() {
     .z-all-categories{border:0;padding:7px 10px;border-radius:9px;background:var(--background);color:var(--primary);font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
     .z-category-directory{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:0 0 17px}
     .z-category-directory .z-category{text-align:left;min-height:44px}
+
+    .z-explore-intro{padding:8px 1px 18px}
+    .z-explore-intro>span,.z-category-page-intro>span{display:block;color:var(--primary,#087a55);font-size:10px;font-weight:900;letter-spacing:1.5px;margin-bottom:6px}
+    .z-explore-intro .z-page-title,.z-category-page-intro .z-page-title{margin:0;font-size:clamp(25px,5vw,32px);font-weight:900;letter-spacing:-.7px}
+    .z-explore-intro p,.z-category-page-intro p{margin:6px 0 0;color:var(--text-muted,#748078);font-size:12px;line-height:1.5}
+    .z-explore-section-heading{align-items:center;margin-bottom:12px}
+    .z-explore-section-heading h2,.z-explore-products-heading h2{margin:0;font-size:16px;font-weight:850}
+    .z-explore-see-all{display:inline-flex;align-items:center;gap:5px;border:0;background:transparent;color:var(--primary,#087a55);font-size:11px;font-weight:850;padding:7px 0;cursor:pointer}
+    .z-explore-category-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:22px}
+    .z-explore-category-card{position:relative;isolation:isolate;overflow:hidden;aspect-ratio:1/1.08;min-width:0;padding:0;border:2px solid transparent;border-radius:15px;background:#dfe8e2;color:#fff;text-align:left;cursor:pointer;box-shadow:0 3px 12px rgba(15,45,31,.08)}
+    .z-explore-category-card img,.z-category-image-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .35s ease}
+    .z-explore-category-card:active img,.z-category-image-card:active img{transform:scale(1.04)}
+    .z-explore-category-shade,.z-category-image-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.02) 25%,rgba(0,0,0,.68) 100%);z-index:1}
+    .z-explore-category-card strong{position:absolute;z-index:2;left:7px;right:5px;bottom:9px;color:#fff;font-size:clamp(9px,2.7vw,12px);font-weight:850;line-height:1.15;overflow-wrap:anywhere;text-shadow:0 1px 5px #000}
+    .z-explore-category-card.active{border-color:var(--primary,#087a55);box-shadow:0 0 0 2px rgba(8,122,85,.2)}
+    .z-explore-sponsored-section{margin-top:2px}
+    .z-explore-products-heading{display:flex;align-items:center;justify-content:space-between;margin:18px 0 12px}
+    .z-category-page-intro{padding:9px 0 18px}
+    .z-category-search{margin-top:2px}
+    .z-categories-image-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .z-category-image-card{position:relative;isolation:isolate;overflow:hidden;min-width:0;aspect-ratio:1.18/1;padding:0;border:0;border-radius:17px;background:#e2e9e4;color:#fff;text-align:left;cursor:pointer;box-shadow:0 4px 16px rgba(12,45,30,.08)}
+    .z-category-image-card strong{position:absolute;z-index:2;left:12px;right:32px;bottom:12px;color:#fff;font-size:14px;font-weight:850;line-height:1.2;text-shadow:0 1px 6px #000}
+    .z-category-image-arrow{position:absolute;z-index:2;right:10px;bottom:9px;display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:rgba(255,255,255,.2);color:#fff;font-size:15px}
+    .z-category-image-card[hidden]{display:none}
+    @media(min-width:650px){.z-explore-category-grid{grid-template-columns:repeat(8,minmax(0,1fr));gap:12px}.z-categories-image-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.z-explore-category-card{aspect-ratio:1/1.15}}
+    @media(max-width:360px){.z-explore-category-grid{gap:6px}.z-explore-category-card{border-radius:11px}.z-explore-category-card strong{font-size:9px;left:5px;bottom:7px}}
     @media(min-width:700px){.z-home-carousel,.z-slide-copy{min-height:285px}.z-slide-copy{padding:34px 34px 54px}.z-category-directory{grid-template-columns:repeat(4,minmax(0,1fr))}}
 
     .z-home-welcome {
@@ -2412,19 +2438,31 @@ function observeInfiniteScroll() {
 function renderCategoriesPage() {
   const categories = homeState.categories || [];
   return `
-    <section class="z-home">
+    <section class="z-home z-all-categories-page">
       <header class="z-home-header">
         <div class="z-home-top">
           <div class="zune-logo">ⓏⓊⓃⒺ</div>
-          <button type="button" class="z-all-categories" data-back-home>← ${tx("home")}</button>
+          <button type="button" class="z-all-categories" data-back-home>← ${tx("explore")}</button>
         </div>
+        <label class="z-search-box z-category-search">
+          ${zIcon("search")}
+          <input id="z-all-categories-search" type="search" placeholder="${language()==="sw"?"Tafuta kundi...":"Search categories..."}">
+        </label>
       </header>
       <main class="z-home-content">
-        <h1 class="z-page-title">${tx("categories")}</h1>
-        <div class="z-categories-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px">
-          <button type="button" class="z-category" data-category-page="" style="min-height:76px;border-radius:14px;white-space:normal">${tx("all")}</button>
-          ${categories.map(category => `
-            <button type="button" class="z-category" data-category-page="${safe(category.name)}" style="min-height:76px;border-radius:14px;white-space:normal">${safe(category.name)}</button>
+        <div class="z-category-page-intro">
+          <span>${language()==="sw"?"GUNDUA ZUNE":"DISCOVER ZUNE"}</span>
+          <h1 class="z-page-title">${tx("categories")}</h1>
+          <p>${language()==="sw"?"Chagua kundi ili kuona bidhaa zake.":"Choose a category to explore its products."}</p>
+        </div>
+        <div class="z-categories-image-grid" id="z-all-categories-grid">
+          ${categories.map((category,index) => `
+            <button type="button" class="z-category-image-card" data-category-page="${safe(category.name)}" data-category-name="${safe(category.name.toLowerCase())}">
+              <img src="${categoryImage(category.name,index)}" alt="${safe(category.name)}" loading="lazy" decoding="async">
+              <span class="z-category-image-shade"></span>
+              <strong>${safe(category.name)}</strong>
+              <span class="z-category-image-arrow">↗</span>
+            </button>
           `).join("")}
         </div>
         ${categories.length ? "" : `<div class="z-empty-state" style="margin-top:14px">${tx("empty")}</div>`}
@@ -2442,76 +2480,72 @@ function bindCategoriesPage() {
       homeState.page = 0;
       homeState.products = [];
       homeState.hasMore = true;
-      renderMarketplacePage("explore");
+      await renderMarketplacePage("explore");
       await loadProducts(true);
     });
   });
+  const search = document.getElementById("z-all-categories-search");
+  search?.addEventListener("input", () => {
+    const query = search.value.trim().toLowerCase();
+    document.querySelectorAll("[data-category-name]").forEach(card => {
+      card.hidden = !card.dataset.categoryName.includes(query);
+    });
+  });
   document.querySelector("[data-back-home]")?.addEventListener("click", () => {
-    renderMarketplacePage("home");
+    renderMarketplacePage("explore");
   });
 }
 
 function renderExplorePage() {
+  const categories = (homeState.categories || []).slice(0, 8);
   return `
-    <section class="z-home">
-
+    <section class="z-home z-explore-redesign">
       <header class="z-home-header">
-
         <div class="z-home-top">
           <div class="zune-logo">ⓏⓊⓃⒺ</div>
         </div>
-
         <label class="z-search-box">
-
           ${zIcon("search")}
-
-          <input
-            id="z-explore-search"
-            type="search"
-            placeholder="${tx("search")}"
-            value="${safe(homeState.search)}"
-          >
-
+          <input id="z-explore-search" type="search" placeholder="${tx("search")}" value="${safe(homeState.search)}">
         </label>
-
       </header>
-
       <main class="z-home-content">
+        <div class="z-explore-intro">
+          <span>${language()==="sw"?"GUNDUA ZUNE":"DISCOVER ZUNE"}</span>
+          <h1 class="z-page-title">${tx("exploreTitle")}</h1>
+          <p>${language()==="sw"?"Bidhaa na maduka unayoweza kuyapenda.":"Products and stores worth discovering."}</p>
+        </div>
 
-        <h1 class="z-page-title">
-          ${tx("exploreTitle")}
-        </h1>
-        <section><div class="z-section-heading"><h2>${tx("categories")}</h2></div>
-          <div id="z-explore-category-area" class="z-category-directory">
-            ${(homeState.categories || []).map(category => `<button type="button" class="z-category ${String(homeState.selectedCategory)===String(category.name)?"active":""}" data-category="${safe(category.name)}">${safe(category.name)}</button>`).join("")}
+        <section class="z-explore-categories-section">
+          <div class="z-section-heading z-explore-section-heading">
+            <h2>${tx("categories")}</h2>
+            <button type="button" class="z-explore-see-all" id="z-explore-see-all">${language()==="sw"?"Angalia Zote":"View all"} <span>→</span></button>
+          </div>
+          <div id="z-explore-category-area" class="z-explore-category-grid">
+            ${categories.map((category,index) => `
+              <button type="button" class="z-explore-category-card ${String(homeState.selectedCategory)===String(category.name)?"active":""}" data-category="${safe(category.name)}">
+                <img src="${categoryImage(category.name,index)}" alt="${safe(category.name)}" loading="lazy" decoding="async">
+                <span class="z-explore-category-shade"></span>
+                <strong>${safe(category.name)}</strong>
+              </button>
+            `).join("")}
           </div>
         </section>
 
-        <section id="z-explore-sponsored-section"><div class="z-section-heading"><h2>${language()==="sw"?"Matangazo Yanayokufaa":"Sponsored for You"}</h2></div><div id="z-explore-sponsored-products" class="z-sponsored-products"></div></section>
+        <section id="z-explore-sponsored-section" class="z-explore-sponsored-section">
+          <div class="z-section-heading"><h2>${language()==="sw"?"Matangazo Yanayokufaa":"Sponsored for You"}</h2></div>
+          <div id="z-explore-sponsored-products" class="z-sponsored-products"></div>
+        </section>
 
-        <div id="z-product-area">
-
-          ${
-            homeState.products.length
-              ? `
-                <div class="z-product-grid">
-                  ${homeState.products.map(productCard).join("")}
-                </div>
-              `
-              : ""
-          }
-
+        <div class="z-explore-products-heading">
+          <h2>${language()==="sw"?"Bidhaa za kugundua":"Discover products"}</h2>
         </div>
-
-        <div
-          class="z-load-status"
-          id="z-load-status"
-        ></div>
-
+        <div id="z-product-area">
+          ${homeState.products.length ? `<div class="z-product-grid">${homeState.products.map(productCard).join("")}</div>` : ""}
+        </div>
+        <div class="z-load-status" id="z-load-status"></div>
         <div id="z-scroll-trigger"></div>
-
       </main>
-
     </section>
   `;
 }
@@ -2521,35 +2555,39 @@ function renderExplorePage() {
 // --------------------------------------------
 
 function bindExploreEvents() {
-  const categoryArea=document.getElementById("z-explore-category-area");
-  categoryArea?.querySelectorAll("[data-category]").forEach(button=>button.addEventListener("click",async()=>{
-    homeState.selectedCategory=button.dataset.category||"";homeState.selectedVendor="";
-    homeState.products=[];homeState.page=0;homeState.hasMore=true;
-    categoryArea.innerHTML=(homeState.categories||[]).map(category=>`<button type="button" class="z-category ${String(homeState.selectedCategory)===String(category.name)?"active":""}" data-category="${safe(category.name)}">${safe(category.name)}</button>`).join("");
-    bindExploreEvents();await loadProducts(true);
-  }));
+  const categoryArea = document.getElementById("z-explore-category-area");
+  categoryArea?.querySelectorAll("[data-category]").forEach(button => {
+    button.addEventListener("click", async () => {
+      homeState.selectedCategory = button.dataset.category || "";
+      homeState.selectedVendor = "";
+      homeState.search = "";
+      homeState.products = [];
+      homeState.page = 0;
+      homeState.hasMore = true;
+      await loadProducts(true);
+      categoryArea.querySelectorAll("[data-category]").forEach(item => {
+        item.classList.toggle("active", item.dataset.category === homeState.selectedCategory);
+      });
+    });
+  });
+  document.getElementById("z-explore-see-all")?.addEventListener("click", () => {
+    renderMarketplacePage("categories");
+  });
   const input = document.getElementById("z-explore-search");
-
   if (input) {
     let searchTimeout;
-
     input.addEventListener("input", () => {
       clearTimeout(searchTimeout);
-
       searchTimeout = setTimeout(async () => {
         homeState.search = input.value.trim();
-
         homeState.selectedCategory = "";
         homeState.products = [];
         homeState.page = 0;
         homeState.hasMore = true;
-
         await loadProducts(true);
-
       }, 450);
     });
   }
-
   updateProductArea();
   updateLoadStatus();
 }
