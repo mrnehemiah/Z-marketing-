@@ -1270,7 +1270,7 @@ async function renderAccount() {
 
     if (!marketplaceHomeModule) {
       app.innerHTML = '<section class="app-loading" role="status" aria-live="polite"><div class="zune-wave" aria-label="ZUNE"><span>Ⓩ</span><span>Ⓤ</span><span>Ⓝ</span><span>Ⓔ</span></div><p>Inapakia ZUNE Marketplace...</p></section>';
-      marketplaceHomeModule = await import("./home.js?v=20261117-phase-two-cloud-cart-wishlist");
+      marketplaceHomeModule = await import("./home.js?v=20261120-explore-refresh-v1");
     }
 
     await marketplaceHomeModule.renderMarketplaceHome({
