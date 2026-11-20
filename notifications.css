@@ -436,3 +436,153 @@
 @keyframes zPreviewIn { from { opacity:0; transform:translateY(12px) scale(.98); } to { opacity:1; transform:translateY(0) scale(1); } }
 @media (max-width:480px) { .z-notification-preview { padding:10px; align-items:end; } .z-preview-dialog { width:100%; max-height:90dvh; border-radius:24px 24px 18px 18px; } .z-preview-content { padding:20px 18px; } }
 @media (prefers-reduced-motion:reduce) { .z-preview-dialog { animation:none; } }
+
+
+
+/* =====================================================
+   ZUNE MARKETPLACE 2.0 — NOTIFICATIONS CENTER REDESIGN
+   Visual-only refresh. Existing data and preview untouched.
+===================================================== */
+.z-notifications-page{
+  --notification-primary:#087a55;
+  --notification-primary-deep:#075c42;
+  --notification-bg:#f4f7f5;
+  --notification-card:#ffffff;
+  --notification-text:#17251f;
+  --notification-muted:#74827b;
+  --notification-border:#e3ebe6;
+  max-width:760px;
+  min-height:100vh;
+  padding:clamp(18px,4vw,34px) clamp(14px,3.5vw,26px) 42px;
+  background:
+    radial-gradient(ellipse at 8% 0%,rgba(8,122,85,.075),transparent 34%),
+    var(--notification-bg);
+}
+.z-notifications-header{
+  gap:16px;
+  min-height:62px;
+  margin-bottom:25px;
+}
+.z-notifications-back,.z-notification-settings{
+  width:46px;height:46px;border:1px solid #e1eae4;border-radius:15px;
+  background:#fff;box-shadow:0 5px 16px rgba(20,55,39,.055);
+  transition:transform .18s ease,border-color .18s ease,background .18s ease;
+}
+.z-notifications-back:hover,.z-notification-settings:hover{
+  transform:translateY(-2px);border-color:rgba(8,122,85,.35);background:#fafffc;
+}
+.z-notifications-heading h1{font-size:clamp(22px,5vw,27px);letter-spacing:-.8px;font-weight:850;}
+.z-notifications-heading p{font-size:12px;margin-top:6px;}
+.z-notification-summary{
+  position:relative;overflow:hidden;min-height:132px;padding:24px 25px;
+  margin-bottom:19px;border-radius:23px;
+  background:linear-gradient(125deg,#073e2e 0%,#087a55 58%,#11966a 100%);
+  box-shadow:0 14px 30px rgba(7,92,66,.18);
+}
+.z-notification-summary:after{
+  content:"";position:absolute;width:190px;height:190px;border:1px solid rgba(255,255,255,.12);
+  border-radius:50%;right:-55px;top:-95px;box-shadow:0 0 0 22px rgba(255,255,255,.035),0 0 0 45px rgba(255,255,255,.025);
+}
+.z-notification-summary-label{font-size:12px;letter-spacing:.25px;opacity:.88;}
+.z-notification-summary strong{font-size:38px;line-height:1.05;letter-spacing:-1px;}
+.z-notification-summary-icon{
+  position:relative;z-index:1;width:59px;height:59px;border-radius:19px;
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.16);
+  font-size:27px;backdrop-filter:blur(8px);
+}
+.z-push-setup{
+  padding:16px 17px;margin-bottom:23px;border-radius:19px;
+  border:1px solid #e1eae4;background:rgba(255,255,255,.88);
+  box-shadow:0 5px 18px rgba(20,55,39,.035);
+}
+.z-push-copy strong{font-size:13px;color:#1c3027;}
+.z-push-copy p{font-size:11px;line-height:1.55;}
+#zune-enable-push{border-radius:12px;padding:11px 15px;background:#087a55;box-shadow:0 5px 12px rgba(8,122,85,.15);}
+.z-notification-toolbar{
+  align-items:center;gap:10px;margin-bottom:15px;
+}
+.z-notification-tabs{
+  flex:1;min-width:0;gap:5px;padding:4px;border:1px solid #e4ebe6;
+  border-radius:15px;background:#eaf0ec;
+}
+.z-notification-tab{
+  padding:10px 13px;border:0;border-radius:11px;background:transparent;
+  color:#6c7b73;font-size:11px;font-weight:800;transition:all .18s ease;
+}
+.z-notification-tab.active{
+  color:#075c42;background:#fff;box-shadow:0 2px 8px rgba(20,55,39,.09);
+}
+.z-mark-all-read{
+  padding:9px 2px 9px 8px;font-size:11px;white-space:nowrap;
+}
+.z-notifications-list{gap:11px;}
+.z-notification-item{
+  position:relative;align-items:center;gap:14px;min-height:91px;padding:16px;
+  border:1px solid #e5ece7;border-radius:19px;background:#fff;
+  box-shadow:0 3px 12px rgba(20,55,39,.035);
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.z-notification-item:hover{
+  transform:translateY(-2px);border-color:rgba(8,122,85,.32);
+  box-shadow:0 9px 22px rgba(20,55,39,.075);
+}
+.z-notification-item.unread{
+  border:1px solid rgba(8,122,85,.2);border-left:4px solid #087a55;
+  padding-left:13px;background:linear-gradient(100deg,#f1faf5 0%,#fff 58%);
+}
+.z-notification-icon{
+  width:49px;height:49px;border-radius:16px;background:#edf5f0;
+  color:#087a55;font-size:21px;box-shadow:inset 0 0 0 1px rgba(8,122,85,.045);
+}
+.z-notification-title{font-size:13px;line-height:1.45;margin-bottom:4px;color:#1c2c24;}
+.z-notification-body{font-size:11.5px;line-height:1.55;color:#718078;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.z-notification-time{font-size:10px;margin-top:8px;color:#89968f;}
+.z-notification-unread-dot{
+  width:9px;height:9px;margin:0 2px 0 0;background:#0a9466;
+  box-shadow:0 0 0 4px rgba(10,148,102,.11);
+}
+.z-notifications-empty{
+  min-height:280px;padding:35px 20px;border:1px dashed #d9e5dd;border-radius:22px;background:rgba(255,255,255,.7);
+}
+.z-notifications-empty-icon{width:72px;height:72px;background:#eaf5ee;color:#087a55;}
+.z-notifications-empty h3{font-size:17px;color:#1d3026;}
+.z-notifications-empty p{font-size:12px;color:#77867e;}
+.z-notifications-loading{
+  min-height:230px;border:1px solid #e6eee8;border-radius:20px;background:#fff;
+}
+.z-notifications-message{border:1px solid #dcebe1;border-radius:13px;background:#eff8f2;}
+.z-notifications-footer{padding-top:34px;}
+.z-notifications-footer p{font-size:11px;color:#52645a;letter-spacing:1.8px;}
+.z-notifications-footer span{font-size:10px;color:#91a097;}
+@media(max-width:520px){
+  .z-notifications-page{padding:15px 13px 30px;}
+  .z-notifications-header{margin-bottom:20px;}
+  .z-notification-summary{min-height:120px;padding:21px;border-radius:21px;}
+  .z-notification-toolbar{align-items:stretch;flex-wrap:wrap;}
+  .z-notification-tabs{width:100%;flex-basis:100%;overflow-x:auto;}
+  .z-notification-tab{flex:1;padding:10px 8px;font-size:10.5px;}
+  .z-mark-all-read{align-self:flex-end;margin-left:auto;padding:3px 2px 5px;}
+  .z-notification-item{min-height:84px;padding:13px;border-radius:17px;gap:11px;}
+  .z-notification-item.unread{padding-left:10px;}
+  .z-notification-icon{width:44px;height:44px;border-radius:14px;font-size:19px;}
+  .z-notification-title{font-size:12.5px;}
+}
+@media(prefers-color-scheme:dark){
+  .z-notifications-page{
+    --notification-bg:#101915;--notification-card:#19251f;--notification-text:#edf5ef;
+    --notification-muted:#9aa99f;--notification-border:#2b3a32;
+    background:radial-gradient(ellipse at 8% 0%,rgba(16,145,99,.13),transparent 36%),#101915;
+  }
+  .z-notifications-back,.z-notification-settings,.z-push-setup,
+  .z-notification-item,.z-notifications-loading{background:#19251f;border-color:#2b3a32;color:#edf5ef;}
+  .z-notification-item.unread{background:linear-gradient(100deg,#19372a,#19251f 75%);border-color:#315b45;}
+  .z-notification-icon{background:#23392d;color:#7de0ae;}
+  .z-notification-title,.z-push-copy strong,.z-notifications-empty h3{color:#edf5ef;}
+  .z-notification-body,.z-notification-time,.z-push-copy p{color:#a2b0a7;}
+  .z-notification-tabs{background:#1b2922;border-color:#2b3a32;}
+  .z-notification-tab{color:#a5b3aa;}
+  .z-notification-tab.active{background:#2a3b31;color:#a4edc2;box-shadow:none;}
+  .z-notifications-empty{background:#19251f;border-color:#35483c;}
+  .z-notifications-empty-icon{background:#23392d;color:#7de0ae;}
+  .z-notifications-footer p{color:#c0cec5;}
+}
