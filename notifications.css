@@ -650,7 +650,7 @@
   align-items:center;column-gap:17px;min-width:0;
 }
 .z-notifications-page .z-push-copy::before{
-  content:"♟";grid-column:1;grid-row:1 / span 3;display:grid;place-items:center;
+  content:"🔔";grid-column:1;grid-row:1 / span 3;display:grid;place-items:center;
   width:76px;height:76px;border-radius:24px;font-size:39px;line-height:1;
   color:#effff5;text-shadow:0 2px 0 #65b98b,0 5px 7px rgba(0,53,31,.42);
   background:radial-gradient(circle at 28% 18%,#ffffff 0%,#d9f8e5 12%,#56bd83 39%,#087a55 72%,#04583c 100%);
