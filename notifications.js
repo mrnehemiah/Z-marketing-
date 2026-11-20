@@ -212,11 +212,11 @@ function getNotificationIcon(type) {
 async function cleanupExpiredReadNotifications() {
   if (!currentUser) return;
   const key = "zune_notification_retention:" + currentUser.id;
-  const allowed = [7,14,21,28,30,45,60,75,90];
+  const allowed = [1,2,3,4,5,6,7];
   const raw = localStorage.getItem(key);
   if (raw === "off") return;
-  const saved = Number(raw || 30);
-  const days = allowed.includes(saved) ? saved : 30;
+  const saved = Number(raw || 7);
+  const days = allowed.includes(saved) ? saved : 7;
   const cutoff = new Date(Date.now() - days * 86400000).toISOString();
   const { error } = await supabase
     .from("notifications")
