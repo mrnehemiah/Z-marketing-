@@ -1,5 +1,6 @@
 
 import { supabase } from "./supabase.js";
+import { setupZunePushNotifications } from "./push-notifications.js";
 
 /* =========================================
    ZUNE MARKETPLACE NOTIFICATIONS
@@ -611,6 +612,7 @@ async function initializeNotifications() {
 
   currentUser = data.user;
 
+  setupZunePushNotifications(supabase, currentUser);
   setupFilters();
   setupSettings();
 
