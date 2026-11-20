@@ -2720,7 +2720,13 @@ function bindCartEvents() {
       renderMarketplacePage("cart");
     },
     onContinueShopping: () => renderMarketplacePage("home"),
-    onCheckout: () => window.location.assign("./checkout.html")
+    onCheckout: () => window.location.assign("./checkout.html"),
+    onRetry: () => {
+      homeState.cartProductsKey = "";
+      homeState.cartProductsLoading = false;
+      homeState.cartProductsError = false;
+      renderMarketplacePage("cart");
+    }
   });
 
   const key = homeState.cart.map(item => String(item.productId)).sort().join("|");
