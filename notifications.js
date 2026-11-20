@@ -359,6 +359,7 @@ function renderNotifications() {
 
     const iconElement = document.createElement("div");
     iconElement.className = "z-notification-icon";
+    iconElement.dataset.type = String(notification.type || "general").toLowerCase().replace(/[^a-z0-9_-]/g, "");
     iconElement.textContent = icon;
 
     content.append(heading, description, time);
@@ -466,6 +467,7 @@ function renderNotificationPreview(notification) {
   previewTitle.textContent = title || "ZUNE";
   previewBody.textContent = body || "";
   previewTime.textContent = new Date(notification.created_at).toLocaleString(currentLanguage === "sw" ? "sw-TZ" : "en-US", { dateStyle: "medium", timeStyle: "short" });
+  previewIcon.dataset.type = String(notification.type || "general").toLowerCase().replace(/[^a-z0-9_-]/g, "");
   previewIcon.textContent = getNotificationIcon(notification.type);
   previewType.textContent = String(notification.type || "general").replace(/[_-]+/g, " ").toUpperCase();
   previewUnread.hidden = !!notification.is_read;
