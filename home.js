@@ -2031,7 +2031,7 @@ function openStoreStatus(ownerId){
   root.innerHTML='<div class="z-status-card"><div class="z-status-progress">'+statuses.map((x,i)=>'<span class="'+(i<index?"done":"")+'"></span>').join("")+'</div><div class="z-status-top">'+(store?.logo_url?'<img src="'+safe(store.logo_url)+'" alt="">':"")+'<strong>'+safe(store?.store_name||"ZUNE Store")+'</strong><button class="z-status-close" type="button" aria-label="Close">×</button></div>'+media+'<div class="z-status-caption">'+safe(st.caption||"")+'</div><div class="z-status-nav"><button type="button" data-status-prev></button><button type="button" data-status-next></button></div></div>';
   root.querySelector(".z-status-close")?.addEventListener("click",close);root.querySelector("[data-status-prev]")?.addEventListener("click",()=>show(index-1));root.querySelector("[data-status-next]")?.addEventListener("click",()=>show(index+1));
   const video=root.querySelector("video");if(video)video.addEventListener("ended",()=>show(index+1));
-  const holder=document.getElementById("z-featured-stores");if(holder)holder.innerHTML=renderFeaturedStores();
+  const storeButton=document.querySelector(`[data-featured-store="${CSS.escape(String(ownerId))}"]`);const logoRing=storeButton?.querySelector(".z-featured-store-logo");if(logoRing){logoRing.classList.remove("has-status","has-unseen-status");logoRing.classList.add("status-seen");}
  };
  let root=document.getElementById("z-status-viewer");if(!root){root=document.createElement("div");root.id="z-status-viewer";root.className="z-status-viewer";document.body.appendChild(root);}
  document.addEventListener("keydown",onKey);show(0);return true;
