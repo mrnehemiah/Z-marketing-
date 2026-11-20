@@ -209,9 +209,27 @@ function getNotificationIcon(type) {
    LOAD NOTIFICATIONS
 ========================================= */
 
+async function cleanupExpiredReadNotifications() {
+  if (!currentUser) return;
+  const key = "zune_notification_retention:" + currentUser.id;
+  const allowed = [7,14,21,28,30,45,60,75,90];
+  const saved = Number(localStorage.getItem(key) || 30);
+  const days = allowed.includes(saved) ? saved : 30;
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  const { error } = await supabase
+    .from("notifications")
+    .delete()
+    .eq("user_id", currentUser.id)
+    .eq("is_read", true)
+    .not("read_at", "is", null)
+    .lt("read_at", cutoff);
+  if (error) console.warn("ZUNE notification cleanup skipped:", error);
+}
+
 async function loadNotifications() {
   if (!currentUser) return;
 
+  await cleanupExpiredReadNotifications();
   hideMessage();
 
   list.setAttribute("aria-busy", "true");
