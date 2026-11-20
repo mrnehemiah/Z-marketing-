@@ -586,3 +586,37 @@
   .z-notifications-empty-icon{background:#23392d;color:#7de0ae;}
   .z-notifications-footer p{color:#c0cec5;}
 }
+
+/* APPROVED STYLE: PREMIUM + SPACIOUS + COLORED ICONS */
+.z-notifications-page{max-width:780px;padding-top:clamp(22px,5vw,38px);}
+.z-notification-summary{min-height:144px;padding:27px 28px;margin-bottom:25px;border-radius:25px;}
+.z-notification-summary strong{font-size:42px;}
+.z-notification-toolbar{margin-bottom:20px;}
+.z-notifications-list{gap:15px;}
+.z-notification-item{min-height:112px;padding:20px;gap:17px;border-radius:21px;box-shadow:0 5px 18px rgba(20,55,39,.045);}
+.z-notification-item.unread{padding-left:16px;}
+.z-notification-icon{width:56px;height:56px;flex-basis:56px;border-radius:18px;font-size:23px;}
+.z-notification-title{font-size:14px;margin-bottom:6px;}
+.z-notification-body{-webkit-line-clamp:3;font-size:12px;line-height:1.65;}
+.z-notification-time{font-size:10.5px;margin-top:10px;}
+.z-notification-icon[data-type='order'],.z-notification-icon[data-type='product'],.z-notification-icon[data-type='product_published'],.z-notification-icon[data-type='product_moderation']{background:#e8f1ff;color:#3167c7;}
+.z-notification-icon[data-type='payment'],.z-notification-icon[data-type='wallet'],.z-notification-icon[data-type='commission']{background:#fff3df;color:#bd7410;}
+.z-notification-icon[data-type='seller_application'],.z-notification-icon[data-type='seller_approved']{background:#e8f7ed;color:#18834d;}
+.z-notification-icon[data-type='seller_rejected'],.z-notification-icon[data-type='complaint']{background:#fff0ed;color:#cb5545;}
+.z-notification-icon[data-type='account'],.z-notification-icon[data-type='security']{background:#f0eaff;color:#7652bb;}
+.z-notification-icon[data-type='message']{background:#e6f7f8;color:#168b96;}
+.z-notification-icon[data-type='review']{background:#fff7dc;color:#b8860b;}
+.z-notification-icon[data-type='promotion'],.z-notification-icon[data-type='announcement']{background:#ffedf5;color:#c04c87;}
+.z-notification-icon[data-type='refund']{background:#e8f6f1;color:#16836a;}
+.z-notification-icon[data-type='general']{background:#edf1f5;color:#657487;}
+.z-preview-icon[data-type='order'],.z-preview-icon[data-type='product'],.z-preview-icon[data-type='product_published'],.z-preview-icon[data-type='product_moderation']{background:#e8f1ff;color:#3167c7;}
+.z-preview-icon[data-type='payment'],.z-preview-icon[data-type='wallet'],.z-preview-icon[data-type='commission']{background:#fff3df;color:#bd7410;}
+.z-preview-icon[data-type='seller_application'],.z-preview-icon[data-type='seller_approved']{background:#e8f7ed;color:#18834d;}
+.z-preview-icon[data-type='seller_rejected'],.z-preview-icon[data-type='complaint']{background:#fff0ed;color:#cb5545;}
+.z-preview-icon[data-type='account'],.z-preview-icon[data-type='security']{background:#f0eaff;color:#7652bb;}
+.z-preview-icon[data-type='message']{background:#e6f7f8;color:#168b96;}
+.z-preview-icon[data-type='review']{background:#fff7dc;color:#b8860b;}
+.z-preview-icon[data-type='promotion'],.z-preview-icon[data-type='announcement']{background:#ffedf5;color:#c04c87;}
+.z-preview-icon[data-type='refund']{background:#e8f6f1;color:#16836a;}
+@media(max-width:520px){.z-notification-summary{min-height:130px;padding:23px;border-radius:22px;}.z-notification-item{min-height:102px;padding:16px;border-radius:19px;gap:13px;}.z-notification-item.unread{padding-left:12px;}.z-notification-icon{width:49px;height:49px;flex-basis:49px;border-radius:16px;font-size:21px;}.z-notification-title{font-size:13px;}.z-notification-body{font-size:11.5px;-webkit-line-clamp:3;}}
+@media(prefers-color-scheme:dark){.z-notification-item{box-shadow:0 5px 18px rgba(0,0,0,.12);}}
