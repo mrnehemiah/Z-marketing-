@@ -150,8 +150,6 @@ public class MainActivity extends Activity {
             payload.put("fcm_token", token);
             payload.put("platform", "android");
             payload.put("user_agent", "ZUNE Android");
-            payload.put("updated_at", java.time.Instant.now().toString());
-            payload.put("last_seen_at", java.time.Instant.now().toString());
 
             URL url = new URL(SUPABASE_URL + "/rest/v1/zune_push_tokens?on_conflict=user_id,fcm_token");
             connection = (HttpURLConnection) url.openConnection();
