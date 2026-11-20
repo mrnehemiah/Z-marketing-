@@ -2253,12 +2253,20 @@ function bindHomeEvents() {
   loadLiveStoreStatuses();
   document.querySelector("[data-open-categories]")?.addEventListener("click", () => renderMarketplacePage("categories"));
   document.querySelector("[data-view-all-products]")?.addEventListener("click",()=>renderMarketplacePage("explore"));
-  document.querySelectorAll("[data-featured-store]").forEach(button=>button.addEventListener("click",()=>{
-    const ownerId=button.dataset.featuredStore;
-    if(!ownerId)return;
-    if(openStoreStatus(ownerId))return;
-    openStoreDetails(ownerId);
-  }));
+  // Delegate clicks from the stable section so async status refreshes can
+  // replace the store buttons without removing their click behavior.
+  const featuredSection=document.getElementById("z-featured-stores-section");
+  if(featuredSection&&!featuredSection.dataset.statusClickBound){
+    featuredSection.dataset.statusClickBound="1";
+    featuredSection.addEventListener("click",event=>{
+      const button=event.target.closest("[data-featured-store]");
+      if(!button||!featuredSection.contains(button))return;
+      const ownerId=button.dataset.featuredStore;
+      if(!ownerId)return;
+      if(openStoreStatus(ownerId))return;
+      openStoreDetails(ownerId);
+    });
+  }
 
   document.querySelector("[data-open-cart]")
     ?.addEventListener("click", () => {
