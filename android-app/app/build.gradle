@@ -29,7 +29,7 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix ".debug"
+            // Keep the Firebase-registered applicationId identical for debug and release builds.
             versionNameSuffix "-debug"
         }
         release {
