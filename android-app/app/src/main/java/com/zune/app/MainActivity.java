@@ -1,6 +1,8 @@
 package com.zune.app;
 
 import android.app.Activity;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
@@ -67,6 +69,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         activeActivity = this;
+        createNotificationChannel();
         requestNotificationPermission();
         getWindow().setStatusBarColor(android.graphics.Color.rgb(0, 59, 50));
         getWindow().setNavigationBarColor(android.graphics.Color.rgb(0, 59, 50));
@@ -126,6 +129,16 @@ public class MainActivity extends Activity {
         });
     }
 
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    "zune_notifications", "Arifa za ZUNE", NotificationManager.IMPORTANCE_HIGH);
+            channel.setDescription("Arifa za oda, malipo na taarifa nyingine za ZUNE.");
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) manager.createNotificationChannel(channel);
+        }
+    }
 
     private void requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= 33
