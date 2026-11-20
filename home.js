@@ -449,7 +449,7 @@ function addHomeStyles() {
     .z-status-viewer{position:fixed;inset:0;z-index:9999;background:rgba(5,12,9,.96);display:flex;align-items:center;justify-content:center;padding:18px}
     .z-status-card{position:relative;width:min(100%,430px);height:min(86vh,760px);border-radius:22px;overflow:hidden;background:#111;color:#fff;display:flex;flex-direction:column}
     .z-status-progress{display:flex;gap:4px;padding:12px 12px 5px;position:absolute;top:0;left:0;right:0;z-index:3}
-    .z-status-progress span{height:3px;border-radius:9px;background:#ffffff66;flex:1}
+    .z-status-progress span{height:3px;border-radius:9px;background:#ffffff66;flex:1}.z-status-progress span{overflow:hidden}.z-status-progress span i{display:block;width:0;height:100%;background:#fff;border-radius:9px}.z-status-top small{font-size:10px;color:#ffffffc9}.z-status-product{position:absolute;z-index:4;bottom:55px;left:50%;transform:translateX(-50%);border:0;border-radius:999px;padding:11px 19px;background:#0b9668;color:#fff;font-weight:800;box-shadow:0 8px 22px #0006;white-space:nowrap}
     .z-status-progress span.done{background:#fff}
     .z-status-top{position:absolute;top:25px;left:14px;right:14px;z-index:3;display:flex;align-items:center;gap:9px;text-shadow:0 1px 5px #000}
     .z-status-top img{width:34px;height:34px;border-radius:50%;object-fit:cover;background:#fff}
@@ -2127,19 +2127,23 @@ function hasSeenStoreStatuses(ownerId){
 }
 function openStoreStatus(ownerId){
  const statuses=homeState.statusByStore[String(ownerId)]||[];if(!statuses.length)return false;
- const store=(homeState.featuredStores||[]).find(x=>String(x.owner_id)===String(ownerId));let index=0;
- const close=()=>{document.getElementById("z-status-viewer")?.remove();document.removeEventListener("keydown",onKey);};
+ const store=(homeState.featuredStores||[]).find(x=>String(x.owner_id)===String(ownerId));let index=0,timer=null,started=0,elapsed=0,duration=5000;
+ const stop=()=>{if(timer)clearInterval(timer);timer=null;};
+ const close=()=>{stop();document.getElementById("z-status-viewer")?.remove();document.removeEventListener("keydown",onKey);};
  const onKey=e=>{if(e.key==="Escape")close();if(e.key==="ArrowRight")show(index+1);if(e.key==="ArrowLeft")show(index-1);};
  const show=async next=>{
-  if(next<0||next>=statuses.length){close();return;}index=next;const st=statuses[index];
+  stop();if(next<0||next>=statuses.length){close();return;}index=next;elapsed=0;started=Date.now();const st=statuses[index];
   const seen=readStorage("zune_status_seen:"+String(ownerId),[]);if(!seen.includes(st.id)){seen.push(st.id);localStorage.setItem("zune_status_seen:"+String(ownerId),JSON.stringify(seen));}
   if(homeState.user?.id)supabase.from("zune_store_status_views").upsert({status_id:st.id,viewer_id:homeState.user.id},{onConflict:"status_id,viewer_id",ignoreDuplicates:true}).then(()=>{}).catch(()=>{});
   const root=document.getElementById("z-status-viewer");if(!root)return;
-  const media=st.media_type==="video"?'<video class="z-status-media" src="'+safe(st.media_url)+'" autoplay playsinline controls></video>':st.media_type==="image"?'<img class="z-status-media" src="'+safe(st.media_url)+'" alt="Store status">':'<div class="z-status-empty-media">'+safe(st.media_url||st.caption||"ZUNE")+'</div>';
-  root.innerHTML='<div class="z-status-card"><div class="z-status-progress">'+statuses.map((x,i)=>'<span class="'+(i<index?"done":"")+'"></span>').join("")+'</div><div class="z-status-top">'+(store?.logo_url?'<img src="'+safe(store.logo_url)+'" alt="">':"")+'<strong>'+safe(store?.store_name||"ZUNE Store")+'</strong><button class="z-status-close" type="button" aria-label="Close">×</button></div>'+media+'<div class="z-status-caption">'+safe(st.caption||"")+'</div><div class="z-status-nav"><button type="button" data-status-prev></button><button type="button" data-status-next></button></div></div>';
+  const media=st.media_type==="video"?'<video class="z-status-media" src="'+safe(st.media_url)+'" autoplay playsinline></video>':st.media_type==="image"?'<img class="z-status-media" src="'+safe(st.media_url)+'" alt="Store status">':'<div class="z-status-empty-media">'+safe(st.media_url||st.caption||"ZUNE")+'</div>';
+  const productAction=st.target_product_id?'<button type="button" class="z-status-product" data-status-product="'+safe(st.target_product_id)+'">Tazama Bidhaa</button>':"";
+  root.innerHTML='<div class="z-status-card"><div class="z-status-progress">'+statuses.map((x,i)=>'<span class="'+(i<index?"done":"")+'"><i></i></span>').join("")+'</div><div class="z-status-top">'+(store?.logo_url?'<img src="'+safe(store.logo_url)+'" alt="">':"")+'<strong>'+safe(store?.store_name||"ZUNE Store")+'</strong><small>'+new Date(st.created_at).toLocaleString(language()==="sw"?"sw-TZ":"en-US",{hour:"numeric",minute:"2-digit"})+'</small><button class="z-status-close" type="button" aria-label="Close">×</button></div>'+media+'<div class="z-status-caption">'+safe(st.caption||"")+'</div>'+productAction+'<div class="z-status-nav"><button type="button" data-status-prev aria-label="Previous status"></button><button type="button" data-status-next aria-label="Next status"></button></div></div>';
   root.querySelector(".z-status-close")?.addEventListener("click",close);root.querySelector("[data-status-prev]")?.addEventListener("click",()=>show(index-1));root.querySelector("[data-status-next]")?.addEventListener("click",()=>show(index+1));
-  const video=root.querySelector("video");if(video)video.addEventListener("ended",()=>show(index+1));
-  const storeButton=document.querySelector(`[data-featured-store="${CSS.escape(String(ownerId))}"]`);const logoRing=storeButton?.querySelector(".z-featured-store-logo");if(logoRing){logoRing.classList.remove("has-status","has-unseen-status");logoRing.classList.add("status-seen");}
+  root.querySelector("[data-status-product]")?.addEventListener("click",async()=>{const id=st.target_product_id;const{data,error}=await supabase.from("products").select("*").eq("id",id).maybeSingle();if(error||!data)return;data.__zuneStore=store||null;close();openProductDetails(data);});
+  const video=root.querySelector("video");if(video){video.addEventListener("ended",()=>show(index+1));duration=Math.max(5000,Math.min((video.duration||15)*1000,60000));video.addEventListener("loadedmetadata",()=>{duration=Math.max(5000,Math.min(video.duration*1000,60000));});}else duration=5000;
+  const ring=document.querySelector(`[data-featured-store="${CSS.escape(String(ownerId))}"] .z-featured-store-logo`);if(ring){ring.classList.remove("has-status","has-unseen-status");ring.classList.add("status-seen");}
+  const bars=[...root.querySelectorAll(".z-status-progress span i")];timer=setInterval(()=>{const progress=Math.min(1,(Date.now()-started)/duration);if(bars[index])bars[index].style.width=(progress*100)+"%";if(progress>=1&&st.media_type!=="video")show(index+1);},50);
  };
  let root=document.getElementById("z-status-viewer");if(!root){root=document.createElement("div");root.id="z-status-viewer";root.className="z-status-viewer";document.body.appendChild(root);}
  document.addEventListener("keydown",onKey);show(0);return true;
