@@ -24,7 +24,6 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.JavascriptInterface;
 import android.Manifest;
-import android.content.pm.PackageManager;
 import android.widget.Toast;
 
 import org.json.JSONArray;
