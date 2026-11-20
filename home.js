@@ -30,6 +30,8 @@ const homeState = {
   products: [],
   categories: [],
   featuredStores: [],
+  statusByStore: {},
+  statusesLoadedAt: 0,
   sponsoredCampaigns: [],
   sponsoredProducts: [],
   sponsoredStores: [],
@@ -438,6 +440,24 @@ function addHomeStyles() {
     .z-featured-stores::-webkit-scrollbar{display:none}
     .z-featured-store{flex:0 0 92px;min-height:132px;padding:7px 4px;border:0;border-radius:14px;background:transparent;color:var(--text);text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer}
     .z-featured-store-logo{width:76px;height:76px;flex:0 0 76px;border-radius:50%;display:grid;place-items:center;overflow:hidden;border:2px solid var(--border);background:var(--surface);color:var(--primary);font-size:23px;font-weight:900;letter-spacing:-1px;box-shadow:0 3px 12px rgba(0,0,0,.07)}
+    .z-featured-store-logo.has-status{border:3px solid transparent;background:linear-gradient(var(--surface,#fff),var(--surface,#fff)) padding-box,conic-gradient(from 0deg,#1eb53a 0 25%,#fcd116 25% 38%,#111 38% 63%,#00a3dd 63% 100%) border-box;box-shadow:0 0 0 2px var(--surface,#fff),0 0 0 4px #1eb53a55}
+    .z-featured-store-logo.has-unseen-status{animation:zuneStatusRingPulse 2.4s ease-in-out infinite}
+    .z-featured-store-logo.status-seen{border:3px solid #aeb8b2;background:var(--surface)}
+    @keyframes zuneStatusRingPulse{0%,100%{box-shadow:0 0 0 2px var(--surface,#fff),0 0 0 4px #1eb53a55}50%{box-shadow:0 0 0 2px var(--surface,#fff),0 0 0 6px #00a3dd55}}
+    .z-status-viewer{position:fixed;inset:0;z-index:9999;background:rgba(5,12,9,.96);display:flex;align-items:center;justify-content:center;padding:18px}
+    .z-status-card{position:relative;width:min(100%,430px);height:min(86vh,760px);border-radius:22px;overflow:hidden;background:#111;color:#fff;display:flex;flex-direction:column}
+    .z-status-progress{display:flex;gap:4px;padding:12px 12px 5px;position:absolute;top:0;left:0;right:0;z-index:3}
+    .z-status-progress span{height:3px;border-radius:9px;background:#ffffff66;flex:1}
+    .z-status-progress span.done{background:#fff}
+    .z-status-top{position:absolute;top:25px;left:14px;right:14px;z-index:3;display:flex;align-items:center;gap:9px;text-shadow:0 1px 5px #000}
+    .z-status-top img{width:34px;height:34px;border-radius:50%;object-fit:cover;background:#fff}
+    .z-status-close{margin-left:auto;border:0;background:#0006;color:#fff;border-radius:50%;width:36px;height:36px;font-size:23px}
+    .z-status-media{width:100%;height:100%;object-fit:contain;background:#080808}
+    .z-status-caption{position:absolute;bottom:18px;left:18px;right:18px;z-index:3;text-align:center;text-shadow:0 2px 8px #000;font-size:14px}
+    .z-status-nav{position:absolute;inset:70px 0 65px;display:flex;z-index:2}
+    .z-status-nav button{width:50%;border:0;background:transparent}
+    .z-status-empty-media{display:grid;place-items:center;flex:1;padding:30px;text-align:center;font-size:25px;font-weight:800;background:linear-gradient(145deg,#087a55,#10251c)}
+
     .z-featured-store-logo img{display:block;width:100%;height:100%;object-fit:contain;border-radius:50%}
     .z-featured-store strong{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;font-size:11px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .z-featured-store small{display:block;max-width:100%;color:var(--text-muted);font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1980,15 +2000,54 @@ function bindCarouselEvents(){
 }
 function startCarouselAutoplay(){if(homeState.carouselTimer)clearInterval(homeState.carouselTimer);homeState.carouselTimer=setInterval(()=>moveHomeSlide(1),5000);}
 
+
+async function loadLiveStoreStatuses(force=false){
+ if(!force&&Date.now()-homeState.statusesLoadedAt<45000)return;
+ homeState.statusesLoadedAt=Date.now();
+ try{
+  const {data,error}=await supabase.from("zune_store_statuses").select("id,store_id,owner_id,media_url,media_type,caption,target_product_id,created_at,expires_at").eq("is_active",true).gt("expires_at",new Date().toISOString()).order("created_at",{ascending:true}).limit(200);
+  if(error)throw error;
+  const grouped={};(data||[]).forEach(st=>{(grouped[String(st.owner_id)]??=[]).push(st);});
+  homeState.statusByStore=grouped;
+  const holder=document.getElementById("z-featured-stores");if(holder)holder.innerHTML=renderFeaturedStores();
+ }catch(error){console.warn("ZUNE live statuses unavailable:",error.message);}
+}
+function hasSeenStoreStatuses(ownerId){
+ const seen=readStorage("zune_status_seen:"+String(ownerId),[]);
+ const ids=(homeState.statusByStore[String(ownerId)]||[]).map(x=>x.id);
+ return ids.length>0&&ids.every(id=>seen.includes(id));
+}
+function openStoreStatus(ownerId){
+ const statuses=homeState.statusByStore[String(ownerId)]||[];if(!statuses.length)return false;
+ const store=(homeState.featuredStores||[]).find(x=>String(x.owner_id)===String(ownerId));let index=0;
+ const close=()=>{document.getElementById("z-status-viewer")?.remove();document.removeEventListener("keydown",onKey);};
+ const onKey=e=>{if(e.key==="Escape")close();if(e.key==="ArrowRight")show(index+1);if(e.key==="ArrowLeft")show(index-1);};
+ const show=async next=>{
+  if(next<0||next>=statuses.length){close();return;}index=next;const st=statuses[index];
+  const seen=readStorage("zune_status_seen:"+String(ownerId),[]);if(!seen.includes(st.id)){seen.push(st.id);localStorage.setItem("zune_status_seen:"+String(ownerId),JSON.stringify(seen));}
+  if(homeState.user?.id)supabase.from("zune_store_status_views").upsert({status_id:st.id,viewer_id:homeState.user.id},{onConflict:"status_id,viewer_id",ignoreDuplicates:true}).then(()=>{}).catch(()=>{});
+  const root=document.getElementById("z-status-viewer");if(!root)return;
+  const media=st.media_type==="video"?'<video class="z-status-media" src="'+safe(st.media_url)+'" autoplay playsinline controls></video>':st.media_type==="image"?'<img class="z-status-media" src="'+safe(st.media_url)+'" alt="Store status">':'<div class="z-status-empty-media">'+safe(st.media_url||st.caption||"ZUNE")+'</div>';
+  root.innerHTML='<div class="z-status-card"><div class="z-status-progress">'+statuses.map((x,i)=>'<span class="'+(i<index?"done":"")+'"></span>').join("")+'</div><div class="z-status-top">'+(store?.logo_url?'<img src="'+safe(store.logo_url)+'" alt="">':"")+'<strong>'+safe(store?.store_name||"ZUNE Store")+'</strong><button class="z-status-close" type="button" aria-label="Close">×</button></div>'+media+'<div class="z-status-caption">'+safe(st.caption||"")+'</div><div class="z-status-nav"><button type="button" data-status-prev></button><button type="button" data-status-next></button></div></div>';
+  root.querySelector(".z-status-close")?.addEventListener("click",close);root.querySelector("[data-status-prev]")?.addEventListener("click",()=>show(index-1));root.querySelector("[data-status-next]")?.addEventListener("click",()=>show(index+1));
+  const video=root.querySelector("video");if(video)video.addEventListener("ended",()=>show(index+1));
+  const holder=document.getElementById("z-featured-stores");if(holder)holder.innerHTML=renderFeaturedStores();
+ };
+ let root=document.getElementById("z-status-viewer");if(!root){root=document.createElement("div");root.id="z-status-viewer";root.className="z-status-viewer";document.body.appendChild(root);}
+ document.addEventListener("keydown",onKey);show(0);return true;
+}
+
 function renderFeaturedStores(){
  const stores=homeState.featuredStores||[];
  if(!stores.length)return `<div class="z-empty-state">${language()==="sw"?"Maduka yataonekana kadri bidhaa za wauzaji zinavyopakiwa.":"Stores will appear as seller products load."}</div>`;
  return stores.slice(0,10).map(store=>{
   const name=store.store_name||"ZUNE Store";
+  const storeStatuses=homeState.statusByStore[String(store.owner_id)]||[];
+  const statusClass=storeStatuses.length?(hasSeenStoreStatuses(store.owner_id)?"status-seen":"has-status has-unseen-status"):"";
   const initials=String(name).trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part.charAt(0).toUpperCase()).join("")||"Z";
   const logo=store.logo_url||store.store_logo_url||store.logo||"";
   const logoMarkup=logo?`<img src="${safe(logo)}" alt="${safe(name)} logo" loading="lazy" onerror="this.remove()">`:safe(initials);
-  return `<button type="button" class="z-featured-store" data-featured-store="${safe(store.owner_id)}" aria-label="${safe(name)}"><span class="z-featured-store-logo" aria-hidden="true">${logoMarkup}</span><strong>${safe(name)} ${["verified","approved"].includes(String(store.verification_status||"").toLowerCase())?`<span class="store-verified" title="Verified Store" aria-label="Verified Store">✓</span>`:""}</strong><small>${safe([store.district,store.region].filter(Boolean).join(", ")|| (language()==="sw"?"Duka la ZUNE":"ZUNE Store"))}</small></button>`;
+  return `<button type="button" class="z-featured-store" data-featured-store="${safe(store.owner_id)}" aria-label="${safe(name)}"><span class="z-featured-store-logo ${statusClass}" aria-hidden="true">${logoMarkup}</span><strong>${safe(name)} ${["verified","approved"].includes(String(store.verification_status||"").toLowerCase())?`<span class="store-verified" title="Verified Store" aria-label="Verified Store">✓</span>`:""}</strong><small>${safe([store.district,store.region].filter(Boolean).join(", ")|| (language()==="sw"?"Duka la ZUNE":"ZUNE Store"))}</small></button>`;
  }).join("");
 }
 
@@ -2191,11 +2250,13 @@ function bindHomeEvents() {
   bindSearchEvents();
   bindCarouselEvents();
   startCarouselAutoplay();
+  loadLiveStoreStatuses();
   document.querySelector("[data-open-categories]")?.addEventListener("click", () => renderMarketplacePage("categories"));
   document.querySelector("[data-view-all-products]")?.addEventListener("click",()=>renderMarketplacePage("explore"));
   document.querySelectorAll("[data-featured-store]").forEach(button=>button.addEventListener("click",()=>{
     const ownerId=button.dataset.featuredStore;
     if(!ownerId)return;
+    if(openStoreStatus(ownerId))return;
     openStoreDetails(ownerId);
   }));
 
