@@ -2463,27 +2463,55 @@ function startVoiceSearch(input){
 
 function bindSearchEvents() {
  const input=document.getElementById("z-home-search");if(!input)return;
- let searchTimeout;const suggestionBox=document.getElementById("z-search-suggestions");
- const renderSuggestions=()=>{
-  if(!suggestionBox)return;const q=input.value.trim().toLowerCase();
-  if(!q){suggestionBox.classList.remove("open");input.setAttribute("aria-expanded","false");return;}
-  const matches=homeState.products.filter(p=>String(p.title||"").toLowerCase().includes(q)).slice(0,6);
-  const storeMatches=homeState.featuredStores.filter(st=>String(st.store_name||"").toLowerCase().includes(q)).slice(0,3);
-  const rows=[...matches.map(p=>`<button type="button" class="z-search-suggestion" data-suggest-product="${safe(p.id)}">⌕ <span>${safe(p.title)}<small>${money(p.price)}</small></span></button>`),...storeMatches.map(st=>`<button type="button" class="z-search-suggestion" data-suggest-store="${safe(st.owner_id)}">▣ <span>${safe(st.store_name)}<small>${language()==="sw"?"Duka":"Store"}</small></span></button>`)];
-  suggestionBox.innerHTML=rows.length?rows.join(""):`<div class="z-search-suggestion">${language()==="sw"?"Endelea kuandika kutafuta bidhaa zaidi":"Keep typing to search more products"}</div>`;
-  suggestionBox.classList.add("open");input.setAttribute("aria-expanded","true");
+ let searchTimeout,suggestionRequest=0;const suggestionBox=document.getElementById("z-search-suggestions");
+ const historyKey="zune_search_history:"+(homeState.user?.id||"guest");
+ const readHistory=()=>{try{return JSON.parse(localStorage.getItem(historyKey)||"[]").filter(x=>typeof x==="string").slice(0,6);}catch(_){return[];}};
+ const saveHistory=value=>{const q=String(value||"").trim();if(q.length<2)return;const next=[q,...readHistory().filter(x=>x.toLowerCase()!==q.toLowerCase())].slice(0,6);try{localStorage.setItem(historyKey,JSON.stringify(next));}catch(_){}};
+ const closeSuggestions=()=>{suggestionBox?.classList.remove("open");input.setAttribute("aria-expanded","false");};
+ const runSearch=async value=>{
+  const q=String(value||"").trim();if(!q)return;
+  clearTimeout(searchTimeout);input.value=q;homeState.search=q;homeState.selectedVendor="";homeState.selectedCategory="";homeState.page=0;homeState.products=[];homeState.hasMore=true;saveHistory(q);closeSuggestions();input.blur();await loadProducts(true);
+ };
+ const renderSuggestions=async()=>{
+  if(!suggestionBox)return;const q=input.value.trim();const request=++suggestionRequest;
+  if(q.length<2){const history=readHistory();suggestionBox.innerHTML=history.length?'<div class="z-search-suggestion" style="font-weight:800;cursor:default">'+(language()==="sw"?"Ulichotafuta hivi karibuni":"Recent searches")+'</div>'+history.map(item=>'<button type="button" class="z-search-suggestion" data-search-history="'+safe(item)+'">◷ <span>'+safe(item)+'</span></button>').join(""):"";suggestionBox.classList.toggle("open",history.length>0);input.setAttribute("aria-expanded",history.length?"true":"false");return;}
+  const needle=q.toLowerCase();
+  const localProducts=homeState.products.filter(p=>String(p.title||"").toLowerCase().includes(needle)).slice(0,5);
+  const localStores=homeState.featuredStores.filter(st=>String(st.store_name||"").toLowerCase().includes(needle)).slice(0,3);
+  suggestionBox.innerHTML='<div class="z-search-suggestion" style="cursor:default;color:#718078">'+(language()==="sw"?"Inatafuta...":"Searching...")+'</div>';suggestionBox.classList.add("open");input.setAttribute("aria-expanded","true");
+  let products=localProducts,stores=localStores;
+  try{
+   const [pResult,sResult]=await Promise.all([
+    supabase.from("products").select("*").ilike("title","%"+q.replace(/[,%()]/g," ")+"%").limit(5),
+    supabase.from("stores").select("owner_id,store_name,verification_status,logo_url").ilike("store_name","%"+q.replace(/[,%()]/g," ")+"%").limit(3)
+   ]);
+   if(request!==suggestionRequest)return;
+   if(!pResult.error){const byId=new Map(localProducts.map(p=>[String(p.id),p]));(pResult.data||[]).forEach(p=>byId.set(String(p.id),p));products=[...byId.values()].slice(0,5);}
+   if(!sResult.error){const byId=new Map(localStores.map(st=>[String(st.owner_id),st]));(sResult.data||[]).forEach(st=>byId.set(String(st.owner_id),st));stores=[...byId.values()].slice(0,3);}
+  }catch(error){console.warn("ZUNE search suggestions:",error.message);}
+  if(request!==suggestionRequest)return;
+  const productRows=products.map(p=>'<button type="button" class="z-search-suggestion" data-suggest-product="'+safe(p.id)+'">⌕ <span>'+safe(p.title||"Bidhaa")+'<small>'+money(p.price)+'</small></span></button>');
+  const storeRows=stores.map(st=>'<button type="button" class="z-search-suggestion" data-suggest-store="'+safe(st.owner_id)+'">▣ <span>'+safe(st.store_name||"Duka")+'<small>'+(language()==="sw"?"Duka":"Store")+'</small></span></button>');
+  const viewAll='<button type="button" class="z-search-suggestion" data-search-all="'+safe(q)+'" style="justify-content:center;color:#087a55;font-weight:800;border-top:1px solid #e6eee8">'+(language()==="sw"?"Ona matokeo yote ya “"+safe(q)+"” →":"View all results for “"+safe(q)+"” →")+'</button>';
+  suggestionBox.innerHTML=(productRows.length?'<div class="z-search-suggestion" style="cursor:default;font-weight:800">'+(language()==="sw"?"Bidhaa":"Products")+'</div>'+productRows.join(""):"")+(storeRows.length?'<div class="z-search-suggestion" style="cursor:default;font-weight:800">'+(language()==="sw"?"Maduka":"Stores")+'</div>'+storeRows.join(""):"")+(productRows.length||storeRows.length?viewAll:'<div class="z-search-suggestion" style="cursor:default">'+(language()==="sw"?"Hakuna pendekezo. Bonyeza Enter kuona matokeo yote.":"No suggestions. Press Enter to see all results.")+'</div>'+viewAll);
  };
  input.addEventListener("input",()=>{
   renderSuggestions();clearTimeout(searchTimeout);
-  searchTimeout=setTimeout(async()=>{homeState.search=input.value.trim();homeState.selectedVendor="";homeState.products=[];homeState.page=0;homeState.hasMore=true;await loadProducts(true);renderSuggestions();},350);
+  searchTimeout=setTimeout(async()=>{const q=input.value.trim();if(q.length<2)return;homeState.search=q;homeState.selectedVendor="";homeState.selectedCategory="";homeState.products=[];homeState.page=0;homeState.hasMore=true;await loadProducts(true);},450);
  });
  suggestionBox?.addEventListener("click",event=>{
+  const all=event.target.closest("[data-search-all]");if(all){runSearch(all.dataset.searchAll);return;}
+  const history=event.target.closest("[data-search-history]");if(history){input.value=history.dataset.searchHistory;runSearch(history.dataset.searchHistory);return;}
   const p=event.target.closest("[data-suggest-product]");
-  if(p){const product=homeState.products.find(x=>String(x.id)===p.dataset.suggestProduct);if(product)openProductDetails(product);suggestionBox.classList.remove("open");return;}
+  if(p){const product=homeState.products.find(x=>String(x.id)===p.dataset.suggestProduct);if(product)openProductDetails(product);else runSearch(input.value);closeSuggestions();return;}
   const st=event.target.closest("[data-suggest-store]");
-  if(st){const ownerId=st.dataset.suggestStore;suggestionBox.classList.remove("open");input.blur();if(ownerId)openStoreDetails(ownerId);}
+  if(st){const ownerId=st.dataset.suggestStore;closeSuggestions();input.blur();if(ownerId)openStoreDetails(ownerId);}
  });
- input.addEventListener("keydown",event=>{if(event.key==="Escape"){suggestionBox?.classList.remove("open");input.setAttribute("aria-expanded","false");}});
+ input.addEventListener("keydown",event=>{
+  if(event.key==="Escape"){closeSuggestions();return;}
+  if(event.key==="Enter"){event.preventDefault();runSearch(input.value);}
+ });
+ document.addEventListener("click",event=>{if(!event.target.closest(".z-search-premium")&&!event.target.closest(".z-search-box"))closeSuggestions();},{passive:true});
  document.getElementById("z-search-filter")?.addEventListener("click",openSearchFilterSheet);
  document.getElementById("z-search-image")?.addEventListener("click",openSearchImagePicker);
  document.getElementById("z-search-image-file")?.addEventListener("change",event=>{showSearchImagePreview(event.target.files?.[0]);event.target.value="";});
