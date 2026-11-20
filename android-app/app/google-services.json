@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "969021746816",
+    "project_id": "zune-59f3f",
+    "storage_bucket": "zune-59f3f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:969021746816:android:70598e6e5f40aea10a8065",
+        "android_client_info": {
+          "package_name": "com.zune.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQz5yDShZjJElovYVnxj94VfrzVn3XJLw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
