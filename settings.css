@@ -8,3 +8,10 @@
 .settings-session-card small{display:block;color:var(--text-muted);font-size:11px;line-height:1.5;margin-top:4px;overflow-wrap:anywhere}
 .settings-session-badge{font-size:10px;font-weight:700;padding:5px 8px;border-radius:20px;background:var(--surface);color:var(--text-muted);border:1px solid var(--border)}
 .settings-session-badge.current{background:#087a5518;color:var(--primary);border-color:#087a5544}
+
+
+/* Notification retention preference */
+.settings-retention{display:grid;gap:9px;margin:16px 0;padding:15px;border:1px solid var(--border,#e3ebe6);border-radius:15px;background:var(--surface,#f7faf8)}
+.settings-retention label{font-size:13px;font-weight:800;color:var(--text,#20332a)}
+.settings-retention select{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--border,#dce7e0);border-radius:11px;background:#fff;color:#20332a;font:inherit;font-size:14px}
+.settings-retention small{font-size:11px;line-height:1.5;color:var(--muted,#74827b)}
