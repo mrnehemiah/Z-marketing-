@@ -213,7 +213,9 @@ async function cleanupExpiredReadNotifications() {
   if (!currentUser) return;
   const key = "zune_notification_retention:" + currentUser.id;
   const allowed = [7,14,21,28,30,45,60,75,90];
-  const saved = Number(localStorage.getItem(key) || 30);
+  const raw = localStorage.getItem(key);
+  if (raw === "off") return;
+  const saved = Number(raw || 30);
   const days = allowed.includes(saved) ? saved : 30;
   const cutoff = new Date(Date.now() - days * 86400000).toISOString();
   const { error } = await supabase
