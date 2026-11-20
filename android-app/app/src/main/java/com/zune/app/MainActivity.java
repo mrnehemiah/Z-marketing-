@@ -58,11 +58,13 @@ public class MainActivity extends Activity {
     private boolean isInternalUrl(String value) {
         if (value == null) return false;
         Uri uri = Uri.parse(value);
-        if (!"https".equalsIgnoreCase(uri.getScheme())) return false;
+        String scheme = uri.getScheme();
         String host = uri.getHost();
-        if (host == null || !"mrnehemiah.github.io".equalsIgnoreCase(host)) return false;
-        String path = uri.getPath() == null ? "/" : uri.getPath();
-        return path.equals("/") || path.startsWith("/zuneacts/");
+        // Keep every page hosted on the official ZUNE GitHub Pages domain
+        // inside the Android WebView, regardless of its path.
+        return "https".equalsIgnoreCase(scheme)
+                && host != null
+                && "mrnehemiah.github.io".equalsIgnoreCase(host);
     }
 
     @Override
