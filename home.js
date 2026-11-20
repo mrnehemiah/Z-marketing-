@@ -1264,7 +1264,7 @@ async function loadProducts(reset = false) {
     let query = supabase
       .from("products")
       .select("*")
-      .order(homeState.searchFilters.sort==="price_low"?"price":homeState.searchFilters.sort==="price_high"?"price":"created_at", { ascending: homeState.searchFilters.sort==="price_low" || homeState.searchFilters.sort==="newest" })
+      .order(homeState.searchFilters.sort==="price_low"?"price":homeState.searchFilters.sort==="price_high"?"price":"created_at", { ascending: homeState.searchFilters.sort==="price_low" })
       .range(
         homeState.page * PAGE_SIZE,
         (homeState.page + 1) * PAGE_SIZE - 1
@@ -2213,6 +2213,8 @@ function ensurePremiumSearchStyles(){
  .z-search-premium-box>input[type=search]{flex:1;min-width:0;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;font-size:13px!important}
  .z-search-tool{display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;border:0;border-radius:10px;background:#eff7f1;color:#147343;font-size:19px;font-weight:800;cursor:pointer}
  .z-search-filter-trigger{background:#e7f3eb}
+ .z-search-tool.is-listening{background:#d9f4e3;animation:zuneSearchPulse 1s ease-in-out infinite}
+ @keyframes zuneSearchPulse{50%{box-shadow:0 0 0 6px rgba(17,142,77,.13)}}
  .z-search-hint{padding:5px 4px 0;color:#829188;font-size:10px}
  .z-search-suggestions{z-index:60}
  .z-search-filter-overlay,.z-search-image-preview{position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:14px;background:rgba(8,25,16,.52);backdrop-filter:blur(4px)}
