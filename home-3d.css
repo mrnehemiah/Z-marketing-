@@ -1,6 +1,5 @@
 /* ZUNE HOME — PREMIUM SOFT 3D DESIGN
    Scoped to the Home Page only. Preserves existing markup, data and actions. */
-@supports selector(.z-marketplace:has(#z-home-carousel)) {
   #app .z-home {
     --z3d-shadow-soft: 0 8px 22px rgba(20, 65, 43, .075), 0 2px 5px rgba(20, 65, 43, .045);
     --z3d-shadow-raised: 0 13px 28px rgba(20, 65, 43, .11), 0 4px 9px rgba(20, 65, 43, .055);
@@ -234,4 +233,3 @@
       animation-duration: .01ms !important;
       animation-iteration-count: 1 !important;
     }
-  }
