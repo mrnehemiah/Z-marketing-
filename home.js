@@ -2463,7 +2463,7 @@ function startVoiceSearch(input){
 
 function bindSearchEvents() {
  const input=document.getElementById("z-home-search");if(!input)return;
- let searchTimeout,suggestionRequest=0;const suggestionBox=document.getElementById("z-search-suggestions");
+ let searchTimeout,suggestionRequest=0;const suggestionProducts=new Map();const suggestionBox=document.getElementById("z-search-suggestions");
  const historyKey="zune_search_history:"+(homeState.user?.id||"guest");
  const readHistory=()=>{try{return JSON.parse(localStorage.getItem(historyKey)||"[]").filter(x=>typeof x==="string").slice(0,6);}catch(_){return[];}};
  const saveHistory=value=>{const q=String(value||"").trim();if(q.length<2)return;const next=[q,...readHistory().filter(x=>x.toLowerCase()!==q.toLowerCase())].slice(0,6);try{localStorage.setItem(historyKey,JSON.stringify(next));}catch(_){}};
@@ -2490,6 +2490,7 @@ function bindSearchEvents() {
    if(!sResult.error){const byId=new Map(localStores.map(st=>[String(st.owner_id),st]));(sResult.data||[]).forEach(st=>byId.set(String(st.owner_id),st));stores=[...byId.values()].slice(0,3);}
   }catch(error){console.warn("ZUNE search suggestions:",error.message);}
   if(request!==suggestionRequest)return;
+  suggestionProducts.clear();products.forEach(p=>suggestionProducts.set(String(p.id),p));
   const productRows=products.map(p=>'<button type="button" class="z-search-suggestion" data-suggest-product="'+safe(p.id)+'">⌕ <span>'+safe(p.title||"Bidhaa")+'<small>'+money(p.price)+'</small></span></button>');
   const storeRows=stores.map(st=>'<button type="button" class="z-search-suggestion" data-suggest-store="'+safe(st.owner_id)+'">▣ <span>'+safe(st.store_name||"Duka")+'<small>'+(language()==="sw"?"Duka":"Store")+'</small></span></button>');
   const viewAll='<button type="button" class="z-search-suggestion" data-search-all="'+safe(q)+'" style="justify-content:center;color:#087a55;font-weight:800;border-top:1px solid #e6eee8">'+(language()==="sw"?"Ona matokeo yote ya “"+safe(q)+"” →":"View all results for “"+safe(q)+"” →")+'</button>';
@@ -2503,7 +2504,7 @@ function bindSearchEvents() {
   const all=event.target.closest("[data-search-all]");if(all){runSearch(all.dataset.searchAll);return;}
   const history=event.target.closest("[data-search-history]");if(history){input.value=history.dataset.searchHistory;runSearch(history.dataset.searchHistory);return;}
   const p=event.target.closest("[data-suggest-product]");
-  if(p){const product=homeState.products.find(x=>String(x.id)===p.dataset.suggestProduct);if(product)openProductDetails(product);else runSearch(input.value);closeSuggestions();return;}
+  if(p){const product=suggestionProducts.get(String(p.dataset.suggestProduct))||homeState.products.find(x=>String(x.id)===p.dataset.suggestProduct);if(product)openProductDetails(product);else runSearch(input.value);closeSuggestions();return;}
   const st=event.target.closest("[data-suggest-store]");
   if(st){const ownerId=st.dataset.suggestStore;closeSuggestions();input.blur();if(ownerId)openStoreDetails(ownerId);}
  });
