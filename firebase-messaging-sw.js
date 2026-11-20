@@ -22,8 +22,6 @@ messaging.onBackgroundMessage((payload) => {
 
   return self.registration.showNotification(title, {
     body,
-    icon: "./assets/icon-192.png",
-    badge: "./assets/icon-192.png",
     data: { url: target },
     tag: payload.data?.tag || "zune-notification",
     renotify: false
