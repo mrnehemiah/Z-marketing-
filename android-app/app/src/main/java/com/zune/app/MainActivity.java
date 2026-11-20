@@ -22,9 +22,16 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.JavascriptInterface;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.widget.Toast;
 
 import org.json.JSONArray;
+import org.json.JSONException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import android.util.Base64;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -36,7 +43,7 @@ public class MainActivity extends Activity {
     private static final String MARKET_URL = "https://mrnehemiah.github.io/";
     private static final String SELLER_URL = "https://mrnehemiah.github.io/zuneacts/";
     private static final String RELEASE_API = "https://api.github.com/repos/mrnehemiah/mrnehemiah.github.io/releases/latest";
-    private static final int FILE_CHOOSER_REQUEST = 4201;
+    private static final int FILE_CHOOSER_REQUEST = 4201;\n    private static final String SUPABASE_URL = "https://rpkogiieegqgxqbzwxwo.supabase.co";\n    private static final String SUPABASE_PUBLISHABLE_KEY = "sb_publishable_2TEqZv-NBM9n5knU46ngqA_wqO3V1uf";\n    private static MainActivity activeActivity;
 
     private WebView webView;
     private ValueCallback<Uri[]> fileUploadCallback;
@@ -56,7 +63,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+        super.onCreate(savedInstanceState);\n        activeActivity = this;\n        requestNotificationPermission();
         getWindow().setStatusBarColor(android.graphics.Color.rgb(0, 59, 50));
         getWindow().setNavigationBarColor(android.graphics.Color.rgb(0, 59, 50));
 
@@ -85,7 +92,7 @@ public class MainActivity extends Activity {
         cookies.setAcceptCookie(true);
         cookies.setAcceptThirdPartyCookies(webView, false);
 
-        webView.setWebViewClient(new WebViewClient() {
+        webView.addJavascriptInterface(new NativePushBridge(), "AndroidZunePush");\n\n        webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String target = request.getUrl().toString();
@@ -111,6 +118,70 @@ public class MainActivity extends Activity {
                 }
             }
         });
+    }
+
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 8401);
+        }
+    }
+
+    private class NativePushBridge {
+        @JavascriptInterface
+        public String getFcmToken() {
+            return getSharedPreferences("zune_fcm", MODE_PRIVATE).getString("fcm_token", "");
+        }
+
+        @JavascriptInterface
+        public void registerToken(String userId, String accessToken) {
+            if (userId == null || accessToken == null || accessToken.isEmpty()) return;
+            String token = getFcmToken();
+            if (token.isEmpty()) return;
+            new Thread(() -> upsertNativePushToken(userId, accessToken, token)).start();
+        }
+    }
+
+    private void upsertNativePushToken(String userId, String accessToken, String token) {
+        HttpURLConnection connection = null;
+        try {
+            JSONObject payload = new JSONObject();
+            payload.put("user_id", userId);
+            payload.put("fcm_token", token);
+            payload.put("platform", "android");
+            payload.put("user_agent", "ZUNE Android");
+            payload.put("updated_at", java.time.Instant.now().toString());
+            payload.put("last_seen_at", java.time.Instant.now().toString());
+
+            URL url = new URL(SUPABASE_URL + "/rest/v1/zune_push_tokens?on_conflict=user_id,fcm_token");
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(15000);
+            connection.setDoOutput(true);
+            connection.setRequestProperty("apikey", SUPABASE_PUBLISHABLE_KEY);
+            connection.setRequestProperty("Authorization", "Bearer " + accessToken);
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("Prefer", "resolution=merge-duplicates,return=minimal");
+            byte[] body = payload.toString().getBytes(StandardCharsets.UTF_8);
+            try (OutputStream output = connection.getOutputStream()) {
+                output.write(body);
+            }
+            int status = connection.getResponseCode();
+            android.util.Log.i("ZUNE-PUSH", "Native token sync HTTP " + status);
+        } catch (Exception error) {
+            android.util.Log.w("ZUNE-PUSH", "Native token sync failed", error);
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
+    }
+
+    public static void notifyNativePushTokenReady() {
+        MainActivity activity = activeActivity;
+        if (activity == null || activity.webView == null) return;
+        activity.runOnUiThread(() -> activity.webView.evaluateJavascript(
+                "window.zuneSyncNativePush && window.zuneSyncNativePush();", null));
     }
 
     private void checkForUpdates() {
@@ -301,6 +372,6 @@ public class MainActivity extends Activity {
             webView.stopLoading();
             webView.destroy();
         }
-        super.onDestroy();
+        if (activeActivity == this) activeActivity = null;\n        super.onDestroy();
     }
 }
