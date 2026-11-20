@@ -23,3 +23,24 @@ export const supabase = createClient(
     }
   }
 );
+
+
+// Native Android FCM bridge: syncs this installation token only for the
+// currently authenticated Supabase user. RLS remains the authority.
+if (typeof window !== "undefined" && window.AndroidZunePush) {
+  window.zuneSyncNativePush = async function () {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id || !session?.access_token) return;
+      const token = window.AndroidZunePush.getFcmToken();
+      if (!token) return;
+      window.AndroidZunePush.registerToken(session.user.id, session.access_token);
+    } catch (error) {
+      console.warn("ZUNE native push sync:", error);
+    }
+  };
+  supabase.auth.onAuthStateChange(() => {
+    setTimeout(() => window.zuneSyncNativePush?.(), 0);
+  });
+  setTimeout(() => window.zuneSyncNativePush?.(), 800);
+}
