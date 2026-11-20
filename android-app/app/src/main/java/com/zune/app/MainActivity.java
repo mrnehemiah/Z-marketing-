@@ -42,7 +42,10 @@ public class MainActivity extends Activity {
     private static final String MARKET_URL = "https://mrnehemiah.github.io/";
     private static final String SELLER_URL = "https://mrnehemiah.github.io/zuneacts/";
     private static final String RELEASE_API = "https://api.github.com/repos/mrnehemiah/mrnehemiah.github.io/releases/latest";
-    private static final int FILE_CHOOSER_REQUEST = 4201;\n    private static final String SUPABASE_URL = "https://rpkogiieegqgxqbzwxwo.supabase.co";\n    private static final String SUPABASE_PUBLISHABLE_KEY = "sb_publishable_2TEqZv-NBM9n5knU46ngqA_wqO3V1uf";\n    private static MainActivity activeActivity;
+    private static final int FILE_CHOOSER_REQUEST = 4201;
+    private static final String SUPABASE_URL = "https://rpkogiieegqgxqbzwxwo.supabase.co";
+    private static final String SUPABASE_PUBLISHABLE_KEY = "sb_publishable_2TEqZv-NBM9n5knU46ngqA_wqO3V1uf";
+    private static MainActivity activeActivity;
 
     private WebView webView;
     private ValueCallback<Uri[]> fileUploadCallback;
@@ -62,7 +65,9 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);\n        activeActivity = this;\n        requestNotificationPermission();
+        super.onCreate(savedInstanceState);
+        activeActivity = this;
+        requestNotificationPermission();
         getWindow().setStatusBarColor(android.graphics.Color.rgb(0, 59, 50));
         getWindow().setNavigationBarColor(android.graphics.Color.rgb(0, 59, 50));
 
@@ -91,7 +96,9 @@ public class MainActivity extends Activity {
         cookies.setAcceptCookie(true);
         cookies.setAcceptThirdPartyCookies(webView, false);
 
-        webView.addJavascriptInterface(new NativePushBridge(), "AndroidZunePush");\n\n        webView.setWebViewClient(new WebViewClient() {
+        webView.addJavascriptInterface(new NativePushBridge(), "AndroidZunePush");
+
+        webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String target = request.getUrl().toString();
@@ -260,8 +267,12 @@ public class MainActivity extends Activity {
         String details = notes.isEmpty() ? "Maboresho mapya na marekebisho ya mfumo." : notes;
         new AlertDialog.Builder(this)
                 .setTitle("ZUNE ina sasisho jipya")
-                .setMessage("Toleo: " + version + "\n\n" + details
-                        + "\n\nUngependa kupakua sasisho sasa?")
+                .setMessage("Toleo: " + version + "
+
+" + details
+                        + "
+
+Ungependa kupakua sasisho sasa?")
                 .setCancelable(true)
                 .setNegativeButton("Baadaye", (dialog, which) -> {
                     updateDialogShown = false;
@@ -369,6 +380,7 @@ public class MainActivity extends Activity {
             webView.stopLoading();
             webView.destroy();
         }
-        if (activeActivity == this) activeActivity = null;\n        super.onDestroy();
+        if (activeActivity == this) activeActivity = null;
+        super.onDestroy();
     }
 }
