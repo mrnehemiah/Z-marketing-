@@ -459,6 +459,20 @@ function addHomeStyles() {
     .z-status-nav{position:absolute;inset:70px 0 65px;display:flex;z-index:2}
     .z-status-nav button{width:50%;border:0;background:transparent}
     .z-status-empty-media{display:grid;place-items:center;flex:1;padding:30px;text-align:center;font-size:25px;font-weight:800;background:linear-gradient(145deg,#087a55,#10251c)}
+    .z-status-caption{bottom:190px!important;padding:0 12px}
+    .z-status-product{bottom:158px!important}
+    .z-status-engagement{position:absolute;z-index:5;left:12px;right:12px;bottom:10px;padding:10px 11px;border:1px solid #ffffff35;border-radius:16px;background:rgba(8,18,14,.82);backdrop-filter:blur(14px);color:#fff;max-height:38%;display:flex;flex-direction:column;gap:8px}
+    .z-status-actions{display:flex;align-items:center;gap:8px}
+    .z-status-action{border:1px solid #ffffff35;border-radius:999px;padding:8px 12px;background:#ffffff16;color:#fff;font-size:12px;font-weight:800}
+    .z-status-action.liked{background:#e83e68;border-color:#e83e68}
+    .z-status-comments{overflow:auto;max-height:105px;font-size:11px;display:flex;flex-direction:column;gap:7px}
+    .z-status-comment{line-height:1.35}.z-status-comment strong{color:#b9f3d9;margin-right:5px}
+    .z-status-comment-form,.z-status-message-form{display:flex;gap:6px}
+    .z-status-comment-form input,.z-status-message-form input{min-width:0;flex:1;border:1px solid #ffffff45;border-radius:999px;padding:9px 11px;background:#ffffff18;color:#fff;outline:none;font-size:12px}
+    .z-status-comment-form button,.z-status-message-form button{border:0;border-radius:999px;padding:0 13px;background:#0b9668;color:#fff;font-weight:800}
+    .z-status-message-form{display:none}.z-status-message-form.open{display:flex}
+    .z-status-hint{font-size:10px;color:#ffffffb8}
+
 
     .z-featured-store-logo img{display:block;width:100%;height:100%;object-fit:contain;border-radius:50%}
     .z-featured-store strong{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;font-size:11px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2125,6 +2139,58 @@ function hasSeenStoreStatuses(ownerId){
  const ids=(homeState.statusByStore[String(ownerId)]||[]).map(x=>x.id);
  return ids.length>0&&ids.every(id=>seen.includes(id));
 }
+
+async function bindStatusEngagement(root,st,store){
+ const card=root.querySelector(".z-status-card");if(!card)return;
+ const panel=document.createElement("section");panel.className="z-status-engagement";panel.setAttribute("aria-label","Status interactions");card.appendChild(panel);
+ const currentUser=homeState.user?.id||null;
+ const ownerId=String(st.owner_id);
+ async function refresh(){
+  const [likesResult,commentsResult]=await Promise.all([
+   supabase.from("zune_status_likes").select("user_id").eq("status_id",st.id),
+   supabase.from("zune_status_comments").select("id,user_id,comment,created_at").eq("status_id",st.id).order("created_at",{ascending:false}).limit(20)
+  ]);
+  if(likesResult.error)throw likesResult.error;
+  if(commentsResult.error)throw commentsResult.error;
+  const likes=likesResult.data||[],comments=commentsResult.data||[];
+  const liked=!!currentUser&&likes.some(x=>String(x.user_id)===String(currentUser));
+  const names={};
+  const ids=[...new Set(comments.map(x=>x.user_id).filter(Boolean))];
+  if(ids.length){const p=await supabase.from("profiles").select("id,full_name").in("id",ids);if(!p.error)(p.data||[]).forEach(x=>names[String(x.id)]=x.full_name||"Mtumiaji ZUNE");}
+  panel.innerHTML='<div class="z-status-actions"><button type="button" class="z-status-action '+(liked?'liked':'')+'" data-status-like '+(!currentUser?'disabled':'')+'>'+(liked?'♥ Ume-like':'♡ Like')+' · '+likes.length+'</button><span class="z-status-hint">💬 '+comments.length+' maoni</span><button type="button" class="z-status-action" data-status-message '+(!currentUser||String(currentUser)===ownerId?'disabled':'')+'>✉ Tuma ujumbe</button></div><div class="z-status-comments">'+(comments.length?comments.map(x=>'<div class="z-status-comment"><strong>'+safe(names[String(x.user_id)]||"Mtumiaji ZUNE")+'</strong>'+safe(x.comment)+'</div>').join(""):'<span class="z-status-hint">Bado hakuna maoni. Anza mazungumzo.</span>')+'</div><form class="z-status-comment-form"><input name="comment" maxlength="1000" placeholder="'+(currentUser?'Andika maoni...':'Ingia ili kutoa maoni')+'" '+(!currentUser?'disabled':'')+' required><button type="submit" '+(!currentUser?'disabled':'')+'>Tuma</button></form><form class="z-status-message-form"><input name="message" maxlength="2000" placeholder="Andika ujumbe kwa duka..." required><button type="submit">Tuma</button></form>';
+  panel.querySelector("[data-status-like]")?.addEventListener("click",async()=>{
+   if(!currentUser)return;
+   const button=panel.querySelector("[data-status-like]");button.disabled=true;
+   try{
+    if(liked){const r=await supabase.from("zune_status_likes").delete().eq("status_id",st.id).eq("user_id",currentUser);if(r.error)throw r.error;}
+    else{const r=await supabase.from("zune_status_likes").insert({status_id:st.id,user_id:currentUser});if(r.error)throw r.error;}
+    await refresh();
+   }catch(e){console.error("Status like:",e);alert("Imeshindikana kuhifadhi Like. Jaribu tena.");button.disabled=false;}
+  });
+  panel.querySelector(".z-status-comment-form")?.addEventListener("submit",async e=>{
+   e.preventDefault();if(!currentUser)return;
+   const input=e.currentTarget.elements.comment,comment=input.value.trim();if(!comment)return;
+   const button=e.currentTarget.querySelector("button");button.disabled=true;
+   try{const r=await supabase.from("zune_status_comments").insert({status_id:st.id,user_id:currentUser,comment});if(r.error)throw r.error;await refresh();}
+   catch(err){console.error("Status comment:",err);alert("Imeshindikana kutuma maoni. Jaribu tena.");button.disabled=false;}
+  });
+  panel.querySelector("[data-status-message]")?.addEventListener("click",()=>panel.querySelector(".z-status-message-form")?.classList.toggle("open"));
+  panel.querySelector(".z-status-message-form")?.addEventListener("submit",async e=>{
+   e.preventDefault();if(!currentUser||String(currentUser)===ownerId)return;
+   const input=e.currentTarget.elements.message,message=input.value.trim();if(!message)return;
+   const button=e.currentTarget.querySelector("button");button.disabled=true;
+   try{
+    const conv=await supabase.from("conversations").insert({created_by:currentUser}).select("id").single();if(conv.error)throw conv.error;
+    const members=await supabase.from("conversation_participants").insert([{conversation_id:conv.data.id,user_id:currentUser},{conversation_id:conv.data.id,user_id:ownerId}]);if(members.error)throw members.error;
+    const sent=await supabase.from("messages").insert({conversation_id:conv.data.id,sender_id:currentUser,content:message});if(sent.error)throw sent.error;
+    input.value="";panel.querySelector(".z-status-message-form")?.classList.remove("open");
+    alert("Ujumbe umetumwa kwa "+safe(store?.store_name||"duka")+".");
+   }catch(err){console.error("Status direct message:",err);alert("Ujumbe haujatuma. Hakikisha akaunti yako imeingia kisha jaribu tena.");button.disabled=false;}
+  });
+ }
+ try{await refresh();}catch(error){console.warn("Status engagement unavailable:",error.message);panel.innerHTML='<span class="z-status-hint">Maoni na Likes hazijapakia. Jaribu tena baadaye.</span>';}
+}
+
 function openStoreStatus(ownerId){
  const statuses=homeState.statusByStore[String(ownerId)]||[];if(!statuses.length)return false;
  const store=(homeState.featuredStores||[]).find(x=>String(x.owner_id)===String(ownerId));let index=0,timer=null,started=0,elapsed=0,duration=5000;
@@ -2139,7 +2205,7 @@ function openStoreStatus(ownerId){
   const media=st.media_type==="video"?'<video class="z-status-media" src="'+safe(st.media_url)+'" autoplay playsinline></video>':st.media_type==="image"?'<img class="z-status-media" src="'+safe(st.media_url)+'" alt="Store status">':'<div class="z-status-empty-media">'+safe(st.media_url||st.caption||"ZUNE")+'</div>';
   const productAction=st.target_product_id?'<button type="button" class="z-status-product" data-status-product="'+safe(st.target_product_id)+'">Tazama Bidhaa</button>':"";
   root.innerHTML='<div class="z-status-card"><div class="z-status-progress">'+statuses.map((x,i)=>'<span class="'+(i<index?"done":"")+'"><i></i></span>').join("")+'</div><div class="z-status-top">'+(store?.logo_url?'<img src="'+safe(store.logo_url)+'" alt="">':"")+'<strong>'+safe(store?.store_name||"ZUNE Store")+'</strong><small>'+new Date(st.created_at).toLocaleString(language()==="sw"?"sw-TZ":"en-US",{hour:"numeric",minute:"2-digit"})+'</small><button class="z-status-close" type="button" aria-label="Close">×</button></div>'+media+'<div class="z-status-caption">'+safe(st.caption||"")+'</div>'+productAction+'<div class="z-status-nav"><button type="button" data-status-prev aria-label="Previous status"></button><button type="button" data-status-next aria-label="Next status"></button></div></div>';
-  root.querySelector(".z-status-close")?.addEventListener("click",close);root.querySelector("[data-status-prev]")?.addEventListener("click",()=>show(index-1));root.querySelector("[data-status-next]")?.addEventListener("click",()=>show(index+1));
+  root.querySelector(".z-status-close")?.addEventListener("click",close);root.querySelector("[data-status-prev]")?.addEventListener("click",()=>show(index-1));root.querySelector("[data-status-next]")?.addEventListener("click",()=>show(index+1));\n  await bindStatusEngagement(root,st,store);
   root.querySelector("[data-status-product]")?.addEventListener("click",async()=>{const id=st.target_product_id;const{data,error}=await supabase.from("products").select("*").eq("id",id).maybeSingle();if(error||!data)return;data.__zuneStore=store||null;close();openProductDetails(data);});
   const video=root.querySelector("video");if(video){video.addEventListener("ended",()=>show(index+1));duration=Math.max(5000,Math.min((video.duration||15)*1000,60000));video.addEventListener("loadedmetadata",()=>{duration=Math.max(5000,Math.min(video.duration*1000,60000));});}else duration=5000;
   const ring=document.querySelector(`[data-featured-store="${CSS.escape(String(ownerId))}"] .z-featured-store-logo`);if(ring){ring.classList.remove("has-status","has-unseen-status");ring.classList.add("status-seen");}
