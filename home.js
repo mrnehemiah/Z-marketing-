@@ -1973,6 +1973,18 @@ function updateProductArea() {
     });
     area.innerHTML=renderProductCards(hybrid);
   }
+  const dealsHost=document.getElementById("z-flash-deals-products");
+  if(dealsHost){
+    const deals=[...homeState.products].filter(p=>{
+      const price=Number(p.price||0),old=Number(p.compare_at_price||p.original_price||0),pct=Number(p.discount_percent||0);
+      return price>0&&(pct>0||old>price);
+    }).sort((a,b)=>{
+      const discount=p=>{const price=Number(p.price||0),old=Number(p.compare_at_price||p.original_price||0),pct=Number(p.discount_percent||0);return pct>0?pct:(old>price?(1-price/old)*100:0);};
+      return discount(b)-discount(a);
+    }).slice(0,8);
+    dealsHost.innerHTML=deals.length?deals.map(productCard).join(""):'<div class="z-flash-deals-empty">'+(language()==="sw"?"Hakuna Flash Deals kwa sasa. Rudi tena kuona ofa mpya.":"No active Flash Deals right now. Check back for new offers.")+'</div>';
+    bindProductCards(dealsHost);
+  }
   const arrivals=document.getElementById("z-new-arrivals");
   if(arrivals)arrivals.innerHTML=homeState.products.length?homeState.products.slice(0,6).map(productCard).join(""):'<div class="z-empty-state">'+tx("empty")+"</div>";
   const trending=document.getElementById("z-trending-products");
@@ -2051,7 +2063,7 @@ const ZUNE_HOME_SLIDES = [
  {k:"JENGA BIASHARA",sw:"Panua biashara yako mtandaoni",en:"Grow your business online",sd:"Anza safari yako ya kuuza na ZUNE.",ed:"Start your selling journey with ZUNE.",sc:"Fungua akaunti",ec:"Get started",a:"account",img:"https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?auto=format&fit=crop&w=1400&q=85"},
  {k:"GUNDUA ZAIDI",sw:"Kuna mengi ya kugundua",en:"There is more to discover",sd:"Vinjari bidhaa kutoka makundi tofauti.",ed:"Explore products across different categories.",sc:"Gundua sasa",ec:"Discover now",a:"explore",img:"https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1400&q=85"},
  {k:"ZUNE KWA WOTE",sw:"Nunua na uza kwa urahisi",en:"Buy and sell with ease",sd:"Soko linalowaunganisha wanunuzi na wauzaji.",ed:"A marketplace connecting buyers and sellers.",sc:"Tembelea soko",ec:"Visit marketplace",a:"products",img:"https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=1400&q=85"},
- {k:"KARIBU ZUNE",sw:"Anza safari yako leo",en:"Start your journey today",sd:"Chunguza bidhaa na huduma mbalimbali.",ed:"Explore a wide range of products and services.",sc:"Endelea",ec:"Continue",a:"explore",img:"https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1400&q=85"},
+ {k:"ZUNE STATUS",sw:"Onyesha kinachoendelea dukani kwa Status",en:"Bring your store to life with Status",sd:"Weka picha au video za bidhaa na taarifa mpya. Wateja wataziona kwenye ukurasa wa maduka maarufu; Status huisha baada ya muda.",ed:"Post product photos, short videos and store updates. Customers can view them from Featured Stores; each Status expires automatically.",sc:"Fungua Seller Dashboard",ec:"Open Seller Dashboard",a:"seller",img:"https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1400&q=85"},
 ];
 function renderHomeCarousel(){
  const slide=ZUNE_HOME_SLIDES[homeState.carouselIndex%ZUNE_HOME_SLIDES.length],sw=language()==="sw";
@@ -2077,6 +2089,7 @@ function bindCarouselEvents(){
  el.querySelector("[data-slide-action]")?.addEventListener("click",()=>{
   const a=el.querySelector("[data-slide-action]").dataset.slideAction;
   if(a==="account")window.location.assign("./account.html");
+  else if(a==="seller")window.location.assign("https://mrnehemiah.github.io/zuneacts/");
   else if(a==="categories")renderMarketplacePage("explore");
   else if(a==="stores")document.getElementById("z-featured-stores")?.scrollIntoView({behavior:"smooth"});
   else if(a==="search")document.getElementById("z-home-search")?.focus();
@@ -2144,14 +2157,43 @@ function renderFeaturedStores(){
 
 function renderCategories() {
   const categories = homeState.categories || [];
-
   return `
-    <div class="z-category-directory">
-      ${categories.slice(0,8).map(category => `
-        <button type="button" class="z-category ${String(homeState.selectedCategory)===String(category.name)?"active":""}" data-category="${safe(category.name)}">${safe(category.name)}</button>
+    <div class="z-category-directory z-home-category-images">
+      ${categories.slice(0,8).map((category,index) => `
+        <button type="button" class="z-home-category-card ${String(homeState.selectedCategory)===String(category.name)?"active":""}" data-category="${safe(category.name)}" aria-label="${safe(category.name)}">
+          <img src="${categoryImage(category.name,index)}" alt="" loading="lazy" decoding="async">
+          <span class="z-home-category-shade"></span><strong>${safe(category.name)}</strong><span class="z-home-category-arrow" aria-hidden="true">↗</span>
+        </button>
       `).join("")}
     </div>
   `;
+}
+
+function ensureHomeVisualEnhancements(){
+  if(document.getElementById("zune-home-visual-enhancements"))return;
+  const style=document.createElement("style");style.id="zune-home-visual-enhancements";
+  style.textContent=`
+    .z-home-category-images{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px!important;margin:0 0 18px}
+    .z-home-category-card{position:relative;isolation:isolate;overflow:hidden;display:block;min-width:0;aspect-ratio:1/1.12;padding:0;border:2px solid transparent;border-radius:15px;background:#dfe8e2;color:#fff;text-align:left;cursor:pointer;box-shadow:0 4px 13px rgba(13,49,32,.09)}
+    .z-home-category-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .35s ease}
+    .z-home-category-card:active img{transform:scale(1.06)}
+    .z-home-category-card.active{border-color:var(--primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 22%,transparent)}
+    .z-home-category-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.02) 20%,rgba(0,0,0,.72) 100%)}
+    .z-home-category-card strong{position:absolute;left:7px;right:22px;bottom:9px;color:#fff;font-size:clamp(9px,2.5vw,12px);font-weight:900;line-height:1.15;text-shadow:0 1px 5px #000;overflow-wrap:anywhere}
+    .z-home-category-arrow{position:absolute;right:6px;bottom:6px;display:grid;place-items:center;width:19px;height:19px;border-radius:50%;background:rgba(255,255,255,.22);font-size:12px}
+    .z-flash-deals-section{margin:22px 0 24px;padding:15px 13px 13px;border:1px solid #f0d7b6;border-radius:19px;background:linear-gradient(135deg,#fff8ed 0%,#fff 72%);box-shadow:0 8px 22px rgba(131,75,20,.06)}
+    .z-flash-deals-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}
+    .z-flash-deals-kicker{display:block;margin-bottom:5px;color:#a45a14;font-size:8px;font-weight:950;letter-spacing:1.5px}
+    .z-flash-deals-heading h2{margin:0;color:#432a13;font-size:18px;font-weight:950}
+    .z-flash-deals-heading p{margin:5px 0 0;color:#92765a;font-size:10px;line-height:1.4}
+    .z-flash-deals-pill{flex:0 0 auto;padding:7px 10px;border-radius:999px;background:#e87924;color:#fff;font-size:9px;font-weight:950;letter-spacing:.6px}
+    .z-flash-deals-section .z-product-row{padding-bottom:4px}
+    .z-flash-deals-empty{padding:18px 12px;border:1px dashed #ead3b8;border-radius:13px;color:#8e7458;text-align:center;font-size:11px;line-height:1.5}
+    @media(max-width:390px){.z-home-category-images{gap:7px!important}.z-home-category-card{border-radius:11px}.z-home-category-card strong{left:5px;bottom:7px;font-size:9px}.z-flash-deals-section{padding:12px 9px}}
+    @media(min-width:700px){.z-home-category-images{grid-template-columns:repeat(8,minmax(0,1fr));gap:12px!important}.z-home-category-card{aspect-ratio:1/1.08}.z-flash-deals-section{padding:20px}}
+    @media(prefers-reduced-motion:reduce){.z-home-category-card img{transition:none}}
+  `;
+  document.head.appendChild(style);
 }
 
 // --------------------------------------------
@@ -2242,6 +2284,13 @@ function renderHomePage() {
           <div class="z-sponsored-products" id="z-sponsored-products"><div class="z-sponsored-empty">${language()==="sw"?"Inapakia matangazo…":"Loading sponsored products…"}</div></div>
         </section>
 
+        <section id="z-flash-deals-section" class="z-flash-deals-section">
+          <div class="z-flash-deals-heading">
+            <div><span class="z-flash-deals-kicker">ZUNE • LIMITED OFFERS</span><h2>⚡ Flash Deals</h2><p>${language()==="sw"?"Ofa maalumu kwenye bidhaa zenye punguzo.":"Special offers on products with active discounts."}</p></div>
+            <span class="z-flash-deals-pill">${language()==="sw"?"OFA":"DEALS"}</span>
+          </div>
+          <div id="z-flash-deals-products" class="z-product-row"><div class="z-empty-state">${language()==="sw"?"Inatafuta ofa...":"Finding active deals..."}</div></div>
+        </section>
         <section>
           <div class="z-section-heading"><h2>${language()==="sw"?"Bidhaa Mpya":"New Arrivals"}</h2><button type="button" class="z-all-categories" data-view-all-products>${language()==="sw"?"Zote":"View All"} →</button></div>
           <div id="z-new-arrivals" class="z-product-row">${homeState.products.slice(0,6).map(productCard).join("")}</div>
@@ -3213,6 +3262,7 @@ function ensureZuneProductFlagMotion(){
 
 async function renderMarketplacePage(page) {
   ensureZuneProductFlagMotion();
+  ensureHomeVisualEnhancements();
   homeState.activeTab = page;
   if (page !== "home" && homeState.carouselTimer) {
     clearInterval(homeState.carouselTimer);
