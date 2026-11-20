@@ -11,6 +11,17 @@ const unreadCount = document.getElementById("notification-unread-count");
 const messageBox = document.getElementById("notifications-message");
 const markAllButton = document.getElementById("mark-all-notifications-read");
 const settingsButton = document.getElementById("notification-settings-button");
+const preview = document.getElementById("notification-preview");
+const previewDialog = preview && preview.querySelector(".z-preview-dialog");
+const previewTitle = document.getElementById("z-preview-title");
+const previewBody = document.getElementById("z-preview-body");
+const previewTime = document.getElementById("z-preview-time");
+const previewIcon = document.getElementById("z-preview-icon");
+const previewType = document.getElementById("z-preview-type");
+const previewUnread = document.getElementById("z-preview-unread");
+const previewDetails = document.getElementById("z-preview-details");
+const previewActions = document.getElementById("z-preview-actions");
+
 
 let currentUser = null;
 let notifications = [];
@@ -403,37 +414,107 @@ async function markAsRead(notification) {
   return true;
 }
 
+
+function safeInternalUrl(rawUrl) {
+  if (!rawUrl) return null;
+  try { const url = new URL(rawUrl, window.location.href); return url.origin === window.location.origin ? url.href : null; }
+  catch (error) { return null; }
+}
+function closeNotificationPreview() {
+  if (!preview) return;
+  preview.hidden = true;
+  preview.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+}
+function addPreviewDetail(label, value) {
+  if (value === undefined || value === null || value === "") return;
+  const row = document.createElement("div"); row.className = "z-preview-detail";
+  const name = document.createElement("span"); name.textContent = label;
+  const val = document.createElement("strong"); val.textContent = String(value);
+  row.append(name, val); previewDetails.appendChild(row);
+}
+function actionLabel(notification, action, index) {
+  const data = notification.data && typeof notification.data === "object" ? notification.data : {};
+  if (action && action.label) return String(action.label);
+  if (data.action_label) return String(data.action_label);
+  const sw = currentLanguage !== "en";
+  const labels = {
+    order: sw ? "Fungua oda" : "View order", payment: sw ? "Angalia malipo" : "View payment",
+    refund: sw ? "Angalia marejesho" : "View refund", wallet: sw ? "Fungua wallet" : "Open wallet",
+    commission: sw ? "Angalia kamisheni" : "View commission",
+    seller_application: sw ? "Angalia ombi" : "View application",
+    seller_approved: sw ? "Fungua dashboard" : "Open dashboard",
+    seller_rejected: sw ? "Kagua ombi" : "Review application",
+    product: sw ? "Angalia bidhaa" : "View product",
+    product_published: sw ? "Angalia bidhaa" : "View product",
+    product_moderation: sw ? "Kagua bidhaa" : "Review product",
+    message: sw ? "Fungua ujumbe" : "Open message",
+    review: sw ? "Angalia tathmini" : "View review",
+    complaint: sw ? "Angalia malalamiko" : "View complaint",
+    promotion: sw ? "Tazama ofa" : "View offer",
+    announcement: sw ? "Soma taarifa" : "Read announcement",
+    account: sw ? "Fungua akaunti" : "Open account",
+    security: sw ? "Kagua usalama" : "Review security"
+  };
+  return labels[String(notification.type || "").toLowerCase()] || (index ? (sw ? "Endelea" : "Continue") : (sw ? "Fungua maelezo" : "Open details"));
+}
+function renderNotificationPreview(notification) {
+  if (!preview) return;
+  const title = currentLanguage === "en" ? notification.title_en : notification.title_sw;
+  const body = currentLanguage === "en" ? notification.body_en : notification.body_sw;
+  const data = notification.data && typeof notification.data === "object" ? notification.data : {};
+  previewTitle.textContent = title || "ZUNE";
+  previewBody.textContent = body || "";
+  previewTime.textContent = new Date(notification.created_at).toLocaleString(currentLanguage === "sw" ? "sw-TZ" : "en-US", { dateStyle: "medium", timeStyle: "short" });
+  previewIcon.textContent = getNotificationIcon(notification.type);
+  previewType.textContent = String(notification.type || "general").replace(/[_-]+/g, " ").toUpperCase();
+  previewUnread.hidden = !!notification.is_read;
+  previewDetails.replaceChildren();
+  addPreviewDetail("Order ID", data.order_number || data.order_id || data.reference);
+  addPreviewDetail(currentLanguage === "sw" ? "Bidhaa" : "Product", data.product_name || data.product_title);
+  addPreviewDetail(currentLanguage === "sw" ? "Idadi" : "Quantity", data.quantity);
+  addPreviewDetail(currentLanguage === "sw" ? "Jumla" : "Total", data.total_amount ? (data.currency || "TSh") + " " + data.total_amount : null);
+  addPreviewDetail(currentLanguage === "sw" ? "Hali" : "Status", data.status);
+  previewDetails.hidden = !previewDetails.childElementCount;
+  previewActions.replaceChildren();
+  const candidates = Array.isArray(data.actions) && data.actions.length ? data.actions : (notification.action_url ? [{ url: notification.action_url }] : []);
+  candidates.slice(0, 2).forEach((action, index) => {
+    const target = safeInternalUrl(action.url || action.action_url);
+    if (!target) return;
+    const button = document.createElement("button");
+    button.type = "button"; button.className = "z-preview-action" + (index ? " secondary" : "");
+    button.textContent = actionLabel(notification, action, index);
+    button.addEventListener("click", async () => {
+      const marked = await markAsRead(notification);
+      if (marked) window.location.assign(target);
+    });
+    previewActions.appendChild(button);
+  });
+  if (!previewActions.childElementCount) {
+    const close = document.createElement("button");
+    close.type = "button"; close.className = "z-preview-action secondary";
+    close.textContent = currentLanguage === "sw" ? "Funga" : "Close";
+    close.addEventListener("click", closeNotificationPreview);
+    previewActions.appendChild(close);
+  }
+  preview.hidden = false; preview.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+  if (previewDialog) previewDialog.focus();
+}
+function setupNotificationPreview() {
+  if (!preview) return;
+  preview.querySelectorAll("[data-preview-close]").forEach(button => button.addEventListener("click", closeNotificationPreview));
+  document.addEventListener("keydown", event => { if (event.key === "Escape" && !preview.hidden) closeNotificationPreview(); });
+}
+
 /* =========================================
    OPEN NOTIFICATION
 ========================================= */
 
 async function openNotification(notification) {
   const marked = await markAsRead(notification);
-
   if (!marked) return;
-
-  if (!notification.action_url) return;
-
-  try {
-    const destination = new URL(
-      notification.action_url,
-      window.location.href
-    );
-
-    if (destination.origin !== window.location.origin) {
-      showMessage(
-        currentLanguage === "sw"
-          ? "Kiungo hiki hakiruhusiwi."
-          : "This link is not allowed."
-      );
-
-      return;
-    }
-
-    window.location.assign(destination.href);
-  } catch (error) {
-    console.error("Invalid notification URL:", error);
-  }
+  renderNotificationPreview(notification);
 }
 
 /* =========================================
@@ -615,6 +696,7 @@ async function initializeNotifications() {
   setupZunePushNotifications(supabase, currentUser);
   setupFilters();
   setupSettings();
+  setupNotificationPreview();
 
   markAllButton.addEventListener(
     "click",
