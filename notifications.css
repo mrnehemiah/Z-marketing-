@@ -375,3 +375,31 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* DEVICE PUSH SETUP */
+.z-push-setup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 15px;
+  margin: 0 0 18px;
+  border: 1px solid var(--notification-border);
+  border-radius: 16px;
+  background: var(--notification-card);
+}
+.z-push-copy { min-width: 0; }
+.z-push-copy strong { display: block; font-size: 13px; font-weight: 800; }
+.z-push-copy p { margin: 5px 0 0; color: var(--notification-muted); font-size: 11px; line-height: 1.5; }
+#zune-push-status { display: block; margin-top: 5px; color: var(--notification-primary); font-size: 10px; line-height: 1.4; }
+#zune-push-status[data-state="error"] { color: #b42318; }
+#zune-enable-push {
+  flex-shrink: 0; border: 0; border-radius: 11px; padding: 11px 13px;
+  background: var(--notification-primary); color: #fff; font-size: 11px;
+  font-weight: 800; cursor: pointer;
+}
+#zune-enable-push:disabled { opacity: .6; cursor: wait; }
+@media (max-width: 420px) {
+  .z-push-setup { align-items: flex-start; flex-direction: column; }
+}
