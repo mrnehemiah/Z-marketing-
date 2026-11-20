@@ -2972,16 +2972,36 @@ function ensureZuneProductFlagMotion(){
   const style=document.createElement("style");
   style.id="zune-product-flag-motion";
   style.textContent=`
-    .z-product-card{position:relative!important;isolation:isolate!important;overflow:hidden!important}
-    .z-product-card::after{
-      content:"";position:absolute;inset:0;z-index:20;pointer-events:none;
-      border:3px solid transparent;border-radius:inherit;
-      background:conic-gradient(from 0deg,#159447 0deg 105deg,#f6d21a 105deg 125deg,#171717 125deg 145deg,#f6d21a 145deg 165deg,#168bd2 165deg 270deg,#159447 270deg 360deg) border-box;
-      -webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);
-      -webkit-mask-composite:xor;mask-composite:exclude;
-      animation:zuneFlagBorderSpin 5s linear infinite!important;will-change:transform
+    /* Match the animated Tanzania-flag edge used by ZUNEACTS product cards. */
+    .z-marketplace .z-product-card,
+    .z-storefront-sheet .z-product-card{
+      border:2px solid transparent!important;
+      background:
+        linear-gradient(var(--surface,#fff),var(--surface,#fff)) padding-box,
+        linear-gradient(135deg,
+          #1eb53a 0%,#1eb53a 22%,
+          #fcd116 22%,#fcd116 27%,
+          #111 27%,#111 70%,
+          #fcd116 70%,#fcd116 75%,
+          #00a3dd 75%,#00a3dd 100%) border-box!important;
+      background-size:auto,260% 260%!important;
+      background-position:0 0,0% 50%!important;
+      animation:zuneTanzaniaFlagFlow 7s ease-in-out infinite!important;
     }
-    @keyframes zuneFlagBorderSpin{to{transform:rotate(360deg)}}
+    .z-marketplace .z-product-card:hover,
+    .z-storefront-sheet .z-product-card:hover{
+      background-position:0 0,100% 50%!important;
+      box-shadow:0 12px 28px #153d2918;
+    }
+    @keyframes zuneTanzaniaFlagFlow{
+      0%{background-position:0 0,0% 50%}
+      50%{background-position:0 0,100% 50%}
+      100%{background-position:0 0,0% 50%}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .z-marketplace .z-product-card,
+      .z-storefront-sheet .z-product-card{animation:none!important}
+    }
   `;
   document.head.appendChild(style);
 }
