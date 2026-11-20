@@ -2435,6 +2435,37 @@ function observeInfiniteScroll() {
 // 25. EXPLORE PAGE
 // --------------------------------------------
 
+function categoryImage(categoryName, index = 0) {
+  const name = String(categoryName || "").toLowerCase();
+  const photoRules = [
+    [/fashion|clothing|apparel|nguo|mavazi/i, "photo-1483985988355-763728e1935b"],
+    [/electronic|simu|phone|computer|kompyuta|gadget|tv/i, "photo-1511707171634-5f897ff02aa9"],
+    [/beauty|makeup|cosmetic|urembo|skincare|ngozi/i, "photo-1596462502278-27bfdc403348"],
+    [/home|nyumbani|samani|furniture|kitchen|jikoni|decor/i, "photo-1600210492486-724fe5c67fb0"],
+    [/shoe|viatu|sneaker|boot|sandal/i, "photo-1542291026-7eec264c27ff"],
+    [/food|vyakula|grocery|chakula|matunda|mboga/i, "photo-1542838132-92c53300491e"],
+    [/sport|fitness|mazoezi|gym/i, "photo-1461896836934-ffe607ba8211"],
+    [/accessor|watch|saa|bag|mkoba|jewelry|jewellery/i, "photo-1523275335684-37898b6baf30"],
+    [/baby|mtoto|kids|watoto|toy|chezea/i, "photo-1516627145497-ae6968895b74"],
+    [/book|kitabu|stationery|school|elimu/i, "photo-1507842217343-583bb7270b66"],
+    [/car|auto|gari|motor|pikipiki|spare/i, "photo-1503376780353-7e6692767b70"],
+    [/health|afya|medical|dawa/i, "photo-1576091160399-112ba8d25d1d"]
+  ];
+  const matched = photoRules.find(([pattern]) => pattern.test(name));
+  const fallback = [
+    "photo-1523275335684-37898b6baf30",
+    "photo-1529139574466-a303027c1d8b",
+    "photo-1490481651871-ab68de25d43d",
+    "photo-1542291026-7eec264c27ff",
+    "photo-1511707171634-5f897ff02aa9",
+    "photo-1600210492486-724fe5c67fb0",
+    "photo-1596462502278-27bfdc403348",
+    "photo-1542838132-92c53300491e"
+  ];
+  const photoId = matched ? matched[1] : fallback[index % fallback.length];
+  return "https://images.unsplash.com/" + photoId + "?auto=format&fit=crop&w=520&q=82";
+}
+
 function renderCategoriesPage() {
   const categories = homeState.categories || [];
   return `
