@@ -201,8 +201,8 @@ public class MainActivity extends Activity {
     private class NativeIconBridge {
         @JavascriptInterface
         public boolean setLauncherIcon(String iconKey) {
-            String[] aliases = {"LauncherDefault", "LauncherEmerald", "LauncherSunset", "LauncherMidnight"};
-            String[] keys = {"default", "emerald", "sunset", "midnight"};
+            String[] aliases = {"LauncherDefault", "LauncherEmerald", "LauncherSunset", "LauncherMidnight", "LauncherAurora", "LauncherRoyal", "LauncherRose", "LauncherGraphite", "LauncherArctic", "LauncherAmber"};
+            String[] keys = {"default", "emerald", "sunset", "midnight", "aurora", "royal", "rose", "graphite", "arctic", "amber"};
             int selected = -1;
             if (iconKey == null) return false;
             for (int i = 0; i < keys.length; i++) if (keys[i].equals(iconKey)) selected = i;
