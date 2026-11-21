@@ -1,11 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="512"
-    android:viewportHeight="512">
-    <!-- Z iliyokunjwa - nyeupe tupu kwa notification, inafanana na logo yako -->
+    android:viewportWidth="24"
+    android:viewportHeight="24">
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M166,167 L206,133 L256,164 L307,134 L348,168 L316,204 L256,238 L207,215 L166,187Z
-        M256,238 L316,204 L348,240 L269,315 L348,358 L307,394 L256,364 L205,394 L164,358 L243,315Z" />
+        android:pathData="M4,5h16v3L9,16h11v3H4v-3L15,8H4z" />
 </vector>
