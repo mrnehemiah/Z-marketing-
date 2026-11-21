@@ -2136,7 +2136,7 @@ function bindCarouselEvents(){
 function startCarouselAutoplay(){if(homeState.carouselTimer)clearInterval(homeState.carouselTimer);homeState.carouselTimer=setInterval(()=>moveHomeSlide(1),5000);}
 
 
-async async function loadLiveStoreStatuses(force=false){
+async function loadLiveStoreStatuses(force=false){
  if(!force&&Date.now()-homeState.statusesLoadedAt<45000)return;
  homeState.statusesLoadedAt=Date.now();
  try{
