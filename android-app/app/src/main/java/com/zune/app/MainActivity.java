@@ -108,6 +108,7 @@ public class MainActivity extends Activity {
         cookies.setAcceptThirdPartyCookies(webView, false);
 
         webView.addJavascriptInterface(new NativePushBridge(), "AndroidZunePush");
+        webView.addJavascriptInterface(new NativeIconBridge(), "AndroidZuneIcon");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -194,6 +195,33 @@ public class MainActivity extends Activity {
         setIntent(intent);
         String target = getNotificationTarget(intent);
         if (target != null && webView != null) webView.loadUrl(target);
+    }
+
+
+    private class NativeIconBridge {
+        @JavascriptInterface
+        public boolean setLauncherIcon(String iconKey) {
+            String[] aliases = {"LauncherDefault", "LauncherEmerald", "LauncherSunset", "LauncherMidnight"};
+            String[] keys = {"default", "emerald", "sunset", "midnight"};
+            int selected = -1;
+            if (iconKey == null) return false;
+            for (int i = 0; i < keys.length; i++) if (keys[i].equals(iconKey)) selected = i;
+            if (selected < 0) return false;
+            try {
+                PackageManager pm = getPackageManager();
+                for (int i = 0; i < aliases.length; i++) {
+                    android.content.ComponentName component = new android.content.ComponentName(MainActivity.this, "com.zune.app." + aliases[i]);
+                    pm.setComponentEnabledSetting(component,
+                        i == selected ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                        PackageManager.DONT_KILL_APP);
+                }
+                getSharedPreferences("zune_icon", MODE_PRIVATE).edit().putString("selected", iconKey).apply();
+                return true;
+            } catch (Exception error) {
+                android.util.Log.e("ZUNE-ICON", "Unable to change launcher icon", error);
+                return false;
+            }
+        }
     }
 
     private class NativePushBridge {
