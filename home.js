@@ -1631,7 +1631,7 @@ function productCard(product) {
 // 11. PRODUCT DETAILS QUICK VIEW
 // --------------------------------------------
 
-function async openStoreDetails(ownerId, product = null) {
+async function openStoreDetails(ownerId, product = null) {
   if (!ownerId) return;
   // Open the complete customer-facing Storefront 2.0 page when an active store record exists.
   try {
