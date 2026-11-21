@@ -33,6 +33,14 @@ export async function setupZunePushNotifications(supabase, user) {
     status.dataset.state = isError ? "error" : "success";
   };
 
+  // Android WebView uses the native FCM bridge; it does not need browser Web Push.
+  if (window.AndroidZunePush && typeof window.zuneSyncNativePush === "function") {
+    button.hidden = true;
+    say("Programu ya ZUNE inatumia Android Firebase Push. Kifaa kitasajiliwa kupitia akaunti yako.");
+    window.zuneSyncNativePush();
+    return;
+  }
+
   if (!("serviceWorker" in navigator) || !("Notification" in window)) {
     button.disabled = true;
     say("Kifaa au kivinjari hiki hakiungi mkono Web Push.", true);
