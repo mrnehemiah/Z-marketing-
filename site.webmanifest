@@ -1,0 +1,19 @@
+{
+  "name": "ZUNE Marketplace",
+  "short_name": "ZUNE",
+  "description": "ZUNE Marketplace — nunua na uza kwa urahisi.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f3ea",
+  "theme_color": "#06372f",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
