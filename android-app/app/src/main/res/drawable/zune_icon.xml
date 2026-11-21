@@ -3,9 +3,68 @@
     android:height="512dp"
     android:viewportWidth="512"
     android:viewportHeight="512">
-    <path android:fillColor="#F7F3EA" android:pathData="M0,0h512v512h-512z" />
-    <path android:fillColor="#0C342E" android:pathData="M237,91 211,96 191,103 173,112 150,128 124,155 105,187 96,212 91,239 91,272 98,305 110,333 130,362 149,381 178,401 195,409 210,414 243,420 269,420 298,415 316,409 333,401 361,382 383,360 399,337 408,319 415,299 420,273 420,239 415,212 409,194 400,175 383,150 361,128 329,107 300,96 274,91z" />
-    <path android:fillColor="#E1E5E6" android:pathData="M257,320 271,320 272,322 276,321 277,323 284,324 290,327 292,326 293,328 297,328 298,330 301,330 302,332 311,337 314,337 316,340 317,339 320,342 298,295 299,292 295,293z M309,217 311,219 306,221 264,226 259,228 253,282 250,286 172,315 177,323 180,325 179,326 182,328 181,329 185,332 184,333 190,339 189,340 191,343 205,334 222,326 240,321 254,320 252,283 285,249 290,246 290,244 292,244 314,222z M313,171 309,175 308,174 287,185 278,187 277,189 274,188 257,191 259,217 258,226z M190,168 214,219 253,191 242,191 240,189 236,190 235,188 232,189 231,187 228,188 227,186 225,187 224,185 219,185 218,183 214,183 211,180 209,181 209,179 208,180 207,178 196,172 195,173z" />
-    <path android:fillColor="#FDFEFD" android:pathData="M299,293 321,343 340,313 311,297z M255,320 296,292 275,287 253,285z M258,228 172,314 182,309 251,284z M256,191 215,219 239,224 258,225 255,194z M304,182 261,225 309,219 304,213 301,204 301,189z M189,168 171,198 194,211 212,218z" />
-    <path android:fillColor="#F79E28" android:pathData="M318,169 308,179 304,192 305,207 309,215 314,220 339,196 338,192z" />
+
+    <!-- Warm cream app tile -->
+    <path
+        android:fillColor="#F7F3EA"
+        android:pathData="M0,0h512v512h-512z" />
+
+    <!-- Deep emerald circular medallion -->
+    <path
+        android:fillColor="#06372F"
+        android:pathData="M256,76
+            C355.4,76 436,156.6 436,256
+            C436,355.4 355.4,436 256,436
+            C156.6,436 76,355.4 76,256
+            C76,156.6 156.6,76 256,76Z" />
+
+    <!-- Faceted white folded Z mark -->
+    <path
+        android:fillColor="#FDFEFD"
+        android:pathData="M166,167
+            L206,133
+            L256,164
+            L307,134
+            L348,168
+            L316,204
+            L256,238
+            L207,215
+            L166,187Z" />
+    <path
+        android:fillColor="#E7EBE8"
+        android:pathData="M166,167 L256,238 L207,215Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M206,133 L256,164 L256,238 L207,215Z" />
+    <path
+        android:fillColor="#E9ECEA"
+        android:pathData="M256,164 L307,134 L316,204 L256,238Z" />
+    <path
+        android:fillColor="#FDFEFD"
+        android:pathData="M256,238
+            L316,204
+            L348,240
+            L269,315
+            L348,358
+            L307,394
+            L256,364
+            L205,394
+            L164,358
+            L243,315Z" />
+    <path
+        android:fillColor="#E6EAE7"
+        android:pathData="M256,238 L243,315 L164,358 L205,394 L269,315Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M243,315 L256,364 L307,394 L348,358 L269,315Z" />
+
+    <!-- Orange folded tip -->
+    <path
+        android:fillColor="#F79E28"
+        android:pathData="M307,134
+            C326,128 345,142 351,162
+            L359,187
+            C362,197 356,207 347,214
+            L316,204
+            L307,177Z" />
 </vector>
