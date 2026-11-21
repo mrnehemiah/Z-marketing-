@@ -41,21 +41,33 @@ public class ZuneFirebaseMessagingService extends FirebaseMessagingService {
         Map<String, String> data = message.getData();
         if (data.containsKey("title")) title = data.get("title");
         if (data.containsKey("body")) body = data.get("body");
-        showNotification(title, body);
+        showNotification(title, body, data);
     }
 
-    private void showNotification(String title, String body) {
+    private void showNotification(String title, String body, Map<String, String> data) {
         NotificationManager manager = getSystemService(NotificationManager.class);
         if (manager == null) return;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID, "Arifa za ZUNE", NotificationManager.IMPORTANCE_HIGH);
             channel.setDescription("Arifa za oda, malipo na taarifa nyingine za ZUNE.");
+            channel.enableVibration(true);
+            channel.setVibrationPattern(new long[]{0, 250, 150, 250});
             manager.createNotificationChannel(channel);
         }
 
         Intent openApp = new Intent(this, MainActivity.class);
         openApp.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        String actionUrl = data.get("action_url");
+        if (actionUrl == null || actionUrl.isEmpty()) actionUrl = data.get("url");
+        if (actionUrl != null && !actionUrl.isEmpty()) {
+            openApp.putExtra("action_url", actionUrl);
+            openApp.putExtra("url", actionUrl);
+        }
+        String notificationId = data.get("notification_id");
+        if (notificationId != null) openApp.putExtra("notification_id", notificationId);
+        String notificationType = data.get("type");
+        if (notificationType != null) openApp.putExtra("notification_type", notificationType);
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 this, 1001, openApp,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
@@ -66,6 +78,9 @@ public class ZuneFirebaseMessagingService extends FirebaseMessagingService {
                 .setContentText(body)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setGroup("zune_messages")
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent);
 
