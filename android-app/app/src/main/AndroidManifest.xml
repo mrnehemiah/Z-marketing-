@@ -43,5 +43,5 @@
         <activity-alias android:name=".LauncherAmber" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:icon="@drawable/icon_amber" android:label="ZUNE">
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
         </activity-alias>
-    </application>
+        <activity-alias android:name=".LauncherObsidian" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:icon="@drawable/icon_obsidian" android:label="ZUNE">\n            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>\n        </activity-alias>\n    </application>
 </manifest>
