@@ -13,6 +13,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.media.AudioAttributes;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -142,6 +143,14 @@ public class MainActivity extends Activity {
             NotificationChannel channel = new NotificationChannel(
                     "zune_notifications", "Arifa za ZUNE", NotificationManager.IMPORTANCE_HIGH);
             channel.setDescription("Arifa za oda, malipo na taarifa nyingine za ZUNE.");
+            channel.enableVibration(true);
+            channel.setVibrationPattern(new long[]{0, 250, 150, 250});
+            channel.setSound(
+                    android.provider.Settings.System.DEFAULT_NOTIFICATION_URI,
+                    new AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build());
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) manager.createNotificationChannel(channel);
         }
