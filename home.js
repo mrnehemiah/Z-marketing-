@@ -2136,7 +2136,7 @@ function bindCarouselEvents(){
 function startCarouselAutoplay(){if(homeState.carouselTimer)clearInterval(homeState.carouselTimer);homeState.carouselTimer=setInterval(()=>moveHomeSlide(1),5000);}
 
 
-async function loadLiveStoreStatuses(force=false){
+async async function loadLiveStoreStatuses(force=false){
  if(!force&&Date.now()-homeState.statusesLoadedAt<45000)return;
  homeState.statusesLoadedAt=Date.now();
  try{
@@ -2215,13 +2215,13 @@ function openStoreStatus(ownerId){
   const seen=readStorage("zune_status_seen:"+String(ownerId),[]);if(!seen.includes(st.id)){seen.push(st.id);localStorage.setItem("zune_status_seen:"+String(ownerId),JSON.stringify(seen));}
   if(homeState.user?.id)supabase.from("zune_store_status_views").upsert({status_id:st.id,viewer_id:homeState.user.id},{onConflict:"status_id,viewer_id",ignoreDuplicates:true}).then(()=>{}).catch(()=>{});
   const root=document.getElementById("z-status-viewer");if(!root)return;
-  const media=st.media_type==="video"?'<video class="z-status-media" src="'+safe(st.media_url)+'" autoplay playsinline></video>':st.media_type==="image"?'<img class="z-status-media" src="'+safe(st.media_url)+'" alt="Store status">':'<div class="z-status-empty-media">'+safe(st.media_url||st.caption||"ZUNE")+'</div>';
+  const media=st.media_type==="video"?'<video class="z-status-media" src="'+safe(st.media_url)+'" autoplay muted playsinline webkit-playsinline preload="auto"></video>':st.media_type==="image"?'<img class="z-status-media" src="'+safe(st.media_url)+'" alt="Store status">':'<div class="z-status-empty-media">'+safe(st.media_url||st.caption||"ZUNE")+'</div>';
   const productAction=st.target_product_id?'<button type="button" class="z-status-product" data-status-product="'+safe(st.target_product_id)+'">Tazama Bidhaa</button>':"";
   root.innerHTML='<div class="z-status-card"><div class="z-status-progress">'+statuses.map((x,i)=>'<span class="'+(i<index?"done":"")+'"><i></i></span>').join("")+'</div><div class="z-status-top">'+(store?.logo_url?'<img src="'+safe(store.logo_url)+'" alt="">':"")+'<strong>'+safe(store?.store_name||"ZUNE Store")+'</strong><small>'+new Date(st.created_at).toLocaleString(language()==="sw"?"sw-TZ":"en-US",{hour:"numeric",minute:"2-digit"})+'</small><button class="z-status-close" type="button" aria-label="Close">×</button></div>'+media+'<div class="z-status-caption">'+safe(st.caption||"")+'</div>'+productAction+'<div class="z-status-nav"><button type="button" data-status-prev aria-label="Previous status"></button><button type="button" data-status-next aria-label="Next status"></button></div></div>';
   root.querySelector(".z-status-close")?.addEventListener("click",close);root.querySelector("[data-status-prev]")?.addEventListener("click",()=>show(index-1));root.querySelector("[data-status-next]")?.addEventListener("click",()=>show(index+1));
   await bindStatusEngagement(root,st,store);
   root.querySelector("[data-status-product]")?.addEventListener("click",async()=>{const id=st.target_product_id;const{data,error}=await supabase.from("products").select("*").eq("id",id).maybeSingle();if(error||!data)return;data.__zuneStore=store||null;close();openProductDetails(data);});
-  const video=root.querySelector("video");if(video){video.addEventListener("ended",()=>show(index+1));duration=Math.max(5000,Math.min((video.duration||15)*1000,60000));video.addEventListener("loadedmetadata",()=>{duration=Math.max(5000,Math.min(video.duration*1000,60000));});}else duration=5000;
+  const video=root.querySelector("video");if(video){video.addEventListener("ended",()=>show(index+1));video.addEventListener("loadedmetadata",()=>{if(Number.isFinite(video.duration)&&video.duration>0)duration=Math.max(5000,Math.min(video.duration*1000,60000));});video.addEventListener("error",()=>{console.warn("ZUNE status video failed:",video.error?.code,st.media_url);});try{const playResult=video.play();if(playResult&&typeof playResult.catch==="function")playResult.catch(error=>console.warn("ZUNE status autoplay blocked:",error.message));}catch(error){console.warn("ZUNE status playback unavailable:",error.message);} }else duration=5000;
   const ring=document.querySelector(`[data-featured-store="${CSS.escape(String(ownerId))}"] .z-featured-store-logo`);if(ring){ring.classList.remove("has-status","has-unseen-status");ring.classList.add("status-seen");}
   const bars=[...root.querySelectorAll(".z-status-progress span i")];timer=setInterval(()=>{const progress=Math.min(1,(Date.now()-started)/duration);if(bars[index])bars[index].style.width=(progress*100)+"%";if(progress>=1&&st.media_type!=="video")show(index+1);},50);
  };
