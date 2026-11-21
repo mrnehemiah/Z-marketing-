@@ -1,1 +1,48 @@
-.icon-gallery-intro{display:flex;align-items:center;gap:15px;padding:18px;background:var(--card,#fff);border:1px solid var(--border,#e6e9e7);border-radius:18px;margin:12px 0 20px}.icon-gallery-mark{width:64px;height:64px;border-radius:18px;background:#087a55;color:#fff;display:grid;place-items:center;font-size:38px;font-weight:900;box-shadow:0 8px 20px #087a5533}.icon-gallery-intro h2,.icon-admin h2,.icon-gallery-toolbar h2{margin:0 0 5px;font-size:17px}.icon-gallery-intro p{margin:0;color:var(--muted,#667085);font-size:13px;line-height:1.5}.icon-admin{padding:16px;border:1px solid var(--border,#e6e9e7);border-radius:16px;margin-bottom:20px;background:var(--card,#fff)}.icon-admin form,.icon-admin label{display:grid;gap:8px}.icon-admin form{gap:12px}.icon-admin label{font-size:13px;font-weight:650}.icon-admin input:not([type=checkbox]){width:100%;padding:12px;border:1px solid #d5ddd8;border-radius:10px;background:transparent;color:inherit}.icon-check{display:flex!important;align-items:center}.icon-gallery-toolbar{display:flex;justify-content:space-between;align-items:center;margin:18px 0 12px}.icon-gallery-toolbar span,.icon-status{font-size:12px;color:var(--muted,#667085)}.icon-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.icon-tile{border:1px solid var(--border,#e2e8e4);background:var(--card,#fff);border-radius:16px;padding:12px;text-align:center;min-width:0}.icon-tile.selected{border:2px solid #087a55;box-shadow:0 0 0 3px #087a5518}.icon-tile img{width:min(100%,116px);aspect-ratio:1;object-fit:cover;border-radius:23%;display:block;margin:2px auto 10px}.icon-tile strong{display:block;font-size:13px;overflow-wrap:anywhere}.icon-tile small{display:block;color:var(--muted,#667085);margin:4px 0 10px}.icon-tile button{border:0;border-radius:9px;padding:9px 12px;background:#087a55;color:white;font-weight:700;width:100%}.icon-tile .delete-icon{background:#fff0f0;color:#b42318;margin-top:6px}.icon-status{margin:14px 0;min-height:18px}@media(min-width:600px){.icon-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+:root{--ig-green:#087a55;--ig-ink:#10231d;--ig-muted:#71817a;--ig-line:rgba(18,55,42,.10);--ig-surface:#fff}
+.settings-wrap:has(.icon-gallery-intro){max-width:920px;padding:18px 16px 34px}
+.settings-head{gap:14px;margin-bottom:18px}
+.settings-head>button{width:42px;height:42px;border-radius:14px;background:#fff;border:1px solid var(--ig-line);box-shadow:0 5px 18px #092b1c0b;font-size:27px}
+.settings-head h1{font-size:clamp(21px,5vw,27px);font-weight:850;letter-spacing:-.7px;color:var(--ig-ink)}
+.settings-sub{font-size:13px;color:var(--ig-muted)}
+.icon-gallery-intro{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;gap:17px;padding:23px 20px;margin:8px 0 23px;border:1px solid #087a5522;border-radius:24px;background:radial-gradient(circle at 92% 8%,#a7f3d044,transparent 34%),linear-gradient(125deg,#f0fbf5 0%,#fff 65%);box-shadow:0 12px 34px #0c51300b}
+.icon-gallery-intro:after{content:"";position:absolute;z-index:-1;width:160px;height:160px;border:1px solid #087a5515;border-radius:42px;right:-62px;bottom:-100px;transform:rotate(35deg)}
+.icon-gallery-mark{flex:0 0 68px;width:68px;height:68px;border-radius:21px;background:linear-gradient(145deg,#0a9668,#064b39);color:#fff;display:grid;place-items:center;font-size:0;font-weight:900;box-shadow:0 12px 24px #087a5533;position:relative}
+.icon-gallery-mark:before{content:"";width:32px;height:32px;border:3px solid #d1fae5;border-radius:11px;transform:rotate(12deg);position:absolute}
+.icon-gallery-mark:after{content:"Z";font-size:27px;position:relative;text-shadow:0 2px 6px #003b2a66}
+.icon-gallery-intro h2{margin:0 0 6px;font-size:19px;letter-spacing:-.35px;color:#123b2c}
+.icon-gallery-intro p{margin:0;color:#60776c;font-size:13px;line-height:1.55;max-width:530px}
+.icon-admin{padding:19px;margin:0 0 25px;border:1px solid #cce9db;border-radius:21px;background:linear-gradient(145deg,#f5fcf8,#fff 72%);box-shadow:0 10px 28px #0b51300a}
+.icon-admin h2{display:flex;align-items:center;gap:9px;margin:0 0 16px;font-size:16px;color:#124c37}
+.icon-admin h2:before{content:"＋";display:grid;place-items:center;width:29px;height:29px;border-radius:10px;background:#dff5e9;color:#087a55;font-size:21px}
+.icon-admin form{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.icon-admin label{display:grid;align-content:start;gap:8px;color:#365247;font-size:12px;font-weight:750}
+.icon-admin input:not([type=checkbox]){width:100%;min-height:46px;padding:12px 13px;border:1px solid #d7e5dd;border-radius:13px;background:#fff;color:#173c2d;outline:none;transition:border-color .2s,box-shadow .2s}
+.icon-admin input:focus{border-color:#0a9668;box-shadow:0 0 0 3px #0a96681c}
+.icon-admin input[type=file]{font-size:12px;padding:9px}
+.icon-admin .icon-check{display:flex;align-items:center;gap:9px;min-height:42px;padding:0 2px}
+.icon-admin .icon-check input{accent-color:#087a55;width:17px;height:17px}
+.icon-admin .settings-btn{grid-column:1/-1;min-height:47px;border:0;border-radius:14px;background:linear-gradient(100deg,#087a55,#0b9b6c);color:white;font-weight:800;box-shadow:0 8px 18px #087a5526}
+#upload-status{grid-column:1/-1;margin:0;font-size:12px;color:var(--ig-muted)}
+.icon-gallery-toolbar{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:25px 2px 13px}
+.icon-gallery-toolbar h2{margin:0;font-size:17px;letter-spacing:-.3px;color:var(--ig-ink)}
+.icon-gallery-toolbar span{font-size:11px;color:var(--ig-muted)}
+.icon-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.icon-tile{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;min-width:0;padding:15px 11px 12px;border:1px solid var(--ig-line);border-radius:20px;background:linear-gradient(160deg,#fff,#fbfdfc);text-align:center;box-shadow:0 5px 17px #102d2008;transition:transform .2s,border-color .2s,box-shadow .2s}
+.icon-tile:active{transform:scale(.985)}
+.icon-tile.selected{border:1.5px solid #087a55;background:linear-gradient(155deg,#f0fbf5,#fff 75%);box-shadow:0 0 0 3px #087a5514,0 10px 24px #087a5510}
+.icon-tile.selected:after{content:"✓";position:absolute;top:9px;right:9px;width:23px;height:23px;border-radius:50%;display:grid;place-items:center;background:#087a55;color:white;font-size:13px;font-weight:900}
+.icon-tile img{width:clamp(76px,23vw,112px);height:auto;aspect-ratio:1;object-fit:cover;border-radius:25%;display:block;margin:2px auto 12px;background:#edf4ef;box-shadow:0 9px 20px #102d201b}
+.icon-tile strong{display:block;width:100%;font-size:13px;font-weight:800;line-height:1.35;color:#18392d;overflow-wrap:anywhere}
+.icon-tile small{display:block;min-height:28px;color:var(--ig-muted);font-size:10px;line-height:1.4;margin:5px 0 10px}
+.icon-tile button{width:100%;min-height:39px;border:1px solid #087a55;border-radius:12px;padding:8px 9px;background:#087a55;color:white;font-size:11px;font-weight:800;transition:filter .15s,transform .15s}
+.icon-tile button:active{transform:scale(.98)}
+.icon-tile button:disabled{background:#e6f4ec;color:#087a55;border-color:#d4ebdd;opacity:1}
+.icon-tile .delete-icon{margin-top:6px;background:#fff3f2;color:#b42318;border-color:#f5d5d2}
+.icon-tile button+button{margin-top:6px}
+.icon-grid>p{grid-column:1/-1;padding:20px;border:1px dashed #cbded2;border-radius:16px;background:#f8fcf9;color:#64786e;font-size:13px;line-height:1.6}
+.icon-status{min-height:18px;margin:14px 2px;color:var(--ig-muted);font-size:12px}
+.settings-footer{padding-top:24px;color:#91a49a;font-size:10px;letter-spacing:2px}
+@media(min-width:600px){.icon-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.icon-tile{padding:18px 14px 14px}.icon-tile img{width:112px}}
+@media(min-width:820px){.icon-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.icon-admin form{grid-template-columns:1fr 1fr}.settings-wrap:has(.icon-gallery-intro){padding-top:28px}}
+@media(max-width:420px){.icon-gallery-intro{padding:17px 15px;gap:13px}.icon-gallery-mark{flex-basis:57px;width:57px;height:57px;border-radius:18px}.icon-gallery-intro h2{font-size:17px}.icon-admin{padding:15px}.icon-admin form{grid-template-columns:1fr}.icon-admin .settings-btn,#upload-status{grid-column:auto}}
+@media(prefers-reduced-motion:reduce){.icon-tile,.icon-tile button,.icon-admin input{transition:none}}
