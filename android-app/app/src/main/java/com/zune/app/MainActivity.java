@@ -282,12 +282,8 @@ public class MainActivity extends Activity {
         String details = notes.isEmpty() ? "Maboresho mapya na marekebisho ya mfumo." : notes;
         new AlertDialog.Builder(this)
                 .setTitle("ZUNE ina sasisho jipya")
-                .setMessage("Toleo: " + version + "
-
-" + details
-                        + "
-
-Ungependa kupakua sasisho sasa?")
+                .setMessage("Toleo: " + version + "\n\n" + details
+                        + "\n\nUngependa kupakua sasisho sasa?")
                 .setCancelable(true)
                 .setNegativeButton("Baadaye", (dialog, which) -> {
                     updateDialogShown = false;
