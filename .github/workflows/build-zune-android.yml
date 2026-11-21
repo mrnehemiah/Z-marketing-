@@ -40,13 +40,15 @@ jobs:
           echo "ZUNE_TAG=v1.$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
 
       - name: Build signed release APK when signing secrets exist
+        id: release
         if: ${{ env.ZUNE_RELEASE_KEY_BASE64 != '' && env.ZUNE_KEYSTORE_PASSWORD != '' && env.ZUNE_KEY_ALIAS != '' && env.ZUNE_KEY_PASSWORD != '' }}
+        continue-on-error: true
         run: |
           echo "$ZUNE_RELEASE_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/zune-release.jks"
           export ZUNE_KEYSTORE_PATH="$RUNNER_TEMP/zune-release.jks"
           echo "ZUNE_KEYSTORE_PATH=$ZUNE_KEYSTORE_PATH" >> "$GITHUB_ENV"
           keytool -list -keystore "$ZUNE_KEYSTORE_PATH" -storepass "$ZUNE_KEYSTORE_PASSWORD" -alias "$ZUNE_KEY_ALIAS" >/dev/null
-          gradle -p android-app :app:assembleRelease
+          gradle -p android-app --refresh-dependencies :app:assembleRelease
           mkdir -p dist
           APK_PATH="$(find android-app/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' ! -name '*unsigned*' | head -n 1)"
           if [ -z "$APK_PATH" ]; then
@@ -58,10 +60,10 @@ jobs:
           "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)/apksigner" verify --verbose dist/ZUNE.apk
           echo "ZUNE_BUILD_TYPE=signed-release" >> "$GITHUB_ENV"
 
-      - name: Build installable debug APK if release signing is not configured
-        if: ${{ env.ZUNE_RELEASE_KEY_BASE64 == '' || env.ZUNE_KEYSTORE_PASSWORD == '' || env.ZUNE_KEY_ALIAS == '' || env.ZUNE_KEY_PASSWORD == '' }}
+      - name: Build installable debug APK if release is unavailable
+        if: ${{ steps.release.outcome == 'failure' || env.ZUNE_RELEASE_KEY_BASE64 == '' || env.ZUNE_KEYSTORE_PASSWORD == '' || env.ZUNE_KEY_ALIAS == '' || env.ZUNE_KEY_PASSWORD == '' }}
         run: |
-          gradle -p android-app :app:assembleDebug
+          gradle -p android-app --refresh-dependencies :app:assembleDebug
           mkdir -p dist
           cp android-app/app/build/outputs/apk/debug/app-debug.apk dist/ZUNE.apk
           echo "ZUNE_BUILD_TYPE=debug-signed" >> "$GITHUB_ENV"
