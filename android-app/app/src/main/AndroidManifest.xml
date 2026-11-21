@@ -43,5 +43,35 @@
         <activity-alias android:name=".LauncherAmber" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:icon="@drawable/icon_amber" android:label="ZUNE">
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
         </activity-alias>
-        <activity-alias android:name=".LauncherObsidian" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:icon="@drawable/icon_obsidian" android:label="ZUNE">\n            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>\n        </activity-alias>\n    </application>
+        <activity-alias android:name=".LauncherObsidian" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:icon="@drawable/icon_obsidian" android:label="ZUNE">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".LauncherCrimson" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:icon="@drawable/icon_crimson" android:label="ZUNE">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".LauncherSapphire" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:icon="@drawable/icon_sapphire" android:label="ZUNE">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".LauncherJade" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:icon="@drawable/icon_jade" android:label="ZUNE">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".LauncherSolar" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:icon="@drawable/icon_solar" android:label="ZUNE">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".LauncherLavender" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:icon="@drawable/icon_lavender" android:label="ZUNE">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".LauncherCoral" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:icon="@drawable/icon_coral" android:label="ZUNE">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".LauncherGlacier" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:icon="@drawable/icon_glacier" android:label="ZUNE">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".LauncherCopper" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:icon="@drawable/icon_copper" android:label="ZUNE">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".LauncherNeon" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:icon="@drawable/icon_neon" android:label="ZUNE">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+    </application>
 </manifest>
