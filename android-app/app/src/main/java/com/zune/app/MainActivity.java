@@ -27,6 +27,7 @@ import android.webkit.WebViewClient;
 import android.webkit.JavascriptInterface;
 import android.Manifest;
 import android.widget.Toast;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -73,13 +74,17 @@ public class MainActivity extends Activity {
         activeActivity = this;
         createNotificationChannel();
         requestNotificationPermission();
+        refreshFcmToken();
         getWindow().setStatusBarColor(android.graphics.Color.rgb(0, 59, 50));
         getWindow().setNavigationBarColor(android.graphics.Color.rgb(0, 59, 50));
 
         webView = new WebView(this);
         setContentView(webView);
         configureWebView();
-        if (savedInstanceState == null) webView.loadUrl(MARKET_URL);
+        if (savedInstanceState == null) {
+            String notificationTarget = getNotificationTarget(getIntent());
+            webView.loadUrl(notificationTarget != null ? notificationTarget : MARKET_URL);
+        }
         else webView.restoreState(savedInstanceState);
         checkForUpdates();
     }
@@ -147,6 +152,39 @@ public class MainActivity extends Activity {
                 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 8401);
         }
+    }
+
+    private void refreshFcmToken() {
+        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+            if (!task.isSuccessful()) {
+                android.util.Log.w("ZUNE-PUSH", "Unable to obtain FCM token", task.getException());
+                return;
+            }
+            String token = task.getResult();
+            if (token == null || token.isEmpty()) return;
+            getSharedPreferences("zune_fcm", MODE_PRIVATE).edit().putString("fcm_token", token).apply();
+            notifyNativePushTokenReady();
+        });
+    }
+
+    private String getNotificationTarget(Intent intent) {
+        if (intent == null) return null;
+        String target = intent.getStringExtra("action_url");
+        if (target == null || target.isEmpty()) target = intent.getStringExtra("url");
+        if (target == null || target.isEmpty()) return null;
+        Uri uri = Uri.parse(target);
+        if (uri.getScheme() == null && target.startsWith("/")) {
+            target = "https://mrnehemiah.github.io" + target;
+        }
+        return isInternalUrl(target) ? target : null;
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        String target = getNotificationTarget(intent);
+        if (target != null && webView != null) webView.loadUrl(target);
     }
 
     private class NativePushBridge {
