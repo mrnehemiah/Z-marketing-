@@ -9,8 +9,8 @@
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
         android:label="ZUNE"
-        android:icon="@drawable/zune_icon"
-        android:roundIcon="@drawable/zune_icon"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:supportsRtl="true">
         <service
