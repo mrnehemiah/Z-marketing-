@@ -1631,8 +1631,21 @@ function productCard(product) {
 // 11. PRODUCT DETAILS QUICK VIEW
 // --------------------------------------------
 
-function openStoreDetails(ownerId, product = null) {
+function async openStoreDetails(ownerId, product = null) {
   if (!ownerId) return;
+  // Open the complete customer-facing Storefront 2.0 page when an active store record exists.
+  try {
+    const { data: storefrontRecord, error: storefrontLookupError } = await supabase
+      .from("stores").select("id").eq("owner_id", ownerId).eq("is_active", true).maybeSingle();
+    if (!storefrontLookupError && storefrontRecord?.id) {
+      const storefrontUrl = new URL("/zuneacts/storefront.html", location.origin);
+      storefrontUrl.searchParams.set("store", storefrontRecord.id);
+      location.assign(storefrontUrl.toString());
+      return;
+    }
+  } catch (storefrontNavigationError) {
+    console.warn("ZUNE Storefront 2.0 navigation unavailable; using in-page store preview.", storefrontNavigationError);
+  }
   document.getElementById("z-store-detail-overlay")?.remove();
   const cachedStore = product?.__zuneStore || null;
   const cachedProfile = product?.__zuneOwnerProfile || null;
